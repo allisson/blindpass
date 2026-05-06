@@ -92,6 +92,7 @@ BlindPass is MIT-licensed and self-hostable on four containers — your data liv
 ## 🔒 How Encryption Works
 
 BlindPass is built on a **zero-knowledge architecture** — meaning we are technically incapable of reading your data, even if compelled to.
+The cryptography architecture was inspired by [Ente's published architecture](https://ente.com/architecture/), then adapted to BlindPass's username-first account model, vault sharing flow, and self-hosted deployment target.
 
 ### Username + authenticator authentication
 
@@ -352,7 +353,7 @@ make prod:logs                # tail production logs
 
 ## 🏗 Architecture
 
-BlindPass is a pnpm monorepo. The zero-knowledge design is modeled after [Ente's published E2EE architecture](https://ente.io/architecture).
+BlindPass is a pnpm monorepo with separate web, server, and shared package boundaries. Its zero-knowledge cryptography architecture was inspired by [Ente's published architecture](https://ente.com/architecture/).
 
 ```
 ┌──────────────────────────────────────────────┐

@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
         injectRegister: 'auto',
         manifest: false,
         workbox: {
-          navigateFallback: '/offline.html',
+          navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api/],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           runtimeCaching: [],

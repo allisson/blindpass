@@ -1,5 +1,5 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -96,9 +96,9 @@ function RecoverPage() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Remembered it?{' '}
-            <a href="/login" className="text-primary hover:underline">
+            <Link to="/login" className="text-primary hover:underline">
               Sign in
-            </a>
+            </Link>
           </p>
         </form>
       </CardContent>
