@@ -1,8 +1,6 @@
 services:
   webapp:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
+    image: allisson/blindpass-webapp
     restart: unless-stopped
     depends_on:
       server:
@@ -17,10 +15,7 @@ services:
           memory: 64M
 
   server:
-    build:
-      context: .
-      dockerfile: apps/server/Dockerfile
-    image: blindpass/server
+    image: allisson/blindpass-server
     restart: unless-stopped
     depends_on:
       db:
@@ -48,7 +43,7 @@ services:
           memory: 512M
 
   migrate:
-    image: blindpass/server
+    image: allisson/blindpass-server
     restart: on-failure
     depends_on:
       db:
