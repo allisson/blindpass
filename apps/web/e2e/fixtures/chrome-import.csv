@@ -1,0 +1,4 @@
+name,url,username,password
+GitHub,https://github.com,user@example.com,hunter2
+Google,https://google.com,user@example.com,secret123
+Example,https://example.com,admin,pass456
