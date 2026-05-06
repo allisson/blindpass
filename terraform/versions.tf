@@ -11,6 +11,11 @@ terraform {
       version = "~> 3.0"
     }
   }
+
+  backend "gcs" {
+    bucket = "blindpass-tf-state-bucket"
+    prefix = "blindpass"
+  }
 }
 
 provider "google" {
