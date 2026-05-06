@@ -4,8 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./bip39": "./src/item/cryptoWallet/bip39.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bip39": {
+      "types": "./dist/item/cryptoWallet/bip39.d.ts",
+      "default": "./dist/item/cryptoWallet/bip39.js"
+    }
   },
   "scripts": {
     "build": "tsc -b",
