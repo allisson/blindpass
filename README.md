@@ -4,6 +4,8 @@
 [![Node.js](https://img.shields.io/badge/node-24-brightgreen)](https://nodejs.org)
 [![pnpm](https://img.shields.io/badge/pnpm-10-orange)](https://pnpm.io)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Docker Server](https://img.shields.io/docker/v/allisson/blindpass-server?label=blindpass-server)](https://hub.docker.com/r/allisson/blindpass-server)
+[![Docker Webapp](https://img.shields.io/docker/v/allisson/blindpass-webapp?label=blindpass-webapp)](https://hub.docker.com/r/allisson/blindpass-webapp)
 
 **Self-hostable, end-to-end encrypted password manager built around privacy by design.** Your secrets never leave your device unencrypted — the server is a cryptographically dumb blob store that never sees plaintext. Sign up with a username only — no email address, no phone number, nothing that ties your account to your real-world identity.
 
@@ -212,11 +214,11 @@ An XSS attack that can run JavaScript in the page **cannot** read the session co
 
 ### Setup
 
-1. Clone the repository and configure:
+1. Download the compose file and configure:
 
    ```bash
-   git clone https://github.com/blindpass/blindpass.git
-   cd blindpass
+   curl -o docker-compose.yml https://raw.githubusercontent.com/blindpass/blindpass/main/docker-compose.prod.yml
+   curl -o .env.example https://raw.githubusercontent.com/blindpass/blindpass/main/.env.example
    cp .env.example .env
    ```
 
@@ -230,12 +232,13 @@ An XSS attack that can run JavaScript in the page **cannot** read the session co
    TOTP_SECRET_ENCRYPTION_KEY=$(openssl rand -base64 32)
    ```
 
-2. Build images and start all services:
+2. Pull images and start all services:
 
    ```bash
-   make prod:build
-   make prod:up
+   docker compose up -d
    ```
+
+   No build step required — prebuilt images are pulled automatically from Docker Hub (`allisson/blindpass-server`, `allisson/blindpass-webapp`).
 
 The web app is served on port **8000** (HTTP). Point a reverse proxy at that port to terminate TLS — see [docs/deployment/reverse-proxy.md](docs/deployment/reverse-proxy.md) for Caddy and nginx setup guides.
 
@@ -259,9 +262,8 @@ As admin, visit `/admin` to:
 ### Updating
 
 ```bash
-git pull
-make prod:build
-make prod:up
+docker compose pull
+docker compose up -d
 ```
 
 ### Environment Variables
@@ -315,7 +317,7 @@ make ci                       # full CI check (lint + format + test)
 make db:migrate               # run pending migrations
 make db:studio                # open Drizzle Studio
 make screenshots              # capture UI screenshots to docs/screenshots/
-make prod:build               # build production Docker images
+make prod:build               # build production Docker images (contributors only)
 make prod:up                  # start production stack
 make prod:down                # stop production stack
 make prod:logs                # tail production logs
