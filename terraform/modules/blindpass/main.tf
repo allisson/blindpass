@@ -117,9 +117,10 @@ resource "google_secret_manager_secret_iam_member" "server_totp_key" {
 # ── Cloud Run: server ─────────────────────────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "server" {
-  project  = var.project_id
-  name     = "blindpass-server"
-  location = var.region
+  project             = var.project_id
+  name                = "blindpass-server"
+  location            = var.region
+  deletion_protection = false
 
   template {
     service_account = google_service_account.blindpass_server_sa.email
@@ -221,9 +222,10 @@ resource "google_cloud_run_v2_service_iam_member" "server_public" {
 # ── Cloud Run: webapp ─────────────────────────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "webapp" {
-  project  = var.project_id
-  name     = "blindpass-webapp"
-  location = var.region
+  project             = var.project_id
+  name                = "blindpass-webapp"
+  location            = var.region
+  deletion_protection = false
 
   template {
     service_account = google_service_account.blindpass_webapp_sa.email
@@ -289,9 +291,10 @@ resource "google_cloud_run_domain_mapping" "webapp" {
 # ── Migration job ─────────────────────────────────────────────────────────────
 
 resource "google_cloud_run_v2_job" "migrate" {
-  project  = var.project_id
-  name     = "blindpass-migrate"
-  location = var.region
+  project             = var.project_id
+  name                = "blindpass-migrate"
+  location            = var.region
+  deletion_protection = false
 
   template {
     template {

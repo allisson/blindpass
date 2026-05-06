@@ -10,4 +10,4 @@ override.tf.json
 *_override.tf.json
 
 # Keep the lock file committed so provider versions are reproducible
-!.terraform.lock.hcl
+.terraform.lock.hcl
