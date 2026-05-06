@@ -23,6 +23,10 @@ RUN pnpm --filter @blindpass/web build
 
 # ---- Runtime ----
 FROM nginx:alpine AS runtime
+RUN apk add --no-cache gettext
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/web/nginx.conf.template /etc/nginx/conf.d/default.conf.template
+COPY apps/web/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 EXPOSE 8000
+ENTRYPOINT ["/docker-entrypoint.sh"]
