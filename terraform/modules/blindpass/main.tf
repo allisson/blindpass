@@ -305,10 +305,35 @@ resource "google_cloud_run_v2_job" "migrate" {
         args  = ["node", "dist/index.js", "migrate"]
 
         env {
+          name  = "NODE_ENV"
+          value = "production"
+        }
+
+        env {
           name = "DATABASE_URL"
           value_source {
             secret_key_ref {
               secret  = google_secret_manager_secret.database_url.secret_id
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "TOTP_SECRET_ENCRYPTION_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.totp_key.secret_id
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "REDIS_URL"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.redis_url.secret_id
               version = "latest"
             }
           }
@@ -320,6 +345,8 @@ resource "google_cloud_run_v2_job" "migrate" {
   depends_on = [
     google_project_service.run,
     google_secret_manager_secret_iam_member.server_database_url,
+    google_secret_manager_secret_iam_member.server_totp_key,
+    google_secret_manager_secret_iam_member.server_redis_url,
   ]
 }
 

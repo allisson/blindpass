@@ -28,9 +28,11 @@ import { pendingTotpEnrollments, recoveryTokens, sessions } from './db/schema.js
 const mode = process.argv[2] ?? 'server';
 
 if (mode === 'migrate') {
+  console.log('Running database migrations…');
   const pool = new Pool({ connectionString: env.DATABASE_URL, max: env.DB_POOL_MAX });
   await migrate(drizzle(pool), { migrationsFolder: './src/db/migrations' });
   await pool.end();
+  console.log('Migrations complete.');
 } else {
   const app = Fastify({
     bodyLimit: env.BODY_LIMIT_BYTES,
