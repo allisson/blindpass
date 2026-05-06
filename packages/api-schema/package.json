@@ -1,0 +1,22 @@
+{
+  "name": "@blindpass/api-schema",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint src",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "zod": "^4.4.2"
+  },
+  "devDependencies": {
+    "@blindpass/types": "workspace:*",
+    "@vitest/coverage-v8": "^4.1.5",
+    "vitest": "^4.1.5"
+  }
+}

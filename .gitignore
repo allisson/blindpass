@@ -137,3 +137,16 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Vite cache
+**/.vite/
+
+# Turbo
+.turbo/
+
+# Build output
+dist/
+
+.DS_Store
+.superpowers
+apps/web/test-results

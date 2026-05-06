@@ -1,0 +1,13 @@
+{
+  "name": "@blindpass/types",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint src"
+  }
+}

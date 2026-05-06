@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/types" },
+    { "path": "./packages/api-schema" },
+    { "path": "./packages/crypto" },
+    { "path": "./packages/vault" },
+    { "path": "./apps/server" },
+    { "path": "./apps/web" },
+    { "path": "./apps/extension" }
+  ]
+}

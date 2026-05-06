@@ -1,0 +1,474 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/geist';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: 'Bricolage Grotesque Variable', 'Geist Variable', sans-serif;
+  --font-sans: 'Geist Variable', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'SFMono-Regular', monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Density tokens — overridden via [data-density] on <html> */
+  --row-py: 0.625rem; /* cozy default = py-2.5 */
+  --row-gap: 0.75rem; /* gap-3 */
+}
+[data-density='compact'] {
+  --row-py: 0.375rem; /* py-1.5 */
+  --row-gap: 0.625rem;
+}
+
+:root {
+  /* Cool slate-white — not pure white */
+  --background: oklch(0.975 0.004 265);
+  --foreground: oklch(0.145 0.006 285);
+  /* Near-white cards with faint violet tint */
+  --card: oklch(0.99 0.003 280);
+  --card-foreground: oklch(0.145 0.006 285);
+  --popover: oklch(0.99 0.003 280);
+  --popover-foreground: oklch(0.145 0.006 285);
+  /* Violet primary — consistent brand across modes */
+  --primary: oklch(0.38 0.16 295);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.965 0.008 290);
+  --secondary-foreground: oklch(0.205 0.006 285);
+  --muted: oklch(0.965 0.008 290);
+  --muted-foreground: oklch(0.556 0.008 285);
+  --accent: oklch(0.945 0.014 285);
+  --accent-foreground: oklch(0.205 0.006 285);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.908 0.007 285);
+  --input: oklch(0.908 0.007 285);
+  /* Match primary for focus rings */
+  --ring: oklch(0.38 0.16 295);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  /* Sidebar — violet-tinted panel distinct from main bg */
+  --sidebar: oklch(0.952 0.013 285);
+  --sidebar-foreground: oklch(0.145 0.006 285);
+  --sidebar-primary: oklch(0.38 0.16 295);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.935 0.018 285);
+  --sidebar-accent-foreground: oklch(0.205 0.006 285);
+  --sidebar-border: oklch(0.902 0.008 285);
+  --sidebar-ring: oklch(0.38 0.16 295);
+  /* Teal accent — muted for light mode */
+  --accent-teal: oklch(0.55 0.12 195);
+  /* Subtle violet glow for light mode */
+  --glow-bg: radial-gradient(
+    ellipse 60% 30% at 50% -5%,
+    oklch(0.38 0.16 295 / 0.05),
+    transparent 70%
+  );
+}
+
+.dark {
+  /* Cool obsidian — slightly blue-shifted near-black */
+  --background: oklch(0.108 0.008 265);
+  --foreground: oklch(0.985 0 0);
+  /* Lifted obsidian cards with faint violet hue */
+  --card: oklch(0.138 0.01 280);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.138 0.01 280);
+  --popover-foreground: oklch(0.985 0 0);
+  /* violet-600 */
+  --primary: oklch(0.58 0.21 295);
+  --primary-foreground: oklch(0.985 0 0);
+  /* Teal-cyan secondary surface */
+  --secondary: oklch(0.185 0.018 210);
+  --secondary-foreground: oklch(0.92 0.05 200);
+  --muted: oklch(0.185 0.008 265);
+  --muted-foreground: oklch(0.62 0.015 265);
+  /* Violet-950 accent with more chroma */
+  --accent: oklch(0.24 0.068 295);
+  --accent-foreground: oklch(0.82 0.14 295);
+  /* Red destructive */
+  --destructive: oklch(0.628 0.24 22);
+  /* Violet-tinted borders */
+  --border: oklch(0.21 0.014 280);
+  --input: oklch(0.175 0.01 280);
+  --ring: oklch(0.58 0.21 295);
+  --chart-1: oklch(0.58 0.21 295);
+  --chart-2: oklch(0.72 0.155 195);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  /* Sidebar: darker than cards for depth hierarchy */
+  --sidebar: oklch(0.122 0.01 270);
+  --sidebar-foreground: oklch(0.92 0 0);
+  --sidebar-primary: oklch(0.58 0.21 295);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.185 0.018 270);
+  --sidebar-accent-foreground: oklch(0.92 0 0);
+  --sidebar-border: oklch(0.195 0.014 275);
+  --sidebar-ring: oklch(0.58 0.21 295);
+  /* Dual violet+teal glow */
+  --glow-bg:
+    radial-gradient(ellipse 80% 40% at 50% -10%, oklch(0.58 0.21 295 / 0.18), transparent 70%),
+    radial-gradient(ellipse 40% 25% at 80% 5%, oklch(0.72 0.155 195 / 0.1), transparent 60%);
+  /* Teal accent token */
+  --accent-teal: oklch(0.72 0.155 195);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.6 0.01 265 / 0.2);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.6 0.01 265 / 0.35);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: oklch(0.5 0.015 265 / 0.3);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0.015 265 / 0.5);
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.025em;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px 200px;
+  }
+  [data-slot='button']:active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease;
+  }
+  @media (pointer: coarse) {
+    button,
+    [role='button'],
+    [data-slot='button'] {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+@layer components {
+  /* Gradient-border glass card via mask trick */
+  .glass-card {
+    @apply backdrop-blur-md;
+    position: relative;
+    border-radius: var(--radius-lg);
+    /* light mode: subtle elevated card */
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow:
+      0 4px 6px -1px oklch(0 0 0 / 0.06),
+      0 2px 4px -2px oklch(0 0 0 / 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+  .dark .glass-card {
+    background: oklch(0.138 0.01 280 / 0.85);
+    border: none;
+    box-shadow:
+      0 20px 25px -5px oklch(0 0 0 / 0.5),
+      0 8px 10px -6px oklch(0 0 0 / 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      oklch(0.38 0.16 295 / 0.3) 0%,
+      oklch(0.55 0.12 195 / 0.15) 50%,
+      oklch(0.6 0.008 265 / 0.2) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  .dark .glass-card::before {
+    background: linear-gradient(
+      135deg,
+      oklch(0.58 0.21 295 / 0.45) 0%,
+      oklch(0.72 0.155 195 / 0.2) 50%,
+      oklch(0.21 0.014 280 / 0.3) 100%
+    );
+    opacity: 1;
+  }
+
+  /* Sidebar — darker than list panel for depth hierarchy */
+  .glass-panel {
+    @apply backdrop-blur-xl;
+    /* light mode */
+    background: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+  }
+  .dark .glass-panel {
+    background: oklch(0.122 0.01 270 / 0.92);
+    border-right: 1px solid oklch(0.21 0.014 280 / 0.8);
+  }
+
+  /* List panel — mid depth */
+  .glass-list-panel {
+    @apply backdrop-blur-md;
+    /* light mode */
+    background: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+  }
+  .dark .glass-list-panel {
+    background: oklch(0.13 0.009 275 / 0.7);
+    border-right: 1px solid oklch(0.21 0.014 280 / 0.5);
+  }
+
+  /* ── Enhanced form system ──
+   * Convention: wrap each field in `<div class="field-group">`.
+   * Set `data-invalid="true"` on the wrapper when the field has an error
+   * to flip the label dot to destructive color. */
+
+  /* Field group: label becomes teal when any child input is focused */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  [data-density='compact'] .field-group {
+    gap: 0.375rem;
+  }
+  .field-group:focus-within > [data-slot='label'] {
+    color: var(--accent-teal);
+  }
+
+  /* Accent dot after each label — lights up on focus, turns red on invalid */
+  [data-slot='label']::after {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--border);
+    margin-left: 1px;
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .field-group:focus-within > [data-slot='label']::after {
+    background: var(--accent-teal);
+    box-shadow: 0 0 6px var(--accent-teal);
+  }
+  .field-group[data-invalid='true'] > [data-slot='label'] {
+    color: var(--destructive);
+  }
+  .field-group[data-invalid='true'] > [data-slot='label']::after {
+    background: var(--destructive);
+    box-shadow: 0 0 6px var(--destructive);
+  }
+  .field-group:has(:disabled) > [data-slot='label'] {
+    opacity: 0.5;
+  }
+
+  /* Form submitting: dim + lock interactions while in flight */
+  form[aria-busy='true'] {
+    opacity: 0.7;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+
+  /* Password strength bar segments */
+  .pw-strength {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    height: 3px;
+  }
+  .pw-strength > span {
+    border-radius: 9999px;
+    background: var(--border);
+    transition:
+      background 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .pw-strength[data-score='1'] > span:nth-child(-n + 1),
+  .pw-strength[data-score='2'] > span:nth-child(-n + 2),
+  .pw-strength[data-score='3'] > span:nth-child(-n + 3),
+  .pw-strength[data-score='4'] > span:nth-child(-n + 4) {
+    background: var(--accent-teal);
+  }
+  .pw-strength[data-score='3'] > span:nth-child(-n + 3),
+  .pw-strength[data-score='4'] > span:nth-child(-n + 4) {
+    background: var(--primary);
+  }
+  .pw-strength[data-score='4'] > span {
+    box-shadow: 0 0 6px oklch(from var(--primary) l c h / 0.4);
+  }
+
+  /* Input focus glow */
+  [data-slot='input']:focus-visible {
+    border-color: oklch(0.38 0.16 295 / 0.6);
+    box-shadow: 0 0 0 2px oklch(0.38 0.16 295 / 0.12);
+    outline: none;
+  }
+  .dark [data-slot='input']:focus-visible {
+    border-color: oklch(0.58 0.21 295 / 0.65);
+    box-shadow:
+      0 0 0 1px oklch(0.58 0.21 295 / 0.15),
+      0 0 20px oklch(0.58 0.21 295 / 0.1),
+      inset 0 0 12px oklch(0.58 0.21 295 / 0.04);
+  }
+
+  /* Textarea focus glow */
+  textarea:focus-visible {
+    border-color: oklch(0.38 0.16 295 / 0.6);
+    box-shadow: 0 0 0 2px oklch(0.38 0.16 295 / 0.12);
+    outline: none;
+  }
+  .dark textarea:focus-visible {
+    border-color: oklch(0.58 0.21 295 / 0.65);
+    box-shadow:
+      0 0 0 1px oklch(0.58 0.21 295 / 0.15),
+      0 0 20px oklch(0.58 0.21 295 / 0.1);
+    outline: none;
+  }
+
+  /* Respect user's motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Native select — match Input appearance */
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    padding-right: 2rem !important;
+  }
+  select:focus-visible {
+    border-color: oklch(0.38 0.16 295 / 0.6);
+    box-shadow: 0 0 0 2px oklch(0.38 0.16 295 / 0.12);
+    outline: none;
+  }
+  .dark select:focus-visible {
+    border-color: oklch(0.58 0.21 295 / 0.65);
+    box-shadow:
+      0 0 0 1px oklch(0.58 0.21 295 / 0.15),
+      0 0 20px oklch(0.58 0.21 295 / 0.1);
+  }
+  .dark select option {
+    background: oklch(0.138 0.01 280);
+  }
+
+  /* Monospace password fields — visual security cue */
+  [data-slot='input'][type='password'] {
+    font-family: ui-monospace, 'SFMono-Regular', 'Cascadia Code', monospace;
+    letter-spacing: 0.06em;
+  }
+
+  /* Auth card header separator */
+  .glass-card [data-slot='card-header'] {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Gradient accent bar left of card title */
+  .glass-card [data-slot='card-title'] {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .glass-card [data-slot='card-title']::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 1em;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: linear-gradient(to bottom, var(--primary), var(--accent-teal));
+  }
+}

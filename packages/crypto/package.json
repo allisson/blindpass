@@ -1,0 +1,24 @@
+{
+  "name": "@blindpass/crypto",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint src",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@scure/bip39": "^2.2.0",
+    "libsodium-wrappers-sumo": "^0.8.4",
+    "otpauth": "^9.5.1"
+  },
+  "devDependencies": {
+    "@blindpass/types": "workspace:*",
+    "@vitest/coverage-v8": "^4.1.5",
+    "vitest": "^4.1.5"
+  }
+}
