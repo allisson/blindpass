@@ -278,6 +278,10 @@ docker compose up -d
 | `COOKIE_DOMAIN`              | No         | —                       | Cookie domain (set when web app and API share a domain)                |
 | `COOKIE_SECURE`              | No         | `true`                  | Must remain `true` in production                                       |
 | `LOG_LEVEL`                  | No         | `info`                  | Pino log level (`trace`/`debug`/`info`/`warn`/`error`)                 |
+| `NODE_ENV`                   | Yes        | —                       | Must be `production` in production                                     |
+| `SESSION_TTL_MS`             | No         | `1209600000` (14 days)  | Absolute session expiry                                                |
+| `SESSION_IDLE_TTL_MS`        | No         | `604800000` (7 days)    | Idle session expiry; must be ≤ `SESSION_TTL_MS`                        |
+| `EXPOSE_DOCS`                | No         | `false`                 | Enable Swagger UI at `/docs`                                           |
 
 ---
 
@@ -311,9 +315,10 @@ make test                     # run all tests
 make test:crypto              # packages/crypto only (≥95% coverage gate)
 make test:server:unit         # server unit tests
 make test:server:integration  # server integration tests (requires Docker)
-make lint                     # eslint + tsc
+make test:e2e                 # e2e tests (requires make dev running)
+make lint                     # eslint via turbo
 make format                   # prettier --write
-make ci                       # full CI check (lint + format + test)
+make ci                       # lint + tsc + format check + test
 make db:migrate               # run pending migrations
 make db:studio                # open Drizzle Studio
 make screenshots              # capture UI screenshots to docs/screenshots/
@@ -346,9 +351,10 @@ BlindPass is a pnpm monorepo. The zero-knowledge design is modeled after [Ente's
               ┌──────▼──────┐
               │ apps/server │  Fastify REST API
               └──────┬──────┘
-              ┌──────▼──────┐
-              │  PostgreSQL │  stores only ciphertext
-              └─────────────┘
+         ┌───────────┴───────────┐
+    ┌────▼────┐           ┌──────▼──────┐
+    │  Redis  │  sessions │  PostgreSQL │  ciphertext
+    └─────────┘           └─────────────┘
 ```
 
 ### Packages
