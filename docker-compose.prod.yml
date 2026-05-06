@@ -35,7 +35,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -54,6 +54,9 @@ services:
       - backend
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      NODE_ENV: production
+      TOTP_SECRET_ENCRYPTION_KEY: ${TOTP_SECRET_ENCRYPTION_KEY}
+      REDIS_URL: ${REDIS_URL}
     command: ['node', 'dist/index.js', 'migrate']
     deploy:
       restart_policy:

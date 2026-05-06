@@ -49,11 +49,11 @@ db\:studio:
 	cd apps/server && pnpm exec drizzle-kit studio
 
 prod\:build:
-	docker build -f apps/server/Dockerfile -t blindpass/server .
-	docker build -f apps/web/Dockerfile -t blindpass/web .
+	docker build -f apps/server/Dockerfile -t allisson/blindpass-server .
+	docker build -f apps/web/Dockerfile -t allisson/blindpass-webapp .
 
 prod\:up:
-	docker compose -f docker-compose.prod.yml up -d
+	docker compose -f docker-compose.prod.yml up -d --wait
 
 prod\:down:
 	docker compose -f docker-compose.prod.yml down
