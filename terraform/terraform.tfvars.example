@@ -1,0 +1,25 @@
+# Copy to terraform.tfvars and fill in real values.
+# terraform.tfvars is gitignored — never commit it.
+
+project_id   = "my-gcp-project-id"
+region       = "us-east1"
+domain       = "blindpass.example.com"
+image_tag    = "latest"
+
+# Supabase: Settings → Database → Connection string → Transaction pooler
+database_url = "postgresql://postgres.xxxx:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+
+# Upstash: Redis → Details → REDIS_URL
+redis_url    = "rediss://default:token@host.upstash.io:6379"
+
+# Generate once with: openssl rand -base64 32
+# Store this key securely (password manager) — losing it invalidates all users' TOTP configs.
+totp_encryption_key = "base64-encoded-32-byte-key"
+
+# Optional overrides (defaults shown)
+# server_min_instances         = 0
+# server_max_instances         = 2
+# webapp_min_instances         = 0
+# webapp_max_instances         = 1
+# server_image                 = "docker.io/allisson/blindpass-server"
+# webapp_image                 = "docker.io/allisson/blindpass-webapp"

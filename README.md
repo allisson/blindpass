@@ -268,20 +268,40 @@ docker compose up -d
 
 ### Environment Variables
 
-| Variable                     | Required   | Default                 | Description                                                            |
-| ---------------------------- | ---------- | ----------------------- | ---------------------------------------------------------------------- |
-| `DATABASE_URL`               | Yes        | —                       | PostgreSQL connection URL                                              |
-| `TOTP_SECRET_ENCRYPTION_KEY` | Yes        | —                       | Base64-encoded 32-byte key for encrypting stored authenticator secrets |
-| `REDIS_URL`                  | Yes (prod) | —                       | Redis connection URL for server-side session storage                   |
-| `PORT`                       | No         | `3000`                  | HTTP server port                                                       |
-| `CORS_ORIGIN`                | Yes (prod) | `http://localhost:5173` | Allowed origin(s), comma-separated                                     |
-| `COOKIE_DOMAIN`              | No         | —                       | Cookie domain (set when web app and API share a domain)                |
-| `COOKIE_SECURE`              | No         | `true`                  | Must remain `true` in production                                       |
-| `LOG_LEVEL`                  | No         | `info`                  | Pino log level (`trace`/`debug`/`info`/`warn`/`error`)                 |
-| `NODE_ENV`                   | Yes        | —                       | Must be `production` in production                                     |
-| `SESSION_TTL_MS`             | No         | `1209600000` (14 days)  | Absolute session expiry                                                |
-| `SESSION_IDLE_TTL_MS`        | No         | `604800000` (7 days)    | Idle session expiry; must be ≤ `SESSION_TTL_MS`                        |
-| `EXPOSE_DOCS`                | No         | `false`                 | Enable Swagger UI at `/docs`                                           |
+| Variable                     | Required      | Default                 | Description                                                                     |
+| ---------------------------- | ------------- | ----------------------- | ------------------------------------------------------------------------------- |
+| `DATABASE_URL`               | Yes           | —                       | PostgreSQL connection URL                                                       |
+| `POSTGRES_PASSWORD`          | Yes (compose) | —                       | PostgreSQL superuser password for the `db` container; must match `DATABASE_URL` |
+| `TOTP_SECRET_ENCRYPTION_KEY` | Yes           | —                       | Base64-encoded 32-byte key for encrypting stored authenticator secrets          |
+| `REDIS_URL`                  | Yes (prod)    | —                       | Redis connection URL for server-side session storage                            |
+| `NODE_ENV`                   | Yes           | —                       | Must be `production` in production                                              |
+| `CORS_ORIGIN`                | Yes (prod)    | `http://localhost:5173` | Allowed origin(s), comma-separated                                              |
+| `PORT`                       | No            | `3000`                  | HTTP server port                                                                |
+| `LOG_LEVEL`                  | No            | `info`                  | Pino log level (`trace`/`debug`/`info`/`warn`/`error`)                          |
+| `COOKIE_DOMAIN`              | No            | —                       | Cookie domain (set when web app and API share a domain)                         |
+| `COOKIE_NAME`                | No            | `bp_session`            | Session cookie name                                                             |
+| `COOKIE_SECURE`              | No            | `true`                  | Must remain `true` in production                                                |
+| `SESSION_TTL_MS`             | No            | `1209600000` (14 days)  | Absolute session expiry                                                         |
+| `SESSION_IDLE_TTL_MS`        | No            | `604800000` (7 days)    | Idle session expiry; must be ≤ `SESSION_TTL_MS`                                 |
+| `BODY_LIMIT_BYTES`           | No            | `524288` (512 KB)       | Maximum request body size                                                       |
+| `DB_POOL_MAX`                | No            | `10`                    | Maximum PostgreSQL connection pool size                                         |
+| `PENDING_TOTP_TTL_MS`        | No            | `900000` (15 min)       | How long a TOTP setup challenge remains valid                                   |
+| `RECOVERY_TOKEN_TTL_MS`      | No            | `900000` (15 min)       | How long a recovery token remains valid                                         |
+| `UNVERIFIED_ACCOUNT_TTL_MS`  | No            | `86400000` (24 h)       | How long an unverified account is retained before cleanup                       |
+| `EXPOSE_DOCS`                | No            | `false`                 | Enable Swagger UI at `/docs`                                                    |
+
+### Self-Hosting on GCP Cloud Run (free tier)
+
+Run BlindPass on [GCP Cloud Run](https://cloud.google.com/run) with external managed services — no VM to operate.
+
+| Component | Provider                                   | Free tier                             |
+| --------- | ------------------------------------------ | ------------------------------------- |
+| Web + API | GCP Cloud Run                              | 2M req/month, 360K vCPU-seconds/month |
+| Database  | [Supabase](https://supabase.com) free tier | 500 MB, paused after 1 week idle      |
+| Redis     | [Upstash](https://upstash.com) free tier   | 10K commands/day                      |
+| TLS + DNS | Cloud Run domain mapping                   | Free managed certificate              |
+
+See **[terraform/README.md](terraform/README.md)** for the full quickstart.
 
 ---
 

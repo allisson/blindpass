@@ -9,6 +9,8 @@ services:
       - '8000:8000'
     networks:
       - frontend
+    environment:
+      SERVER_BASE_URL: http://server:3000
     deploy:
       resources:
         limits:
@@ -84,7 +86,7 @@ services:
     environment:
       POSTGRES_DB: blindpass
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: blindpass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:

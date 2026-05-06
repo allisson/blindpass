@@ -70,10 +70,13 @@ export function ResponsiveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={showCloseButton}>
+      <DialogContent
+        showCloseButton={showCloseButton}
+        aria-describedby={description ? descId : undefined}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
+          {description && <DialogDescription id={descId}>{description}</DialogDescription>}
         </DialogHeader>
         {children}
         {footer && <DialogFooter>{footer}</DialogFooter>}
