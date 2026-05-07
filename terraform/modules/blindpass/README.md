@@ -13,7 +13,7 @@ Terraform module that deploys BlindPass on GCP Cloud Run.
 
 ```hcl
 module "blindpass" {
-  source = "github.com/blindpass/blindpass//terraform/modules/blindpass"
+  source = "github.com/allisson/blindpass//terraform/modules/blindpass"
 
   project_id   = "my-gcp-project"
   domain       = "blindpass.example.com"
