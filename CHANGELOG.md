@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 **Core**
+
 - End-to-end encrypted vault — all encryption happens on-device; server stores only ciphertext
 - Zero-knowledge architecture — master password never sent to the server, not even as a hash
 - Argon2id key derivation in the browser; keys live in memory only and are zeroed on lock
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multiple vaults per account with per-vault encryption keys
 
 **Item types**
+
 - Login items (username, password, URL, notes)
 - Secure notes (encrypted freeform title + content)
 - Payment cards (cardholder, number, expiry, CVV, notes)
@@ -26,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Crypto wallets (BIP39 mnemonic seed phrases with optional network, derivation path, passphrase)
 
 **Vault management**
+
 - Vault sharing via asymmetric key sealing (X25519) — server never sees the vault key
 - Encrypted export and import for backup and restore
 - Import from Bitwarden (JSON), LastPass (CSV), and Chrome passwords (CSV)
@@ -33,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trash and restore — deleted items are soft-deleted; permanently purge on demand
 
 **Account**
+
 - Passwordless signup — username only, no email address, no personal information collected
 - Authenticator-based sign-in — username + TOTP; no password sent over the network
 - BIP39 recovery key — 256-bit mnemonic generated at registration for account recovery
@@ -41,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Account deletion — permanently removes account and all associated data
 
 **Administration**
+
 - Registration gate — admin can open or close sign-ups without affecting existing accounts
 - User management — list users, revoke sessions, or delete accounts from the admin panel
 - Vault and item quotas — default caps (10 vaults / 1,000 items) with per-user overrides
