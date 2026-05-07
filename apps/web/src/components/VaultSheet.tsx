@@ -5,6 +5,7 @@ import { Check, Lock, LogOut, Monitor, Moon, Pencil, Plus, Shield, Sun, Users } 
 import { Drawer } from 'vaul';
 import { toast } from 'sonner';
 import { session } from '@/lib/session';
+import { extractErrorMessage } from '@/lib/errors';
 import { useCreateVault, useRenameVault, useSwitchVault } from '@/hooks/useVault';
 import { useLeaveShare } from '@/hooks/useVaultSharing';
 import { Input } from '@/components/ui/input';
@@ -134,7 +135,7 @@ export function VaultSheet({
         window.dispatchEvent(new CustomEvent('bp:vault-switch'));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create vault');
+      toast.error(extractErrorMessage(err, 'Failed to create vault'));
     }
     setCreateName('');
     setCreating(false);
@@ -147,8 +148,12 @@ export function VaultSheet({
       setRenameId(null);
       return;
     }
-    await renameVault.mutateAsync({ vaultId, name: trimmed });
-    setLocalVaults((prev) => prev.map((v) => (v.id === vaultId ? { ...v, name: trimmed } : v)));
+    try {
+      await renameVault.mutateAsync({ vaultId, name: trimmed });
+      setLocalVaults((prev) => prev.map((v) => (v.id === vaultId ? { ...v, name: trimmed } : v)));
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to rename vault'));
+    }
     setRenameId(null);
   }
 
@@ -177,8 +182,8 @@ export function VaultSheet({
       setLocalVaults((prev) => prev.filter((v) => v.id !== vaultId));
       window.dispatchEvent(new CustomEvent('bp:vault-switch'));
       toast.success(`Left vault "${vaultName}"`);
-    } catch {
-      toast.error('Failed to leave vault');
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to leave vault'));
     }
   }
 

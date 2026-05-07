@@ -48,8 +48,7 @@ function NewItemPage() {
     let itemId: string;
     try {
       itemId = await createItem.mutateAsync({ vaultItem: data, folderId: selectedFolderId });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create item');
+    } catch {
       return;
     }
     toast.success('Item created');
