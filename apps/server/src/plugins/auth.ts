@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin';
 import { createHash } from 'node:crypto';
-import { and, eq, gt, isNull, placeholder, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { sessions, users } from '../db/schema.js';
 import { env } from '../env.js';
 
@@ -18,26 +18,26 @@ export const authPlugin = fp(async (app) => {
     '/health',
   ]);
 
-  const sessionLookup = app.db
-    .select({ id: sessions.id, userId: sessions.userId })
-    .from(sessions)
-    .innerJoin(users, eq(users.id, sessions.userId))
-    .where(
-      and(
-        eq(sessions.tokenHash, placeholder('tokenHash')),
-        gt(sessions.expiresAt, placeholder('expiresAt')),
-        gt(sessions.lastUsedAt, placeholder('idleSince')),
-        isNull(users.revokedAt),
-      ),
-    )
-    .limit(1)
-    .prepare('auth_session_lookup');
+  const sessionLookup = (tokenHash: string, expiresAt: Date, idleSince: Date) =>
+    app.db
+      .select({ id: sessions.id, userId: sessions.userId })
+      .from(sessions)
+      .innerJoin(users, eq(users.id, sessions.userId))
+      .where(
+        and(
+          eq(sessions.tokenHash, tokenHash),
+          gt(sessions.expiresAt, expiresAt),
+          gt(sessions.lastUsedAt, idleSince),
+          isNull(users.revokedAt),
+        ),
+      )
+      .limit(1);
 
-  const sessionTouch = app.db
-    .update(sessions)
-    .set({ lastUsedAt: sql`NOW()` })
-    .where(eq(sessions.id, placeholder('id')))
-    .prepare('auth_session_touch');
+  const sessionTouch = (id: string) =>
+    app.db
+      .update(sessions)
+      .set({ lastUsedAt: sql`NOW()` })
+      .where(eq(sessions.id, id));
 
   app.addHook('onRequest', async (request, reply) => {
     if (PUBLIC_ROUTES.has(request.routeOptions.url ?? '')) return;
@@ -99,11 +99,11 @@ export const authPlugin = fp(async (app) => {
     const tokenHash = createHash('sha256').update(token).digest('hex');
 
     const now = new Date();
-    const [session] = await sessionLookup.execute({
+    const [session] = await sessionLookup(
       tokenHash,
-      expiresAt: now,
-      idleSince: new Date(now.getTime() - env.SESSION_IDLE_TTL_MS),
-    });
+      now,
+      new Date(now.getTime() - env.SESSION_IDLE_TTL_MS),
+    );
 
     if (!session) {
       request.log.warn(
@@ -115,8 +115,8 @@ export const authPlugin = fp(async (app) => {
 
     request.userId = session.userId;
     request.sessionId = session.id;
-    void sessionTouch
-      .execute({ id: session.id })
-      .catch((err) => request.log.warn({ err, sessionId: session.id }, 'Failed to touch session'));
+    void sessionTouch(session.id).catch((err) =>
+      request.log.warn({ err, sessionId: session.id }, 'Failed to touch session'),
+    );
   });
 });
