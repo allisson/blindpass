@@ -60,4 +60,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reverse proxy guides for Caddy and nginx (TLS termination + HTTP→HTTPS redirect)
 - pnpm + Turborepo monorepo with isolated packages: `crypto`, `vault`, `api-schema`, `types`
 
-[0.1.0]: https://github.com/blindpass/blindpass/releases/tag/v0.1.0
+[0.1.0]: https://github.com/allisson/blindpass/releases/tag/v0.1.0

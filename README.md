@@ -1,6 +1,6 @@
 # 🔐 BlindPass
 
-[![CI](https://github.com/blindpass/blindpass/actions/workflows/ci.yml/badge.svg)](https://github.com/blindpass/blindpass/actions/workflows/ci.yml)
+[![CI](https://github.com/allisson/blindpass/actions/workflows/ci.yml/badge.svg)](https://github.com/allisson/blindpass/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/node-24-brightgreen)](https://nodejs.org)
 [![pnpm](https://img.shields.io/badge/pnpm-10-orange)](https://pnpm.io)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)

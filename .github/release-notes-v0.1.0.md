@@ -36,8 +36,8 @@ docker pull allisson/blindpass-webapp:v0.1.0
 
 ## GCP Cloud Run (free tier)
 
-Deploy on GCP Cloud Run + Supabase + Upstash — see [`terraform/README.md`](https://github.com/blindpass/blindpass/blob/main/terraform/README.md) for the Terraform quickstart.
+Deploy on GCP Cloud Run + Supabase + Upstash — see [`terraform/README.md`](https://github.com/allisson/blindpass/blob/main/terraform/README.md) for the Terraform quickstart.
 
 ## What's Changed
 
-See [CHANGELOG.md](https://github.com/blindpass/blindpass/blob/main/CHANGELOG.md) for the full list of additions and infrastructure changes since the initial bootstrap.
+See [CHANGELOG.md](https://github.com/allisson/blindpass/blob/main/CHANGELOG.md) for the full list of additions and infrastructure changes since the initial bootstrap.
