@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { extractErrorMessage } from '@/lib/errors';
 import { fromBase64 } from '@/lib/b64';
 import { useVaultShares, useShareVault, useRevokeShare } from '@/hooks/useVaultSharing';
 
@@ -60,7 +61,7 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
       const id = await verificationId(fromBase64(publicKey));
       setPendingShare({ username: target, userId, publicKey, verificationId: id });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Lookup failed';
+      const msg = extractErrorMessage(err, 'Lookup failed');
       setShareError(
         msg.toLowerCase().includes('not found')
           ? 'No BlindPass account found for this username.'
@@ -85,15 +86,7 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
       setPendingShare(null);
       toast.success(`Shared with ${target}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Share failed';
-      let errorText = msg;
-      try {
-        const parsed = JSON.parse(msg) as { error?: string };
-        errorText = parsed.error ?? msg;
-      } catch {
-        // msg was plain text
-      }
-      setShareError(errorText);
+      setShareError(extractErrorMessage(err, 'Share failed'));
     }
   }
 
@@ -103,8 +96,8 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
     try {
       await revokeShare.mutateAsync(shareId);
       toast.success('Access revoked');
-    } catch {
-      toast.error('Failed to revoke access');
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to revoke access'));
     } finally {
       setPendingRevokes((prev) => {
         const next = new Set(prev);

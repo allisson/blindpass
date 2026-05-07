@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { deriveKEK } from '@/lib/kdfWorker';
 import { fromBase64, fromBase64EncryptedValue } from '@/lib/b64';
 import { fetchAllPages } from '@/lib/fetchAllPages';
@@ -68,8 +68,8 @@ function UnlockPage() {
           ),
         ]);
       } catch (err) {
-        // Cookie missing/expired — full login required.
-        if (err instanceof Error && err.message === 'Invalid credentials') {
+        // Cookie missing/expired or session revoked — full login required.
+        if (err instanceof ApiError && err.status === 401) {
           session.clear();
           await vaultCache.clearAll().catch(() => {});
           qc.clear();

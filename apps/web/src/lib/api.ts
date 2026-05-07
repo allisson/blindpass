@@ -95,11 +95,11 @@ function mapApiError(status: number, body?: ApiErrorBody): string {
     return `Item limit reached (${body.current} / ${body.limit})`;
   }
   if (status === 400) return 'Invalid request';
-  if (status === 401) return 'Invalid credentials';
+  if (status === 401) return 'Session expired';
   if (code === 'registrations_disabled') return 'Registrations are currently closed';
   if (status === 403) return 'Access denied';
   if (status === 404) return 'Not found';
-  if (status === 409) return 'Conflict';
+  if (status === 409) return 'This action conflicts with another change';
   if (status === 429) return 'Too many attempts, try again later';
   if (status >= 500 && status <= 599) return 'Server error, please try again';
   return 'Request failed';
@@ -122,7 +122,7 @@ async function request<T = void>(method: string, path: string, body?: unknown): 
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new Error('Request timed out', { cause: err });
+      throw new Error('Request timed out — check your connection', { cause: err });
     }
     throw err;
   } finally {

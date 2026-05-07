@@ -36,7 +36,7 @@ beforeEach(() => {
 describe('api error mapping', () => {
   it('maps 401 to invalid credentials', async () => {
     mockFetch(401);
-    await expect(api.getKeys()).rejects.toThrow('Invalid credentials');
+    await expect(api.getKeys()).rejects.toThrow('Session expired');
   });
 
   it('ApiError exposes status and code', () => {
@@ -92,7 +92,7 @@ describe('api error mapping', () => {
       api.updateVault('v1', {
         encryptedVaultData: { ciphertext: 'YQ==', nonce: 'YQ==' },
       }),
-    ).rejects.toThrow('Conflict');
+    ).rejects.toThrow('This action conflicts with another change');
 
     mockFetch(429, { error: 'rate_limited' });
     await expect(api.startRecovery({ username: 'user_test' })).rejects.toThrow(

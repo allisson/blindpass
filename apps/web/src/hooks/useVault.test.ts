@@ -27,23 +27,27 @@ import {
 } from './useVault';
 import { session } from '@/lib/session';
 
-vi.mock('@/lib/api', () => ({
-  api: {
-    getItems: vi.fn(),
-    createItem: vi.fn(),
-    updateItem: vi.fn(),
-    deleteItem: vi.fn(),
-    restoreItem: vi.fn(),
-    purgeItem: vi.fn(),
-    emptyGlobalTrash: vi.fn(),
-    getGlobalTrash: vi.fn(),
-    getVersions: vi.fn(),
-    getVersion: vi.fn(),
-    createVault: vi.fn(),
-    updateVault: vi.fn(),
-    moveItem: vi.fn(),
-  },
-}));
+vi.mock('@/lib/api', async (importActual) => {
+  const actual = await importActual<typeof import('@/lib/api')>();
+  return {
+    ApiError: actual.ApiError,
+    api: {
+      getItems: vi.fn(),
+      createItem: vi.fn(),
+      updateItem: vi.fn(),
+      deleteItem: vi.fn(),
+      restoreItem: vi.fn(),
+      purgeItem: vi.fn(),
+      emptyGlobalTrash: vi.fn(),
+      getGlobalTrash: vi.fn(),
+      getVersions: vi.fn(),
+      getVersion: vi.fn(),
+      createVault: vi.fn(),
+      updateVault: vi.fn(),
+      moveItem: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@/lib/session', () => ({
   session: {

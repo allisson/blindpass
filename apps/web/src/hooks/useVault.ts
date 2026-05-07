@@ -10,7 +10,9 @@ import {
 import type { VaultItem as VaultItemData } from '@blindpass/vault';
 import type { GlobalTrashedItem, VaultItem } from '@blindpass/api-schema';
 import { api } from '@/lib/api';
+import { extractErrorMessage } from '@/lib/errors';
 import { fetchAllPages } from '@/lib/fetchAllPages';
+import { toast } from 'sonner';
 import { session } from '@/lib/session';
 import { fromBase64EncryptedValue, toBase64EncryptedValue } from '@/lib/b64';
 import { vaultCache } from '@/lib/vaultCache';
@@ -115,6 +117,7 @@ export function useCreateItem() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(VAULT_ITEMS_KEY, ctx.previous);
+      toast.error(extractErrorMessage(_err, 'Failed to save item'));
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY }),
   });
@@ -144,6 +147,7 @@ export function useUpdateItem() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(VAULT_ITEMS_KEY, ctx.previous);
+      toast.error(extractErrorMessage(_err, 'Failed to update item'));
     },
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY });
@@ -212,6 +216,7 @@ export function useDeleteItem() {
     },
     onError: (_err, _id, ctx) => {
       if (ctx?.previous) qc.setQueryData(VAULT_ITEMS_KEY, ctx.previous);
+      toast.error(extractErrorMessage(_err, 'Failed to delete item'));
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: TRASH_ITEMS_KEY }),
   });
@@ -335,6 +340,7 @@ export function useRestoreItem() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(TRASH_ITEMS_KEY, ctx.previous);
+      toast.error(extractErrorMessage(_err, 'Failed to restore item'));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY });
@@ -359,6 +365,7 @@ export function usePurgeItem() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(TRASH_ITEMS_KEY, ctx.previous);
+      toast.error(extractErrorMessage(_err, 'Failed to permanently delete item'));
     },
   });
 }
@@ -367,6 +374,9 @@ export function useEmptyTrash() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.emptyGlobalTrash(),
+    onError: (_err) => {
+      toast.error(extractErrorMessage(_err, 'Failed to empty trash'));
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: TRASH_ITEMS_KEY }),
   });
 }
