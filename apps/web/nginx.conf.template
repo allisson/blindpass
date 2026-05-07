@@ -14,6 +14,10 @@ server {
     # target.
     set $csp "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.pwnedpasswords.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
 
+    # Relative redirects preserve the client-facing scheme/host (important when
+    # nginx sits behind a TLS-terminating proxy such as GCP Cloud Run ingress).
+    absolute_redirect off;
+
     proxy_http_version 1.1;
     proxy_ssl_server_name on;
     proxy_set_header Host ${SERVER_HOST};
@@ -31,6 +35,10 @@ server {
     # at the root (/auth, /vaults, /user, /health), so we proxy each prefix
     # rather than a single /api/.
     location /auth/ {
+        proxy_pass ${SERVER_BASE_URL};
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+    location = /vaults {
         proxy_pass ${SERVER_BASE_URL};
         add_header X-Content-Type-Options "nosniff" always;
     }

@@ -35,6 +35,7 @@ if (mode === 'migrate') {
   console.log('Migrations complete.');
 } else {
   const app = Fastify({
+    ignoreTrailingSlash: true,
     bodyLimit: env.BODY_LIMIT_BYTES,
     logger: {
       level: env.LOG_LEVEL,
