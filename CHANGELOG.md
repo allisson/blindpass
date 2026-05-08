@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - TBD
+
+### Changed
+
+- Surface API errors to users — failed requests now show actionable error messages instead of failing silently
+- Account deletion now happens in a two-step modal (consequence screen → TOTP) instead of a separate page
+
+### Fixed
+
+- Service worker auto-updates on deploy so users no longer hit a white screen from a stale CSP cache
+
 ## [0.1.0] - 2026-05-07
 
 ### Added
@@ -60,4 +71,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reverse proxy guides for Caddy and nginx (TLS termination + HTTP→HTTPS redirect)
 - pnpm + Turborepo monorepo with isolated packages: `crypto`, `vault`, `api-schema`, `types`
 
+[0.2.0]: https://github.com/allisson/blindpass/releases/tag/v0.2.0
 [0.1.0]: https://github.com/allisson/blindpass/releases/tag/v0.1.0
