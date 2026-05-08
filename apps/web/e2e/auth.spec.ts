@@ -8,10 +8,12 @@ import {
   uniqueUsername,
 } from './helpers';
 
-const REGISTER_USERNAME = uniqueUsername('authreg');
-const LOGIN_USERNAME = uniqueUsername('authlogin');
-const STORAGE_USERNAME = uniqueUsername('authstorage');
-const RELOAD_USERNAME = uniqueUsername('authreload');
+// USERNAMEs are assigned in beforeAll / inside the test. Playwright's fullyParallel
+// mode can re-run beforeAll within the same worker — module-scope assignment would
+// collide on re-run.
+let LOGIN_USERNAME: string;
+let STORAGE_USERNAME: string;
+let RELOAD_USERNAME: string;
 const TEST_PASSWORD = 'supersecret123!';
 let loginSetupKey = '';
 let storageSetupKey = '';
@@ -20,6 +22,7 @@ let reloadSetupKey = '';
 test.describe('Register flow', () => {
   test('registers a new user and shows recovery key', async ({ page }) => {
     test.setTimeout(90_000);
+    const REGISTER_USERNAME = uniqueUsername('authreg');
     await page.goto('/register');
     await page.getByLabel('Username').fill(REGISTER_USERNAME);
     await page.getByLabel('Password', { exact: true }).fill(TEST_PASSWORD);
@@ -55,6 +58,9 @@ test.describe('Vault guard', () => {
 test.describe('Authenticated flows', () => {
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(90_000);
+    LOGIN_USERNAME = uniqueUsername('authlogin');
+    STORAGE_USERNAME = uniqueUsername('authstorage');
+    RELOAD_USERNAME = uniqueUsername('authreload');
     const page = await browser.newPage();
     try {
       loginSetupKey = await registerUser(page, LOGIN_USERNAME, TEST_PASSWORD);

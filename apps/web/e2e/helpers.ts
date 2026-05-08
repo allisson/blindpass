@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { generateTotpCode, getTotpTimeRemaining } from '@blindpass/crypto';
 import { type Page, type Cookie, expect } from '@playwright/test';
 
@@ -144,12 +145,17 @@ export async function loginAs(
   }
 }
 
+// Username regex on the server is /^[a-z0-9_]{3,32}$/. With Playwright's
+// fullyParallel mode, beforeAll can re-run within the same worker for the same
+// spec — so module-scope `const USERNAME = uniqueUsername(...)` collides on the
+// second beforeAll. Always call this *inside* beforeAll, not at module scope.
+// Suffix is 4 hex chars to keep prefix+timestamp+suffix under the 32-char limit.
 export function uniqueUsername(prefix = 'test'): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  return `${prefix}_${Date.now()}_${randomBytes(2).toString('hex')}`;
 }
 
 export function uniqueEmail(prefix = 'test'): string {
-  return `${prefix}.${Date.now()}.${Math.random().toString(36).slice(2, 6)}@example.com`;
+  return `${prefix}.${Date.now()}.${randomBytes(2).toString('hex')}@example.com`;
 }
 
 const TYPE_PICKER_LABEL: Record<

@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { captureBundle, registerUser, uniqueUsername, unlockVault } from './helpers';
 
-const USERNAME = uniqueUsername('vault');
 const PASSWORD = 'vaulttest123!';
 let savedBundle: string;
 
@@ -10,7 +9,7 @@ test.beforeAll(async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
-    await registerUser(page, USERNAME, PASSWORD);
+    await registerUser(page, uniqueUsername('vault'), PASSWORD);
     savedBundle = await captureBundle(page);
   } finally {
     await ctx.close();

@@ -1,13 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { captureBundle, registerUser, uniqueUsername, unlockVault } from './helpers';
 
-const USERNAME = uniqueUsername('admin_ui');
-const MEMBER_USERNAME = uniqueUsername('member');
+// USERNAMEs are assigned in beforeAll. Playwright's fullyParallel mode can re-run
+// beforeAll within the same worker for the same spec — module-scope assignment
+// would collide on re-run. See helpers.ts uniqueUsername.
+let USERNAME: string;
+let MEMBER_USERNAME: string;
 const PASSWORD = 'adminuitest123!';
 let savedBundle: string;
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(90_000);
+  USERNAME = uniqueUsername('admin_ui');
+  MEMBER_USERNAME = uniqueUsername('member');
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {

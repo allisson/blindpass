@@ -2,7 +2,8 @@ import { test, expect, type Browser, type BrowserContext, type Page } from '@pla
 import { captureBundle, loginAs, registerUser, uniqueUsername, unlockVault } from './helpers';
 
 const PASSWORD = 'sessionstest123!';
-const USERNAME = uniqueUsername('sessions');
+// Assigned in beforeAll — see helpers.ts uniqueUsername note.
+let USERNAME: string;
 let savedBundle: string;
 let setupKey: string;
 
@@ -72,6 +73,7 @@ async function revokeAllOtherSessions(page: Page): Promise<number> {
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(90_000);
+  USERNAME = uniqueUsername('sessions');
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
