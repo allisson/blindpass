@@ -2,7 +2,6 @@ import { test, expect } from '@playwright/test';
 import { captureBundle, registerUser, uniqueUsername, unlockVault } from './helpers';
 
 const PASSWORD = 'wallettest123!';
-const USERNAME = uniqueUsername('wallet');
 // Known-valid 12-word BIP39 mnemonic
 const VALID_MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -14,7 +13,7 @@ test.beforeAll(async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
-    await registerUser(page, USERNAME, PASSWORD);
+    await registerUser(page, uniqueUsername('wallet'), PASSWORD);
     savedBundle = await captureBundle(page);
   } finally {
     await ctx.close();

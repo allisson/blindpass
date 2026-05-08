@@ -7,7 +7,8 @@ import {
   uniqueUsername,
 } from './helpers';
 
-const USERNAME = uniqueUsername('recovery');
+// Assigned in beforeAll — see helpers.ts uniqueUsername note.
+let USERNAME: string;
 const OLD_PASSWORD = 'oldpassword123!';
 const NEW_PASSWORD = 'newpassword456!';
 
@@ -15,6 +16,7 @@ let recoveryKey: string;
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(90_000);
+  USERNAME = uniqueUsername('recovery');
   const page = await browser.newPage();
   try {
     recoveryKey = await registerAndCaptureKey(page, USERNAME, OLD_PASSWORD);

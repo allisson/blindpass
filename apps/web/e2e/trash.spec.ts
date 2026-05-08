@@ -8,7 +8,6 @@ import {
 } from './helpers';
 
 const PASSWORD = 'trashtest123!';
-const USERNAME = uniqueUsername('trash');
 let savedBundle: string;
 
 test.beforeAll(async ({ browser }) => {
@@ -16,7 +15,7 @@ test.beforeAll(async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
-    await registerUser(page, USERNAME, PASSWORD);
+    await registerUser(page, uniqueUsername('trash'), PASSWORD);
     savedBundle = await captureBundle(page);
   } finally {
     await ctx.close();

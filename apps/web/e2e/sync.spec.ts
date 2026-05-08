@@ -8,7 +8,6 @@ import {
 } from './helpers';
 
 const PASSWORD = 'synctest123!';
-const USERNAME = uniqueUsername('sync');
 let savedBundle: string;
 
 test.beforeAll(async ({ browser }) => {
@@ -16,7 +15,7 @@ test.beforeAll(async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
-    await registerUser(page, USERNAME, PASSWORD);
+    await registerUser(page, uniqueUsername('sync'), PASSWORD);
     savedBundle = await captureBundle(page);
   } finally {
     await ctx.close();
@@ -106,9 +105,6 @@ test('reconnect triggers re-sync', async ({ page }) => {
   });
 
   await page.context().setOffline(true);
-  // Trigger an activity to cause offline status to surface
-  await page.waitForTimeout(500);
-
   await page.context().setOffline(false);
 
   // Re-sync should fire via the 'online' event listener

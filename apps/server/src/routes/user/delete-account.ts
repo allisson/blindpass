@@ -2,13 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { DeleteAccountRequestSchema } from '@blindpass/api-schema';
 import { deleteAccount } from '../../auth/account/service.js';
+import { authRateLimit } from '../auth/rate-limit.js';
 
 export function registerDeleteAccountRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().delete(
     '/user',
     {
       schema: { body: DeleteAccountRequestSchema },
-      config: { rateLimit: { max: 3, timeWindow: '15 minutes' } },
+      config: { rateLimit: authRateLimit(3) },
     },
     async (request, reply) => {
       const result = await app.db.transaction(async (tx) =>

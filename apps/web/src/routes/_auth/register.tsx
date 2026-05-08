@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { PassphraseGenerator } from '@/components/ui/passphrase-generator';
-import type { StrengthScore } from '@/lib/zxcvbn';
+import { loadZxcvbn } from '@/lib/zxcvbn';
 import { api } from '@/lib/api';
 import { authFlow } from '@/lib/authFlow';
 import { bootstrap } from '@/lib/keychain';
@@ -41,7 +41,6 @@ function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
-  const [strengthScore, setStrengthScore] = useState<StrengthScore>(0);
 
   const {
     register,
@@ -56,13 +55,18 @@ function RegisterPage() {
 
   async function onSubmit(data: FormData) {
     setError(null);
-    if (strengthScore < MIN_STRENGTH_SCORE) {
-      setError(
-        'Password is too easy to guess. Try a passphrase or a longer, less predictable phrase.',
-      );
-      return;
-    }
     try {
+      setLoadingMsg('Checking password strength…');
+      const estimator = await loadZxcvbn();
+      const { score } = estimator(data.password, data.username ? [data.username] : undefined);
+      if (score < MIN_STRENGTH_SCORE) {
+        setLoadingMsg('');
+        setError(
+          'Password is too easy to guess. Try a passphrase or a longer, less predictable phrase.',
+        );
+        return;
+      }
+
       setLoadingMsg('Generating keys…');
       const r = await bootstrap(data.password);
 
@@ -132,7 +136,6 @@ function RegisterPage() {
             <PasswordStrength
               password={passwordValue}
               userInputs={usernameValue ? [usernameValue] : undefined}
-              onScoreChange={setStrengthScore}
             />
             <PassphraseGenerator
               onAccept={(pw) => {

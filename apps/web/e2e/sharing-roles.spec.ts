@@ -8,14 +8,15 @@ import {
   unlockVault,
 } from './helpers';
 
-const OWNER_USERNAME = uniqueUsername('owner');
-const VIEWER_USERNAME = uniqueUsername('viewer');
-const EDITOR_USERNAME = uniqueUsername('editor');
 const PASSWORD = 'sharingtest123!';
 
 test.describe('Sharing Roles', () => {
   test('owner shares as viewer and editor; verifies permissions', async ({ browser }) => {
     test.setTimeout(600_000);
+
+    const OWNER_USERNAME = uniqueUsername('owner');
+    const VIEWER_USERNAME = uniqueUsername('viewer');
+    const EDITOR_USERNAME = uniqueUsername('editor');
 
     const ownerContext = await browser.newContext();
     const viewerContext = await browser.newContext();
