@@ -1,0 +1,85 @@
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../db/schema.js';
+import { getVaultAccess } from '../access.js';
+import * as trash from './repository.js';
+
+type Db = NodePgDatabase<typeof schema>;
+
+type AccessFailure = 'vault_not_found' | 'forbidden';
+
+async function requireOwner(
+  db: Db,
+  vaultId: string,
+  userId: string,
+): Promise<AccessFailure | null> {
+  const access = await getVaultAccess(db, vaultId, userId);
+  if (!access) return 'vault_not_found';
+  if (access.role !== 'owner') return 'forbidden';
+  return null;
+}
+
+async function requireWriter(
+  db: Db,
+  vaultId: string,
+  userId: string,
+): Promise<AccessFailure | null> {
+  const access = await getVaultAccess(db, vaultId, userId);
+  if (!access) return 'vault_not_found';
+  if (access.role === 'viewer') return 'forbidden';
+  return null;
+}
+
+export type RestoreItemResult =
+  | { ok: true }
+  | { ok: false; reason: AccessFailure | 'item_not_found' };
+
+export async function restoreItem(
+  db: Db,
+  userId: string,
+  vaultId: string,
+  itemId: string,
+): Promise<RestoreItemResult> {
+  const accessFail = await requireWriter(db, vaultId, userId);
+  if (accessFail) return { ok: false, reason: accessFail };
+
+  const found = await trash.findTrashedById(db, itemId, vaultId);
+  if (!found) return { ok: false, reason: 'item_not_found' };
+  await trash.restoreById(db, itemId);
+  return { ok: true };
+}
+
+export type PurgeItemResult =
+  | { ok: true }
+  | { ok: false; reason: AccessFailure | 'item_not_found' };
+
+export async function purgeItem(
+  db: Db,
+  userId: string,
+  vaultId: string,
+  itemId: string,
+): Promise<PurgeItemResult> {
+  const accessFail = await requireOwner(db, vaultId, userId);
+  if (accessFail) return { ok: false, reason: accessFail };
+
+  const found = await trash.findTrashedById(db, itemId, vaultId);
+  if (!found) return { ok: false, reason: 'item_not_found' };
+  await trash.purgeById(db, itemId);
+  return { ok: true };
+}
+
+export type EmptyTrashResult = { ok: true } | { ok: false; reason: AccessFailure };
+
+export async function emptyVaultTrash(
+  db: Db,
+  userId: string,
+  vaultId: string,
+): Promise<EmptyTrashResult> {
+  const accessFail = await requireOwner(db, vaultId, userId);
+  if (accessFail) return { ok: false, reason: accessFail };
+  await trash.emptyForVault(db, vaultId);
+  return { ok: true };
+}
+
+export async function emptyUserTrash(db: Db, userId: string): Promise<void> {
+  await trash.emptyForUser(db, userId);
+}

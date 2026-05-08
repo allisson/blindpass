@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import Fastify from 'fastify';
 import { errorHandler } from '../error-handler.js';
-import { QuotaExceededError } from '../services/quota.js';
+import { QuotaExceededError } from '../vaults/quota.js';
 
 function buildApp() {
   const app = Fastify({ logger: false });

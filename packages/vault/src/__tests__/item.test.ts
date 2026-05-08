@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateItemKey } from '@blindpass/crypto';
+import { generateKey } from '@blindpass/crypto';
 import {
   encryptVaultItem,
   decryptVaultItem,
@@ -18,7 +18,7 @@ import {
 
 describe('LoginItem encrypt/decrypt', () => {
   it('round-trips all fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: LoginItem = {
       type: 'login',
       title: 'GitHub',
@@ -33,7 +33,7 @@ describe('LoginItem encrypt/decrypt', () => {
   });
 
   it('round-trips without optional fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: LoginItem = { type: 'login', title: 'Site', username: 'u', password: 'p' };
     const blob = await encryptVaultItem(item, itemKey);
     const decrypted = await decryptVaultItem(blob, itemKey);
@@ -41,15 +41,15 @@ describe('LoginItem encrypt/decrypt', () => {
   });
 
   it('throws on wrong key', async () => {
-    const itemKey = await generateItemKey();
-    const wrongKey = await generateItemKey();
+    const itemKey = await generateKey();
+    const wrongKey = await generateKey();
     const item: LoginItem = { type: 'login', title: 'Test', username: 'u', password: 'p' };
     const blob = await encryptVaultItem(item, itemKey);
     await expect(decryptVaultItem(blob, wrongKey)).rejects.toThrow();
   });
 
   it('lazy migration: missing type field defaults to login', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const raw = { title: 'Old', username: 'u', password: 'p' };
     const plaintext = new TextEncoder().encode(JSON.stringify(raw));
     const { encryptSymmetric } = await import('@blindpass/crypto');
@@ -61,7 +61,7 @@ describe('LoginItem encrypt/decrypt', () => {
 
 describe('SecureNote encrypt/decrypt', () => {
   it('round-trips all fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: SecureNote = {
       type: 'secure_note',
       title: 'My Note',
@@ -76,7 +76,7 @@ describe('SecureNote encrypt/decrypt', () => {
 
 describe('PaymentCard encrypt/decrypt', () => {
   it('round-trips all fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: PaymentCard = {
       type: 'payment_card',
       title: 'Visa',
@@ -95,7 +95,7 @@ describe('PaymentCard encrypt/decrypt', () => {
 
 describe('Identity encrypt/decrypt', () => {
   it('round-trips all fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: Identity = {
       type: 'identity',
       title: 'Personal',
@@ -116,7 +116,7 @@ describe('Identity encrypt/decrypt', () => {
 
 describe('TotpItem encrypt/decrypt', () => {
   it('round-trips all fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: TotpItem = {
       type: 'totp',
       title: 'GitHub 2FA',
@@ -134,7 +134,7 @@ describe('TotpItem encrypt/decrypt', () => {
   });
 
   it('round-trips with minimal fields and applies defaults', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const blob = await encryptVaultItem(
       {
         type: 'totp',
@@ -158,7 +158,7 @@ describe('TotpItem encrypt/decrypt', () => {
 
 describe('DeveloperCredentialItem encrypt/decrypt', () => {
   it('round-trips token mode fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: DeveloperCredentialItem = {
       type: 'developer_credential',
       title: 'OpenAI prod key',
@@ -177,7 +177,7 @@ describe('DeveloperCredentialItem encrypt/decrypt', () => {
   });
 
   it('round-trips client secret pair mode fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: DeveloperCredentialItem = {
       type: 'developer_credential',
       title: 'Billing API staging client',
@@ -209,7 +209,7 @@ describe('DeveloperCredentialItem encrypt/decrypt', () => {
   });
 
   it('round-trips ssh key mode fields', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: DeveloperCredentialItem = {
       type: 'developer_credential',
       title: 'Prod bastion SSH',
@@ -370,7 +370,7 @@ describe('CryptoWalletItemSchema', () => {
 
 describe('custom fields', () => {
   it('custom fields survive encrypt/decrypt round-trip', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const item: LoginItem = {
       type: 'login',
       title: 'Service',
@@ -389,14 +389,14 @@ describe('custom fields', () => {
 
 describe('decryptVaultItem error paths', () => {
   it('throws when decrypted bytes are not valid JSON', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const { encryptSymmetric } = await import('@blindpass/crypto');
     const blob = await encryptSymmetric(new TextEncoder().encode('not json {{{'), itemKey);
     await expect(decryptVaultItem(blob, itemKey)).rejects.toThrow();
   });
 
   it('throws ZodError when decrypted JSON has unknown type', async () => {
-    const itemKey = await generateItemKey();
+    const itemKey = await generateKey();
     const { encryptSymmetric } = await import('@blindpass/crypto');
     const raw = JSON.stringify({ type: 'unknown_type', title: 'Bad' });
     const blob = await encryptSymmetric(new TextEncoder().encode(raw), itemKey);

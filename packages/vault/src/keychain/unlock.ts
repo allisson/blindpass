@@ -2,9 +2,8 @@ import type { EncryptedValue, Keychain } from '@blindpass/types';
 import {
   getSodium,
   deriveKeyEncryptionKey,
-  decryptMasterKey,
+  decryptSymmetric,
   decryptMasterKeyWithRecovery,
-  decryptVaultKey,
 } from '@blindpass/crypto';
 
 export type ServerKeyData = {
@@ -22,8 +21,8 @@ export async function unlock(data: ServerKeyData, password: string): Promise<Key
   const sodium = await getSodium();
   const kek = await deriveKeyEncryptionKey(password, data.kekSalt);
   try {
-    const masterKey = await decryptMasterKey(data.encryptedMasterKey, kek);
-    const vaultKey = await decryptVaultKey(data.encryptedVaultKey, masterKey);
+    const masterKey = await decryptSymmetric(data.encryptedMasterKey, kek);
+    const vaultKey = await decryptSymmetric(data.encryptedVaultKey, masterKey);
     return { masterKey, vaultKey };
   } finally {
     sodium.memzero(kek);
@@ -40,7 +39,7 @@ export async function unlockWithRecovery(
     recoveryMnemonic,
   );
   try {
-    const vaultKey = await decryptVaultKey(data.encryptedVaultKey, masterKey);
+    const vaultKey = await decryptSymmetric(data.encryptedVaultKey, masterKey);
     return { masterKey, vaultKey };
   } catch (err) {
     sodium.memzero(masterKey);

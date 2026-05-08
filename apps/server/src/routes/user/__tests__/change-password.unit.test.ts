@@ -4,7 +4,7 @@ import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod
 
 const verifyAuthenticatorForUser = vi.fn();
 
-vi.mock('../verify-authenticator-for-user.js', () => ({
+vi.mock('../../../auth/totp/verify-for-user.js', () => ({
   verifyAuthenticatorForUser,
 }));
 

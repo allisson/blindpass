@@ -1,18 +1,5 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import {
-  encryptMasterKey,
-  encryptMasterKeyWithRecovery,
-  encryptRecoveryKey,
-  encryptVaultKey,
-  generateKeyPair,
-  generateMasterKey,
-  generateRecoveryKey,
-  generateSalt,
-  generateVaultKey,
-  encryptSymmetric,
-} from '@blindpass/crypto';
-import { deriveKEK } from '@/lib/kdfWorker';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -25,10 +12,9 @@ import { Label } from '@/components/ui/label';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { PassphraseGenerator } from '@/components/ui/passphrase-generator';
 import type { StrengthScore } from '@/lib/zxcvbn';
-import { encryptVaultMetadata } from '@blindpass/vault';
 import { api } from '@/lib/api';
 import { authFlow } from '@/lib/authFlow';
-import { toBase64, toBase64EncryptedValue } from '@/lib/b64';
+import { bootstrap } from '@/lib/keychain';
 import { MIN_PASSWORD_LENGTH } from '@/lib/constants';
 
 export const Route = createFileRoute('/_auth/register')({
@@ -77,50 +63,17 @@ function RegisterPage() {
       return;
     }
     try {
-      const kekSalt = await generateSalt();
-
-      setLoadingMsg('Deriving encryption key…');
-      const kek = await deriveKEK(data.password, kekSalt);
-
       setLoadingMsg('Generating keys…');
-      const masterKey = await generateMasterKey();
-      const recoveryKey = await generateRecoveryKey();
-      const recoveryVerifier = toBase64(new TextEncoder().encode(recoveryKey));
-      const { publicKey, privateKey } = await generateKeyPair();
-      const vaultKey = await generateVaultKey();
-
-      const encryptedMasterKey = await encryptMasterKey(masterKey, kek);
-      const encryptedMasterKeyForRecovery = await encryptMasterKeyWithRecovery(
-        masterKey,
-        recoveryKey,
-      );
-      const encryptedPrivateKey = await encryptSymmetric(privateKey, masterKey);
-      const encryptedRecoveryKey = await encryptRecoveryKey(recoveryKey, masterKey);
-      const encryptedVaultKey = await encryptVaultKey(vaultKey, masterKey);
-      const encryptedVaultData = await encryptVaultMetadata({ name: 'My Vault' }, vaultKey);
-
-      kek.fill(0);
-      privateKey.fill(0);
+      const r = await bootstrap(data.password);
 
       setLoadingMsg('Creating account…');
-      const { enrollment } = await api.register({
-        username: data.username,
-        kekSalt: toBase64(kekSalt),
-        publicKey: toBase64(publicKey),
-        encryptedMasterKey: toBase64EncryptedValue(encryptedMasterKey),
-        encryptedMasterKeyForRecovery: toBase64EncryptedValue(encryptedMasterKeyForRecovery),
-        encryptedPrivateKey: toBase64EncryptedValue(encryptedPrivateKey),
-        encryptedRecoveryKey: toBase64EncryptedValue(encryptedRecoveryKey),
-        encryptedVaultKey: toBase64EncryptedValue(encryptedVaultKey),
-        encryptedVaultData: toBase64EncryptedValue(encryptedVaultData),
-        recoveryVerifier,
-      });
+      const { enrollment } = await api.register({ username: data.username, ...r.registerBody });
 
       authFlow.setRegister({
         username: data.username,
         enrollment,
-        keychain: { masterKey, vaultKey },
-        recoveryKey,
+        keychain: { masterKey: r.masterKey, vaultKey: r.vaultKey },
+        recoveryKey: r.recoveryKey,
       });
 
       navigate({ to: '/authenticator', search: { mode: 'register', username: data.username } });

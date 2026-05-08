@@ -3,7 +3,7 @@ import { api } from './api';
 import { vaultCache, type CachedVaultItem } from './vaultCache';
 import { session } from './session';
 import { fetchAllPages } from './fetchAllPages';
-import type { VaultItem } from '@blindpass/api-schema';
+import type { EncryptedVaultItem } from '@blindpass/api-schema';
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
 
@@ -26,7 +26,7 @@ function notify(patch: Partial<SyncState>): void {
   for (const fn of _listeners) fn(_state);
 }
 
-function toCache(item: VaultItem, vaultId: string): CachedVaultItem {
+function toCache(item: EncryptedVaultItem, vaultId: string): CachedVaultItem {
   return {
     id: item.id,
     vaultId,

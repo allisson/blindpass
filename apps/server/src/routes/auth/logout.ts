@@ -1,15 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
-import { sessions } from '../../db/schema.js';
-import { env } from '../../env.js';
+import * as session from '../../auth/session/index.js';
+import * as sessions from '../../auth/sessions/repository.js';
 
 export function registerLogoutRoute(app: FastifyInstance): void {
   app.post('/auth/logout', async (request, reply) => {
-    await app.db.delete(sessions).where(eq(sessions.id, request.sessionId));
-    reply.clearCookie(env.COOKIE_NAME, {
-      path: '/',
-      domain: env.COOKIE_DOMAIN,
-    });
+    await sessions.deleteById(app.db, request.sessionId);
+    session.clearCookie(reply);
     return reply.status(204).send();
   });
 }

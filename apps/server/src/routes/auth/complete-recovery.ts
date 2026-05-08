@@ -1,25 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, eq, gt } from 'drizzle-orm';
 import { CompleteRecoveryRequestSchema } from '@blindpass/api-schema';
-import {
-  pendingTotpEnrollments,
-  recoveryTokens,
-  sessions,
-  userTotpSecrets,
-  users,
-} from '../../db/schema.js';
 import { b64 } from '../../utils/base64.js';
-import { hashToken } from '../../utils/otp.js';
-import {
-  buildAuthBundle,
-  decryptTotpSecret,
-  hashRecoveryVerifierInput,
-  insertSessionValues,
-  issueSessionToken,
-  setAuthCookie,
-  verifyTotpCode,
-} from './helpers.js';
+import * as session from '../../auth/session/index.js';
+import { completeRecovery } from '../../auth/recovery/service.js';
 import { authRateLimit } from './rate-limit.js';
 
 export function registerCompleteRecoveryRoute(app: FastifyInstance): void {
@@ -30,105 +14,42 @@ export function registerCompleteRecoveryRoute(app: FastifyInstance): void {
       config: { rateLimit: authRateLimit(5) },
     },
     async (request, reply) => {
-      const {
-        username,
-        recoveryToken,
-        enrollmentId,
-        authenticatorCode,
-        recoveryVerifier,
-        ...keys
-      } = request.body;
-      const [user] = await app.db.select().from(users).where(eq(users.username, username)).limit(1);
-      if (!user || user.revokedAt) {
-        return reply.status(400).send({ error: 'Invalid recovery completion' });
-      }
-
-      const [token] = await app.db
-        .select()
-        .from(recoveryTokens)
-        .where(
-          and(
-            eq(recoveryTokens.userId, user.id),
-            eq(recoveryTokens.tokenHash, hashToken(recoveryToken)),
-            gt(recoveryTokens.expiresAt, new Date()),
-          ),
-        )
-        .limit(1);
-      if (!token) {
-        return reply.status(400).send({ error: 'Invalid recovery completion' });
-      }
-
-      const [enrollment] = await app.db
-        .select()
-        .from(pendingTotpEnrollments)
-        .where(
-          and(
-            eq(pendingTotpEnrollments.id, enrollmentId),
-            eq(pendingTotpEnrollments.userId, user.id),
-            gt(pendingTotpEnrollments.expiresAt, new Date()),
-          ),
-        )
-        .limit(1);
-      if (!enrollment) {
-        return reply.status(400).send({ error: 'Invalid recovery completion' });
-      }
-
-      const counter = verifyTotpCode(
-        decryptTotpSecret(enrollment.encryptedSecret),
-        authenticatorCode,
-        null,
-      );
-      if (counter == null) {
-        return reply.status(400).send({ error: 'Invalid recovery completion' });
-      }
-
-      const nextRecovery = hashRecoveryVerifierInput(recoveryVerifier);
-      const authToken = issueSessionToken();
-      let fullUser: typeof users.$inferSelect | undefined;
-
-      await app.db.transaction(async (tx) => {
-        await tx.delete(sessions).where(eq(sessions.userId, user.id));
-        await tx.delete(recoveryTokens).where(eq(recoveryTokens.userId, user.id));
-        await tx.delete(pendingTotpEnrollments).where(eq(pendingTotpEnrollments.userId, user.id));
-        await tx.delete(userTotpSecrets).where(eq(userTotpSecrets.userId, user.id));
-        await tx.insert(userTotpSecrets).values({
-          userId: user.id,
-          encryptedSecret: enrollment.encryptedSecret,
-        });
-        await tx
-          .update(users)
-          .set({
-            verified: true,
-            kekSalt: b64(keys.kekSalt),
-            publicKey: b64(keys.publicKey),
-            encryptedMasterKeyCiphertext: b64(keys.encryptedMasterKey.ciphertext),
-            encryptedMasterKeyNonce: b64(keys.encryptedMasterKey.nonce),
+      const body = request.body;
+      const result = await app.db.transaction(async (tx) =>
+        completeRecovery(tx, {
+          username: body.username,
+          recoveryToken: body.recoveryToken,
+          enrollmentId: body.enrollmentId,
+          authenticatorCode: body.authenticatorCode,
+          recoveryVerifier: body.recoveryVerifier,
+          userAgent: request.headers['user-agent'],
+          newKeys: {
+            kekSalt: b64(body.kekSalt),
+            publicKey: b64(body.publicKey),
+            encryptedMasterKeyCiphertext: b64(body.encryptedMasterKey.ciphertext),
+            encryptedMasterKeyNonce: b64(body.encryptedMasterKey.nonce),
             encryptedMasterKeyForRecoveryCiphertext: b64(
-              keys.encryptedMasterKeyForRecovery.ciphertext,
+              body.encryptedMasterKeyForRecovery.ciphertext,
             ),
-            encryptedMasterKeyForRecoveryNonce: b64(keys.encryptedMasterKeyForRecovery.nonce),
-            encryptedPrivateKeyCiphertext: b64(keys.encryptedPrivateKey.ciphertext),
-            encryptedPrivateKeyNonce: b64(keys.encryptedPrivateKey.nonce),
-            encryptedRecoveryKeyCiphertext: b64(keys.encryptedRecoveryKey.ciphertext),
-            encryptedRecoveryKeyNonce: b64(keys.encryptedRecoveryKey.nonce),
-            recoveryVerifierHash: nextRecovery.hash,
-            recoveryVerifierSalt: nextRecovery.salt,
-            totpLastUsedCounter: counter,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, user.id));
-        await tx
-          .insert(sessions)
-          .values(insertSessionValues(user.id, authToken, request.headers['user-agent']));
-        [fullUser] = await tx.select().from(users).where(eq(users.id, user.id)).limit(1);
-      });
+            encryptedMasterKeyForRecoveryNonce: b64(body.encryptedMasterKeyForRecovery.nonce),
+            encryptedPrivateKeyCiphertext: b64(body.encryptedPrivateKey.ciphertext),
+            encryptedPrivateKeyNonce: b64(body.encryptedPrivateKey.nonce),
+            encryptedRecoveryKeyCiphertext: b64(body.encryptedRecoveryKey.ciphertext),
+            encryptedRecoveryKeyNonce: b64(body.encryptedRecoveryKey.nonce),
+          },
+        }),
+      );
 
-      if (!fullUser?.publicKey || !fullUser.kekSalt) {
-        return reply.status(400).send({ error: 'Account not fully provisioned' });
+      if (!result.ok) {
+        const error =
+          result.reason === 'not_provisioned'
+            ? 'Account not fully provisioned'
+            : 'Invalid recovery completion';
+        return reply.status(400).send({ error });
       }
 
-      setAuthCookie(reply, authToken);
-      return reply.status(200).send(buildAuthBundle(fullUser));
+      session.attachCookie(reply, result.authToken);
+      return reply.status(200).send(result.bundle);
     },
   );
 }

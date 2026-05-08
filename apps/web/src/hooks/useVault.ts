@@ -1,14 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { decryptVaultItem, encryptVaultItem, encryptVaultMetadata } from '@blindpass/vault';
-import {
-  generateItemKey,
-  encryptItemKey,
-  decryptItemKey,
-  generateVaultKey,
-  encryptVaultKey,
-} from '@blindpass/crypto';
-import type { VaultItem as VaultItemData } from '@blindpass/vault';
-import type { GlobalTrashedItem, VaultItem } from '@blindpass/api-schema';
+import { generateKey, encryptSymmetric, decryptSymmetric } from '@blindpass/crypto';
+import type { VaultItem } from '@blindpass/vault';
+import type { EncryptedGlobalTrashedItem, EncryptedVaultItem } from '@blindpass/api-schema';
 import { api } from '@/lib/api';
 import { extractErrorMessage } from '@/lib/errors';
 import { fetchAllPages } from '@/lib/fetchAllPages';
@@ -21,7 +15,7 @@ import { VAULT_ITEMS_KEY, TRASH_ITEMS_KEY, FOLDERS_KEY } from './queryKeys';
 
 export { VAULT_ITEMS_KEY, TRASH_ITEMS_KEY };
 
-export type DecryptedItem = VaultItemData & {
+export type DecryptedItem = VaultItem & {
   id: string;
   folderId?: string | null;
   updatedAt?: string;
@@ -34,8 +28,8 @@ function getSession() {
   return s as typeof s & { keychain: NonNullable<typeof s.keychain> };
 }
 
-async function decryptItem(item: VaultItem, vaultKey: Uint8Array): Promise<DecryptedItem> {
-  const itemKey = await decryptItemKey(fromBase64EncryptedValue(item.encryptedItemKey), vaultKey);
+async function decryptItem(item: EncryptedVaultItem, vaultKey: Uint8Array): Promise<DecryptedItem> {
+  const itemKey = await decryptSymmetric(fromBase64EncryptedValue(item.encryptedItemKey), vaultKey);
   const vaultItem = await decryptVaultItem(fromBase64EncryptedValue(item.encryptedData), itemKey);
   itemKey.fill(0);
   return {
@@ -56,7 +50,7 @@ export function useVaultItems() {
       if (!navigator.onLine) {
         const cached = await vaultCache.getItems(s.activeVaultId);
         return Promise.all(
-          cached.map((item) => decryptItem(item as VaultItem, s.keychain.vaultKey)),
+          cached.map((item) => decryptItem(item as EncryptedVaultItem, s.keychain.vaultKey)),
         );
       }
 
@@ -90,13 +84,13 @@ export function useCreateItem() {
       vaultItem,
       folderId,
     }: {
-      vaultItem: VaultItemData;
+      vaultItem: VaultItem;
       folderId?: string | null;
     }) => {
       const s = getSession();
-      const itemKey = await generateItemKey();
+      const itemKey = await generateKey();
       const encryptedData = await encryptVaultItem(vaultItem, itemKey);
-      const encryptedItemKey = await encryptItemKey(itemKey, s.keychain.vaultKey);
+      const encryptedItemKey = await encryptSymmetric(itemKey, s.keychain.vaultKey);
       itemKey.fill(0);
       const { item } = await api.createItem(s.activeVaultId, {
         encryptedData: toBase64EncryptedValue(encryptedData),
@@ -126,11 +120,11 @@ export function useCreateItem() {
 export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, vaultItem }: { id: string; vaultItem: VaultItemData }) => {
+    mutationFn: async ({ id, vaultItem }: { id: string; vaultItem: VaultItem }) => {
       const s = getSession();
-      const itemKey = await generateItemKey();
+      const itemKey = await generateKey();
       const encryptedData = await encryptVaultItem(vaultItem, itemKey);
-      const encryptedItemKey = await encryptItemKey(itemKey, s.keychain.vaultKey);
+      const encryptedItemKey = await encryptSymmetric(itemKey, s.keychain.vaultKey);
       itemKey.fill(0);
       await api.updateItem(s.activeVaultId, id, {
         encryptedData: toBase64EncryptedValue(encryptedData),
@@ -156,7 +150,7 @@ export function useUpdateItem() {
   });
 }
 
-export type DecryptedVersion = VaultItemData & { versionNum: number; createdAt: string };
+export type DecryptedVersion = VaultItem & { versionNum: number; createdAt: string };
 
 export function useItemVersions(itemId: string) {
   return useQuery({
@@ -181,7 +175,7 @@ export function useItemVersion(itemId: string, versionId: string | null) {
       if (!versionId) return null;
       const s = getSession();
       const { version } = await api.getVersion(s.activeVaultId, itemId, versionId);
-      const itemKey = await decryptItemKey(
+      const itemKey = await decryptSymmetric(
         fromBase64EncryptedValue(version.encryptedItemKey),
         s.keychain.vaultKey,
       );
@@ -222,17 +216,17 @@ export function useDeleteItem() {
   });
 }
 
-export type DecryptedTrashedItem = VaultItemData & {
+export type DecryptedTrashedItem = VaultItem & {
   id: string;
   deletedAt: string;
   vaultId: string;
 };
 
 async function decryptTrashedItem(
-  item: GlobalTrashedItem,
+  item: EncryptedGlobalTrashedItem,
   vaultKey: Uint8Array,
 ): Promise<DecryptedTrashedItem> {
-  const itemKey = await decryptItemKey(fromBase64EncryptedValue(item.encryptedItemKey), vaultKey);
+  const itemKey = await decryptSymmetric(fromBase64EncryptedValue(item.encryptedItemKey), vaultKey);
   const vaultItem = await decryptVaultItem(fromBase64EncryptedValue(item.encryptedData), itemKey);
   itemKey.fill(0);
   return { ...vaultItem, id: item.id, deletedAt: item.deletedAt, vaultId: item.vaultId };
@@ -293,8 +287,8 @@ export function useCreateVault() {
   return useMutation({
     mutationFn: async (name: string) => {
       const s = getSession();
-      const vaultKey = await generateVaultKey();
-      const encryptedVaultKey = await encryptVaultKey(vaultKey, s.keychain.masterKey);
+      const vaultKey = await generateKey();
+      const encryptedVaultKey = await encryptSymmetric(vaultKey, s.keychain.masterKey);
       const encryptedVaultData = await encryptVaultMetadata({ name }, vaultKey);
       const { vault } = await api.createVault({
         encryptedVaultKey: toBase64EncryptedValue(encryptedVaultKey),

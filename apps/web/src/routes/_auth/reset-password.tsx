@@ -1,15 +1,6 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import {
-  decryptMasterKeyWithRecovery,
-  decryptSymmetric,
-  encryptMasterKey,
-  encryptMasterKeyWithRecovery,
-  encryptRecoveryKey,
-  generateRecoveryKey,
-} from '@blindpass/crypto';
 import { useEffect, useState } from 'react';
-import { deriveKEK } from '@/lib/kdfWorker';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
@@ -22,7 +13,7 @@ import { PasswordStrength } from '@/components/ui/password-strength';
 import { TotpQrSetup } from '@/components/ui/totp-qr-setup';
 import { api } from '@/lib/api';
 import { authFlow } from '@/lib/authFlow';
-import { fromBase64, fromBase64EncryptedValue, toBase64, toBase64EncryptedValue } from '@/lib/b64';
+import { rekey, unlockWithRecovery } from '@/lib/keychain';
 import { fetchAllPages } from '@/lib/fetchAllPages';
 import { session } from '@/lib/session';
 import { buildVaultsMap } from '@/lib/vaultUtils';
@@ -79,30 +70,10 @@ function ResetPasswordPage() {
       const { bundle } = recovery;
 
       setLoadingMsg('Recovering keys…');
-      const masterKey = await decryptMasterKeyWithRecovery(
-        fromBase64EncryptedValue(bundle.encryptedMasterKeyForRecovery),
-        recoveryPhrase,
-      );
-
-      const privateKey = await decryptSymmetric(
-        fromBase64EncryptedValue(bundle.encryptedPrivateKey),
-        masterKey,
-      );
-      const publicKey = fromBase64(bundle.publicKey);
-      const keyPair = { publicKey, privateKey };
+      const { masterKey, keyPair } = await unlockWithRecovery(recoveryPhrase, bundle);
 
       setLoadingMsg('Deriving encryption key…');
-      const newKekSalt = crypto.getRandomValues(new Uint8Array(16));
-      const newKek = await deriveKEK(data.password, newKekSalt);
-      const newEncryptedMasterKey = await encryptMasterKey(masterKey, newKek);
-      newKek.fill(0);
-
-      const newRecoveryKey = await generateRecoveryKey();
-      const newEncryptedMasterKeyForRecovery = await encryptMasterKeyWithRecovery(
-        masterKey,
-        newRecoveryKey,
-      );
-      const newEncryptedRecoveryKey = await encryptRecoveryKey(newRecoveryKey, masterKey);
+      const re = await rekey(masterKey, data.password);
 
       setLoadingMsg('Completing recovery…');
       await api.completeRecovery({
@@ -110,13 +81,13 @@ function ResetPasswordPage() {
         recoveryToken: recovery.recoveryToken,
         enrollmentId: recovery.enrollment.enrollmentId,
         authenticatorCode: data.authenticatorCode,
-        kekSalt: toBase64(newKekSalt),
+        kekSalt: re.kekSalt,
         publicKey: bundle.publicKey,
-        encryptedMasterKey: toBase64EncryptedValue(newEncryptedMasterKey),
-        encryptedMasterKeyForRecovery: toBase64EncryptedValue(newEncryptedMasterKeyForRecovery),
+        encryptedMasterKey: re.encryptedMasterKey,
+        encryptedMasterKeyForRecovery: re.encryptedMasterKeyForRecovery,
         encryptedPrivateKey: bundle.encryptedPrivateKey,
-        encryptedRecoveryKey: toBase64EncryptedValue(newEncryptedRecoveryKey),
-        recoveryVerifier: toBase64(new TextEncoder().encode(newRecoveryKey)),
+        encryptedRecoveryKey: re.encryptedRecoveryKey,
+        recoveryVerifier: re.recoveryVerifier,
       });
 
       setLoadingMsg('Restoring session…');
@@ -132,7 +103,7 @@ function ResetPasswordPage() {
       const keychain = { masterKey, vaultKey: activeVault.vaultKey };
 
       authFlow.clearRecovery();
-      authFlow.setRecoveryKey(newRecoveryKey);
+      authFlow.setRecoveryKey(re.newRecoveryKey);
       authFlow.setPendingSession({
         username: recovery.username,
         activeVaultId,

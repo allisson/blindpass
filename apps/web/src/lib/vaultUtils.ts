@@ -1,4 +1,5 @@
-import { decryptVaultKey, decryptVaultMetadata, decryptSharedVaultKey } from '@blindpass/vault';
+import { decryptVaultMetadata } from '@blindpass/vault';
+import { decryptSymmetric, openSealBox } from '@blindpass/crypto';
 import type { KeyPair } from '@blindpass/types';
 import type { Vault } from '@blindpass/api-schema';
 import type { VaultEntry } from './session';
@@ -12,8 +13,8 @@ export async function buildVaultsMap(
   const map = new Map<string, VaultEntry>();
   for (const v of serverVaults) {
     const vaultKey = v.isShared
-      ? await decryptSharedVaultKey(fromBase64(v.sealedVaultKey!), keyPair)
-      : await decryptVaultKey(fromBase64EncryptedValue(v.encryptedVaultKey!), masterKey);
+      ? await openSealBox(fromBase64(v.sealedVaultKey!), keyPair)
+      : await decryptSymmetric(fromBase64EncryptedValue(v.encryptedVaultKey!), masterKey);
     const metadata = await decryptVaultMetadata(
       fromBase64EncryptedValue(v.encryptedVaultData),
       vaultKey,

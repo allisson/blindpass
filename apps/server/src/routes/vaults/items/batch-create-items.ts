@@ -1,11 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { BatchCreateItemsRequestSchema, VaultIdParamSchema } from '@blindpass/api-schema';
-import { uuidv7 } from 'uuidv7';
-import { vaultItems, vaultItemVersions } from '../../../db/schema.js';
-import { assertItemQuota, getEffectiveVaultItemQuota } from '../../../services/quota.js';
-import { getVaultAccess } from '../vault-access.js';
 import { b64 } from '../../../utils/base64.js';
+import { batchCreateItems } from '../../../vaults/items/service.js';
 
 export function registerBatchCreateItemsRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -18,43 +15,33 @@ export function registerBatchCreateItemsRoute(app: FastifyInstance): void {
       const { vaultId } = request.params;
       const { items } = request.body;
 
-      const access = await getVaultAccess(app, vaultId, request.userId);
-      if (!access) return reply.status(404).send({ error: 'Vault not found' });
-      if (access.role === 'viewer') return reply.status(403).send({ error: 'Forbidden' });
-
-      const created = await app.db.transaction(async (tx) => {
-        const limit = await getEffectiveVaultItemQuota(tx, vaultId);
-        await assertItemQuota(tx, vaultId, limit, items.length);
-        const ids = items.map(() => uuidv7());
-
-        const newItems = await tx
-          .insert(vaultItems)
-          .values(ids.map((id, i) => ({ id, vaultId, folderId: items[i]!.folderId ?? null })))
-          .returning();
-
-        await tx.insert(vaultItemVersions).values(
-          ids.map((id, i) => ({
-            itemId: id,
-            versionNum: 1,
-            encryptedDataCiphertext: b64(items[i]!.encryptedData.ciphertext),
-            encryptedDataNonce: b64(items[i]!.encryptedData.nonce),
-            encryptedItemKeyCiphertext: b64(items[i]!.encryptedItemKey.ciphertext),
-            encryptedItemKeyNonce: b64(items[i]!.encryptedItemKey.nonce),
+      const result = await app.db.transaction(async (tx) =>
+        batchCreateItems(
+          tx,
+          request.userId,
+          vaultId,
+          items.map((it) => ({
+            folderId: it.folderId ?? null,
+            encryptedDataCiphertext: b64(it.encryptedData.ciphertext),
+            encryptedDataNonce: b64(it.encryptedData.nonce),
+            encryptedItemKeyCiphertext: b64(it.encryptedItemKey.ciphertext),
+            encryptedItemKeyNonce: b64(it.encryptedItemKey.nonce),
           })),
-        );
+        ),
+      );
 
-        const itemMap = new Map(newItems.map((r) => [r.id, r]));
-        return ids.map((id) => {
-          const r = itemMap.get(id)!;
-          return {
-            id: r.id,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
-          };
-        });
+      if (!result.ok) {
+        if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
+        return reply.status(404).send({ error: 'Vault not found' });
+      }
+
+      return reply.status(201).send({
+        items: result.items.map((r) => ({
+          id: r.id,
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+        })),
       });
-
-      return reply.status(201).send({ items: created });
     },
   );
 }

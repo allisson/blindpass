@@ -6,15 +6,15 @@ import {
   ListVaultsResponseSchema,
   CreateVaultRequestSchema,
   UpdateVaultRequestSchema,
-  VaultItemSchema,
+  EncryptedVaultItemSchema,
   CreateItemRequestSchema,
   MoveItemRequestSchema,
   ItemVersionSchema,
   VersionDetailSchema,
   CreateShareRequestSchema,
   VaultShareSchema,
-  TrashedItemSchema,
-  GlobalTrashedItemSchema,
+  EncryptedTrashedItemSchema,
+  EncryptedGlobalTrashedItemSchema,
   VaultIdParamSchema,
   VaultItemParamSchema,
   ShareParamSchema,
@@ -175,7 +175,7 @@ describe('UpdateVaultRequestSchema', () => {
   });
 });
 
-describe('VaultItemSchema', () => {
+describe('EncryptedVaultItemSchema', () => {
   const item = {
     id: uuid,
     encryptedData: encVal,
@@ -185,15 +185,17 @@ describe('VaultItemSchema', () => {
   };
 
   it('accepts valid item', () => {
-    expect(VaultItemSchema.safeParse(item).success).toBe(true);
+    expect(EncryptedVaultItemSchema.safeParse(item).success).toBe(true);
   });
 
   it('rejects missing encryptedItemKey', () => {
-    expect(VaultItemSchema.safeParse({ ...item, encryptedItemKey: undefined }).success).toBe(false);
+    expect(
+      EncryptedVaultItemSchema.safeParse({ ...item, encryptedItemKey: undefined }).success,
+    ).toBe(false);
   });
 
   it('rejects non-uuid id', () => {
-    expect(VaultItemSchema.safeParse({ ...item, id: 'bad-id' }).success).toBe(false);
+    expect(EncryptedVaultItemSchema.safeParse({ ...item, id: 'bad-id' }).success).toBe(false);
   });
 });
 
@@ -295,10 +297,10 @@ describe('VaultShareSchema', () => {
   });
 });
 
-describe('TrashedItemSchema', () => {
+describe('EncryptedTrashedItemSchema', () => {
   it('accepts trashed item with deletedAt', () => {
     expect(
-      TrashedItemSchema.safeParse({
+      EncryptedTrashedItemSchema.safeParse({
         id: uuid,
         encryptedData: encVal,
         encryptedItemKey: encVal,
@@ -311,7 +313,7 @@ describe('TrashedItemSchema', () => {
 
   it('rejects missing deletedAt', () => {
     expect(
-      TrashedItemSchema.safeParse({
+      EncryptedTrashedItemSchema.safeParse({
         id: uuid,
         encryptedData: encVal,
         encryptedItemKey: encVal,
@@ -322,10 +324,10 @@ describe('TrashedItemSchema', () => {
   });
 });
 
-describe('GlobalTrashedItemSchema', () => {
+describe('EncryptedGlobalTrashedItemSchema', () => {
   it('accepts global trashed item with vaultId', () => {
     expect(
-      GlobalTrashedItemSchema.safeParse({
+      EncryptedGlobalTrashedItemSchema.safeParse({
         id: uuid,
         encryptedData: encVal,
         encryptedItemKey: encVal,
@@ -339,7 +341,7 @@ describe('GlobalTrashedItemSchema', () => {
 
   it('rejects missing vaultId', () => {
     expect(
-      GlobalTrashedItemSchema.safeParse({
+      EncryptedGlobalTrashedItemSchema.safeParse({
         id: uuid,
         encryptedData: encVal,
         encryptedItemKey: encVal,
@@ -427,7 +429,7 @@ describe('BatchCreateItemsRequestSchema', () => {
   });
 });
 
-describe('VaultItemSchema folderId', () => {
+describe('EncryptedVaultItemSchema folderId', () => {
   const base = {
     id: uuid,
     encryptedData: encVal,
@@ -437,19 +439,19 @@ describe('VaultItemSchema folderId', () => {
   };
 
   it('accepts item with folderId null', () => {
-    expect(VaultItemSchema.safeParse({ ...base, folderId: null }).success).toBe(true);
+    expect(EncryptedVaultItemSchema.safeParse({ ...base, folderId: null }).success).toBe(true);
   });
 
   it('accepts item with folderId as uuid', () => {
-    expect(VaultItemSchema.safeParse({ ...base, folderId: uuid2 }).success).toBe(true);
+    expect(EncryptedVaultItemSchema.safeParse({ ...base, folderId: uuid2 }).success).toBe(true);
   });
 
   it('accepts item without folderId (optional)', () => {
-    expect(VaultItemSchema.safeParse(base).success).toBe(true);
+    expect(EncryptedVaultItemSchema.safeParse(base).success).toBe(true);
   });
 
   it('rejects item with non-uuid folderId', () => {
-    expect(VaultItemSchema.safeParse({ ...base, folderId: 'bad-id' }).success).toBe(false);
+    expect(EncryptedVaultItemSchema.safeParse({ ...base, folderId: 'bad-id' }).success).toBe(false);
   });
 });
 
