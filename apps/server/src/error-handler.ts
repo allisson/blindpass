@@ -1,7 +1,7 @@
 import { ZodError } from 'zod';
 import { hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod';
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
-import { QuotaExceededError } from './services/quota.js';
+import { QuotaExceededError } from './vaults/quota.js';
 
 const PG_UNIQUE_VIOLATION = '23505';
 

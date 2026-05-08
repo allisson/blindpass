@@ -1,6 +1,5 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
-import { decryptMasterKey, decryptSymmetric } from '@blindpass/crypto';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -11,8 +10,7 @@ import { OtpInput } from '@/components/ui/otp-input';
 import { TotpQrSetup } from '@/components/ui/totp-qr-setup';
 import { api } from '@/lib/api';
 import { authFlow } from '@/lib/authFlow';
-import { deriveKEK } from '@/lib/kdfWorker';
-import { fromBase64, fromBase64EncryptedValue } from '@/lib/b64';
+import { decryptKeyPair, unlockWithPassword } from '@/lib/keychain';
 import { fetchAllPages } from '@/lib/fetchAllPages';
 import { session, setLastUsername } from '@/lib/session';
 import { buildVaultsMap } from '@/lib/vaultUtils';
@@ -55,12 +53,11 @@ function VerifyOtpPage() {
           enrollmentId: pending.enrollment.enrollmentId,
           authenticatorCode: data.code,
         });
-        const publicKey = fromBase64(bundle.publicKey);
-        const privateKey = await decryptSymmetric(
-          fromBase64EncryptedValue(bundle.encryptedPrivateKey),
+        const keyPair = await decryptKeyPair(
+          bundle.encryptedPrivateKey,
+          bundle.publicKey,
           pending.keychain.masterKey,
         );
-        const keyPair = { publicKey, privateKey };
 
         session.set({
           username: pending.username,
@@ -101,18 +98,7 @@ function VerifyOtpPage() {
       const keysData = await api.getKeys();
 
       setLoadingMsg('Decrypting vault…');
-      const kek = await deriveKEK(loginPending.password, fromBase64(keysData.kekSalt));
-      const masterKey = await decryptMasterKey(
-        fromBase64EncryptedValue(keysData.encryptedMasterKey),
-        kek,
-      );
-      kek.fill(0);
-
-      const privateKey = await decryptSymmetric(
-        fromBase64EncryptedValue(keysData.encryptedPrivateKey),
-        masterKey,
-      );
-      const keyPair = { publicKey: fromBase64(keysData.publicKey), privateKey };
+      const { masterKey, keyPair } = await unlockWithPassword(loginPending.password, keysData);
 
       session.set({
         username: loginPending.username,

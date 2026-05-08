@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
-  generateMasterKey,
-  generateVaultKey,
+  generateKey,
   generateSalt,
   generateRecoveryKey,
   deriveKeyEncryptionKey,
-  encryptMasterKey,
+  encryptSymmetric,
   encryptMasterKeyWithRecovery,
-  encryptVaultKey,
   CryptoError,
 } from '@blindpass/crypto';
 import {
@@ -26,10 +24,10 @@ let expectedVaultKey: Uint8Array;
 beforeAll(async () => {
   const kekSalt = await generateSalt();
   const kek = await deriveKeyEncryptionKey(TEST_PASSWORD, kekSalt);
-  expectedMasterKey = await generateMasterKey();
-  expectedVaultKey = await generateVaultKey();
-  const encryptedMasterKey = await encryptMasterKey(expectedMasterKey, kek);
-  const encryptedVaultKey = await encryptVaultKey(expectedVaultKey, expectedMasterKey);
+  expectedMasterKey = await generateKey();
+  expectedVaultKey = await generateKey();
+  const encryptedMasterKey = await encryptSymmetric(expectedMasterKey, kek);
+  const encryptedVaultKey = await encryptSymmetric(expectedVaultKey, expectedMasterKey);
   sharedData = { kekSalt, encryptedMasterKey, encryptedVaultKey };
 });
 
@@ -54,13 +52,13 @@ describe('unlockWithRecovery', () => {
   beforeAll(async () => {
     const mnemonic = await generateRecoveryKey();
     recoveryMnemonic = mnemonic;
-    expectedMasterKey = await generateMasterKey();
-    expectedVaultKey = await generateVaultKey();
+    expectedMasterKey = await generateKey();
+    expectedVaultKey = await generateKey();
     const encryptedMasterKeyForRecovery = await encryptMasterKeyWithRecovery(
       expectedMasterKey,
       mnemonic,
     );
-    const encryptedVaultKey = await encryptVaultKey(expectedVaultKey, expectedMasterKey);
+    const encryptedVaultKey = await encryptSymmetric(expectedVaultKey, expectedMasterKey);
     recoveryData = { encryptedMasterKeyForRecovery, encryptedVaultKey };
   });
 
@@ -77,12 +75,15 @@ describe('unlockWithRecovery', () => {
 
   it('zeros masterKey and throws when encryptedVaultKey was encrypted with different masterKey', async () => {
     const mnemonic = await generateRecoveryKey();
-    const masterKey = await generateMasterKey();
+    const masterKey = await generateKey();
     const encryptedMasterKeyForRecovery = await encryptMasterKeyWithRecovery(masterKey, mnemonic);
 
-    const differentMasterKey = await generateMasterKey();
-    const vaultKey = await generateVaultKey();
-    const encryptedVaultKeyForDifferentMaster = await encryptVaultKey(vaultKey, differentMasterKey);
+    const differentMasterKey = await generateKey();
+    const vaultKey = await generateKey();
+    const encryptedVaultKeyForDifferentMaster = await encryptSymmetric(
+      vaultKey,
+      differentMasterKey,
+    );
 
     const badData: RecoveryKeyData = {
       encryptedMasterKeyForRecovery,

@@ -1,7 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Eye, EyeOff, LockOpen } from 'lucide-react';
-import { decryptMasterKey, decryptSymmetric } from '@blindpass/crypto';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -13,8 +12,7 @@ import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, ApiError } from '@/lib/api';
-import { deriveKEK } from '@/lib/kdfWorker';
-import { fromBase64, fromBase64EncryptedValue } from '@/lib/b64';
+import { unlockWithPassword } from '@/lib/keychain';
 import { fetchAllPages } from '@/lib/fetchAllPages';
 import { session, getLastUsername, clearLastUsername } from '@/lib/session';
 import { buildVaultsMap } from '@/lib/vaultUtils';
@@ -81,20 +79,11 @@ function UnlockPage() {
       const ownedVault = vaults.find((v) => !v.isShared);
       if (!ownedVault) throw new Error('No vault found.');
 
-      setLoadingMsg('Deriving key…');
-      const kek = await deriveKEK(data.password, fromBase64(keysData.kekSalt));
-      masterKey = await decryptMasterKey(
-        fromBase64EncryptedValue(keysData.encryptedMasterKey),
-        kek,
-      );
-      kek.fill(0);
-
       setLoadingMsg('Decrypting vault…');
-      privateKey = await decryptSymmetric(
-        fromBase64EncryptedValue(keysData.encryptedPrivateKey),
-        masterKey,
-      );
-      const keyPair = { publicKey: fromBase64(keysData.publicKey), privateKey };
+      const unlocked = await unlockWithPassword(data.password, keysData);
+      masterKey = unlocked.masterKey;
+      privateKey = unlocked.keyPair.privateKey;
+      const keyPair = unlocked.keyPair;
 
       const vaultsMap = await buildVaultsMap(vaults, masterKey, keyPair);
       const activeVaultId = ownedVault.id;

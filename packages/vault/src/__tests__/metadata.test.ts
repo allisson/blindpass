@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { generateVaultKey, CryptoError } from '@blindpass/crypto';
+import { generateKey, CryptoError } from '@blindpass/crypto';
 import { encryptVaultMetadata, decryptVaultMetadata } from '../metadata.js';
 
 let vaultKey: Uint8Array;
 
 beforeAll(async () => {
-  vaultKey = await generateVaultKey();
+  vaultKey = await generateKey();
 });
 
 describe('encryptVaultMetadata / decryptVaultMetadata', () => {
@@ -24,7 +24,7 @@ describe('encryptVaultMetadata / decryptVaultMetadata', () => {
 
   it('throws CryptoError on wrong vault key', async () => {
     const encrypted = await encryptVaultMetadata({ name: 'Secret' }, vaultKey);
-    const wrongKey = await generateVaultKey();
+    const wrongKey = await generateKey();
     await expect(decryptVaultMetadata(encrypted, wrongKey)).rejects.toThrow(CryptoError);
   });
 });

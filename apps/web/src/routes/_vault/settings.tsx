@@ -26,14 +26,10 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import {
-  decryptMasterKey,
-  encryptMasterKey,
-  generateSalt,
-  generateItemKey,
-  encryptItemKey,
-  decryptItemKey,
-  encryptSymmetric,
   decryptSymmetric,
+  encryptSymmetric,
+  generateSalt,
+  generateKey,
   verificationId,
 } from '@blindpass/crypto';
 import {
@@ -281,7 +277,7 @@ function ChangePasswordSection() {
       setLoadingMsg('Deriving current key…');
       const currentKekSalt = fromBase64(keysData.kekSalt);
       const currentKEK = await deriveKEK(pending.currentPassword, currentKekSalt);
-      const masterKey = await decryptMasterKey(
+      const masterKey = await decryptSymmetric(
         fromBase64EncryptedValue(keysData.encryptedMasterKey),
         currentKEK,
       );
@@ -289,7 +285,7 @@ function ChangePasswordSection() {
       setLoadingMsg('Deriving new key…');
       const newKekSalt = await generateSalt();
       const newKEK = await deriveKEK(pending.newPassword, newKekSalt);
-      const newEncryptedMasterKey = await encryptMasterKey(masterKey, newKEK);
+      const newEncryptedMasterKey = await encryptSymmetric(masterKey, newKEK);
 
       setLoadingMsg('Saving…');
       await api.changePassword({
@@ -608,9 +604,9 @@ function ImportSection() {
 
     try {
       for (const item of pending.items) {
-        const itemKey = await generateItemKey();
+        const itemKey = await generateKey();
         const encryptedData = await encryptVaultItem(item, itemKey);
-        const encryptedItemKeyVal = await encryptItemKey(itemKey, s.keychain.vaultKey);
+        const encryptedItemKeyVal = await encryptSymmetric(itemKey, s.keychain.vaultKey);
         itemKey.fill(0);
         encrypted.push({
           encryptedData: toBase64EncryptedValue(encryptedData),
@@ -898,7 +894,7 @@ async function fetchAndDecryptAll(): Promise<VaultItemData[]> {
   const { items } = await api.getItems(s.activeVaultId);
   return Promise.all(
     items.map(async (item) => {
-      const itemKey = await decryptItemKey(
+      const itemKey = await decryptSymmetric(
         fromBase64EncryptedValue(item.encryptedItemKey),
         s.keychain!.vaultKey,
       );

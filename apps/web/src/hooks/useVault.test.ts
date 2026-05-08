@@ -64,11 +64,9 @@ vi.mock('@blindpass/vault', () => ({
 }));
 
 vi.mock('@blindpass/crypto', () => ({
-  generateItemKey: vi.fn(),
-  encryptItemKey: vi.fn(),
-  decryptItemKey: vi.fn(),
-  generateVaultKey: vi.fn(),
-  encryptVaultKey: vi.fn(),
+  generateKey: vi.fn(),
+  encryptSymmetric: vi.fn(),
+  decryptSymmetric: vi.fn(),
 }));
 
 vi.mock('@/lib/b64', () => ({
@@ -92,13 +90,7 @@ vi.mock('@/lib/vaultSync', () => ({
 }));
 
 import { api } from '@/lib/api';
-import {
-  generateItemKey,
-  encryptItemKey,
-  decryptItemKey,
-  generateVaultKey,
-  encryptVaultKey,
-} from '@blindpass/crypto';
+import { generateKey, encryptSymmetric, decryptSymmetric } from '@blindpass/crypto';
 import { encryptVaultItem, decryptVaultItem, encryptVaultMetadata } from '@blindpass/vault';
 
 function makeWrapper() {
@@ -375,9 +367,9 @@ describe('useEmptyTrash', () => {
 function setupCryptoMocksForWrite() {
   const fakeKey = new Uint8Array(32);
   const fakeEncrypted = { ciphertext: new Uint8Array(1), nonce: new Uint8Array(24) };
-  vi.mocked(generateItemKey).mockResolvedValue(fakeKey);
+  vi.mocked(generateKey).mockResolvedValue(fakeKey);
   vi.mocked(encryptVaultItem).mockResolvedValue(fakeEncrypted);
-  vi.mocked(encryptItemKey).mockResolvedValue(fakeEncrypted);
+  vi.mocked(encryptSymmetric).mockResolvedValue(fakeEncrypted);
 }
 
 describe('useCreateItem', () => {
@@ -637,7 +629,7 @@ describe('useTrashItems', () => {
         },
       ],
     } as never);
-    vi.mocked(decryptItemKey).mockResolvedValue(new Uint8Array(32));
+    vi.mocked(decryptSymmetric).mockResolvedValue(new Uint8Array(32));
     vi.mocked(decryptVaultItem).mockResolvedValue({
       type: 'login',
       title: 'Deleted',
@@ -681,7 +673,7 @@ describe('useVaultItems', () => {
         },
       ],
     } as never);
-    vi.mocked(decryptItemKey).mockResolvedValue(new Uint8Array(32));
+    vi.mocked(decryptSymmetric).mockResolvedValue(new Uint8Array(32));
     vi.mocked(decryptVaultItem).mockResolvedValue({
       type: 'login',
       title: 'Test',
@@ -768,7 +760,7 @@ describe('useItemVersion', () => {
         createdAt: '2024-01-01',
       },
     } as never);
-    vi.mocked(decryptItemKey).mockResolvedValue(new Uint8Array(32));
+    vi.mocked(decryptSymmetric).mockResolvedValue(new Uint8Array(32));
     vi.mocked(decryptVaultItem).mockResolvedValue({
       type: 'login',
       title: 'Old Title',
@@ -813,7 +805,7 @@ describe('useVaultItems offline', () => {
         updatedAt: '2024-01-01',
       },
     ]);
-    vi.mocked(decryptItemKey).mockResolvedValue(new Uint8Array(32));
+    vi.mocked(decryptSymmetric).mockResolvedValue(new Uint8Array(32));
     vi.mocked(decryptVaultItem).mockResolvedValue({
       type: 'login',
       title: 'Cached',
@@ -837,8 +829,8 @@ describe('useCreateVault', () => {
     mockSessionWithVault();
     const fakeVaultKey = new Uint8Array(32);
     const fakeEncrypted = { ciphertext: new Uint8Array(1), nonce: new Uint8Array(24) };
-    vi.mocked(generateVaultKey).mockResolvedValue(fakeVaultKey);
-    vi.mocked(encryptVaultKey).mockResolvedValue(fakeEncrypted);
+    vi.mocked(generateKey).mockResolvedValue(fakeVaultKey);
+    vi.mocked(encryptSymmetric).mockResolvedValue(fakeEncrypted);
     vi.mocked(encryptVaultMetadata).mockResolvedValue(fakeEncrypted);
     vi.mocked(api.createVault).mockResolvedValue({ vault: { id: 'new-v' } } as never);
 

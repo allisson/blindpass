@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { encryptVaultKeyForSharing } from '@blindpass/vault';
+import { sealBox } from '@blindpass/crypto';
 import { api } from '@/lib/api';
 import { fetchAllPages } from '@/lib/fetchAllPages';
 import { session } from '@/lib/session';
@@ -28,10 +28,7 @@ export function useShareVault(vaultId: string) {
       if (!s) throw new Error('Not authenticated');
       const entry = s.vaults.get(vaultId);
       if (!entry) throw new Error('Vault not found');
-      const sealed = await encryptVaultKeyForSharing(
-        entry.vaultKey,
-        fromBase64(receiver.publicKey),
-      );
+      const sealed = await sealBox(entry.vaultKey, fromBase64(receiver.publicKey));
       await api.createShare(vaultId, {
         receiverUserId: receiver.userId,
         sealedVaultKey: toBase64(sealed),

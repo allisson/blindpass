@@ -61,7 +61,7 @@ export const UpdateVaultRequestSchema = z.object({
   encryptedVaultData: EncryptedValueSchema,
 });
 
-export const VaultItemSchema = z.object({
+export const EncryptedVaultItemSchema = z.object({
   id: z.uuid(),
   encryptedData: EncryptedValueSchema,
   encryptedItemKey: EncryptedValueSchema,
@@ -70,7 +70,7 @@ export const VaultItemSchema = z.object({
   updatedAt: z.string(),
 });
 export const ListItemsResponseSchema = z.object({
-  items: z.array(VaultItemSchema),
+  items: z.array(EncryptedVaultItemSchema),
   nextCursor: z.uuid().nullable(),
 });
 
@@ -86,7 +86,7 @@ export const UpdateItemRequestSchema = z.object({
 export const MoveItemRequestSchema = z.object({
   folderId: z.uuid().nullable(),
 });
-export const ItemResponseSchema = z.object({ item: VaultItemSchema });
+export const ItemResponseSchema = z.object({ item: EncryptedVaultItemSchema });
 
 export const FolderSchema = z.object({
   id: z.uuid(),
@@ -129,19 +129,19 @@ export const VersionResponseSchema = z.object({
   version: VersionDetailSchema,
 });
 
-export const TrashedItemSchema = VaultItemSchema.extend({
+export const EncryptedTrashedItemSchema = EncryptedVaultItemSchema.extend({
   deletedAt: z.string(),
 });
 export const ListTrashResponseSchema = z.object({
-  items: z.array(TrashedItemSchema),
+  items: z.array(EncryptedTrashedItemSchema),
   nextCursor: z.uuid().nullable(),
 });
 
-export const GlobalTrashedItemSchema = TrashedItemSchema.extend({
+export const EncryptedGlobalTrashedItemSchema = EncryptedTrashedItemSchema.extend({
   vaultId: z.uuid(),
 });
 export const ListGlobalTrashResponseSchema = z.object({
-  items: z.array(GlobalTrashedItemSchema),
+  items: z.array(EncryptedGlobalTrashedItemSchema),
   nextCursor: z.uuid().nullable(),
 });
 
@@ -188,7 +188,7 @@ export const DeltaQuerySchema = z.object({
   updatedAfter: z.string().datetime(),
 });
 export const ListDeltaResponseSchema = z.object({
-  items: z.array(VaultItemSchema),
+  items: z.array(EncryptedVaultItemSchema),
   deletedIds: z.array(z.uuid()),
   serverTime: z.string(),
 });
@@ -204,7 +204,7 @@ export type VaultShare = z.infer<typeof VaultShareSchema>;
 export type ListSharesResponse = z.infer<typeof ListSharesResponseSchema>;
 export type CreateVaultRequest = z.infer<typeof CreateVaultRequestSchema>;
 export type UpdateVaultRequest = z.infer<typeof UpdateVaultRequestSchema>;
-export type VaultItem = z.infer<typeof VaultItemSchema>;
+export type EncryptedVaultItem = z.infer<typeof EncryptedVaultItemSchema>;
 export type ListItemsResponse = z.infer<typeof ListItemsResponseSchema>;
 export type CreateItemRequest = z.infer<typeof CreateItemRequestSchema>;
 export type UpdateItemRequest = z.infer<typeof UpdateItemRequestSchema>;
@@ -219,9 +219,9 @@ export type ItemVersion = z.infer<typeof ItemVersionSchema>;
 export type VersionDetail = z.infer<typeof VersionDetailSchema>;
 export type ListVersionsResponse = z.infer<typeof ListVersionsResponseSchema>;
 export type VersionResponse = z.infer<typeof VersionResponseSchema>;
-export type TrashedItem = z.infer<typeof TrashedItemSchema>;
+export type EncryptedTrashedItem = z.infer<typeof EncryptedTrashedItemSchema>;
 export type ListTrashResponse = z.infer<typeof ListTrashResponseSchema>;
-export type GlobalTrashedItem = z.infer<typeof GlobalTrashedItemSchema>;
+export type EncryptedGlobalTrashedItem = z.infer<typeof EncryptedGlobalTrashedItemSchema>;
 export type ListGlobalTrashResponse = z.infer<typeof ListGlobalTrashResponseSchema>;
 export type BatchCreateItemsRequest = z.infer<typeof BatchCreateItemsRequestSchema>;
 export type BatchCreateItemsResponse = z.infer<typeof BatchCreateItemsResponseSchema>;

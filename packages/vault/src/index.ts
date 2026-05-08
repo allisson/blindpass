@@ -28,8 +28,6 @@ export {
   type RecoveryKeyData,
 } from './keychain/unlock.js';
 export { lock } from './keychain/lock.js';
-export { encryptVaultKeyForSharing, decryptSharedVaultKey } from './keychain/sharing.js';
-export { decryptVaultKey } from '@blindpass/crypto';
 export { encryptVaultMetadata, decryptVaultMetadata, type VaultMetadata } from './metadata.js';
 export { encryptFolderName, decryptFolderName } from './folder/encrypt.js';
 export {
