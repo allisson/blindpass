@@ -11,11 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { api, ApiError } from '@/lib/api';
-import { unlockWithPassword } from '@/lib/keychain';
-import { fetchAllPages } from '@/lib/fetchAllPages';
+import { api } from '@/lib/api';
+import { CEREMONY_PHASE_LABEL } from '@/lib/keychain/ceremony';
+import { useUnlockWithPassword } from '@/hooks/useUnlockWithPassword';
 import { session, getLastUsername, clearLastUsername } from '@/lib/session';
-import { buildVaultsMap } from '@/lib/vaultUtils';
 import { vaultCache } from '@/lib/vaultCache';
 
 export const Route = createFileRoute('/unlock')({
@@ -35,12 +34,14 @@ type FormData = z.infer<typeof schema>;
 function UnlockPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
-  const [loadingMsg, setLoadingMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const reduceMotion = useReducedMotion();
   const isRestore = !session.get();
   const restoreUsername = isRestore ? getLastUsername() : null;
+  const ceremony = useUnlockWithPassword();
+  const loadingMsg = CEREMONY_PHASE_LABEL[ceremony.phase];
+  const isRunning =
+    ceremony.phase !== 'idle' && ceremony.phase !== 'error' && ceremony.phase !== 'done';
 
   const {
     register,
@@ -49,55 +50,16 @@ function UnlockPage() {
   } = useForm<FormData>({ resolver: standardSchemaResolver(schema) });
 
   async function onSubmit(data: FormData) {
-    setError(null);
-    const sBefore = session.get();
-    let masterKey: Uint8Array | undefined;
-    let privateKey: Uint8Array | undefined;
-
-    try {
-      setLoadingMsg('Fetching keys…');
-      let keysData;
-      let vaults;
-      try {
-        [keysData, vaults] = await Promise.all([
-          api.getKeys(),
-          fetchAllPages((cursor) =>
-            api.getVault(cursor).then((r) => ({ data: r.vaults, nextCursor: r.nextCursor })),
-          ),
-        ]);
-      } catch (err) {
-        // Cookie missing/expired or session revoked — full login required.
-        if (err instanceof ApiError && err.status === 401) {
-          session.clear();
-          await vaultCache.clearAll().catch(() => {});
-          qc.clear();
-          navigate({ to: '/login' });
-          return;
-        }
-        throw err;
-      }
-      const ownedVault = vaults.find((v) => !v.isShared);
-      if (!ownedVault) throw new Error('No vault found.');
-
-      setLoadingMsg('Decrypting vault…');
-      const unlocked = await unlockWithPassword(data.password, keysData);
-      masterKey = unlocked.masterKey;
-      privateKey = unlocked.keyPair.privateKey;
-      const keyPair = unlocked.keyPair;
-
-      const vaultsMap = await buildVaultsMap(vaults, masterKey, keyPair);
-      const activeVaultId = ownedVault.id;
-      const keychain = { masterKey, vaultKey: vaultsMap.get(activeVaultId)!.vaultKey };
-      const username = sBefore?.username ?? getLastUsername() ?? undefined;
-
-      session.set({ username, activeVaultId, vaults: vaultsMap, keychain, keyPair });
+    const result = await ceremony.unlock(data.password);
+    if (result.ok) {
       navigate({ to: '/' });
-    } catch (err) {
-      masterKey?.fill(0);
-      privateKey?.fill(0);
-      if (!sBefore) session.clear();
-      setLoadingMsg('');
-      setError(err instanceof Error ? err.message : 'Unlock failed');
+      return;
+    }
+    if (result.error.code === 'session_expired') {
+      session.clear();
+      await vaultCache.clearAll().catch(() => {});
+      qc.clear();
+      navigate({ to: '/login' });
     }
   }
 
@@ -190,7 +152,7 @@ function UnlockPage() {
               <form
                 onSubmit={handleSubmit(onSubmit)}
                 className="space-y-4"
-                aria-busy={!!loadingMsg || isSubmitting}
+                aria-busy={isRunning || isSubmitting}
               >
                 <div className="field-group" data-invalid={!!errors.password}>
                   <Label htmlFor="password">Master password</Label>
@@ -201,7 +163,7 @@ function UnlockPage() {
                       autoComplete="current-password"
                       autoFocus
                       className="pr-9"
-                      disabled={!!loadingMsg || isSubmitting}
+                      disabled={isRunning || isSubmitting}
                       aria-invalid={!!errors.password}
                       {...register('password')}
                     />
@@ -209,7 +171,7 @@ function UnlockPage() {
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowPassword((v) => !v)}
-                      disabled={!!loadingMsg || isSubmitting}
+                      disabled={isRunning || isSubmitting}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
@@ -218,12 +180,12 @@ function UnlockPage() {
                   </div>
                   <FieldError message={errors.password?.message} />
                 </div>
-                <FieldError message={error ?? undefined} data-testid="error-message" />
+                <FieldError message={ceremony.error?.message} data-testid="error-message" />
                 <Button
                   type="submit"
                   className="w-full"
-                  loading={!!loadingMsg || isSubmitting}
-                  disabled={!!loadingMsg || isSubmitting}
+                  loading={isRunning || isSubmitting}
+                  disabled={isRunning || isSubmitting}
                 >
                   {loadingMsg || (isSubmitting ? 'Unlocking…' : 'Unlock vault')}
                 </Button>

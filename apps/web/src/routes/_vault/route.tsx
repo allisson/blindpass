@@ -6,14 +6,13 @@ import {
   useMatch,
   useRouter,
 } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type Dispatch, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   AlertCircle,
   Check,
   ChevronDown,
-  Command,
   CreditCard,
   FileText,
   Folder,
@@ -21,12 +20,9 @@ import {
   Key,
   KeyRound,
   LogOut,
-  MonitorSmartphone,
-  ShieldCheck,
   Pencil,
   Plus,
   Search,
-  Settings,
   Share2,
   Shield,
   Trash2,
@@ -69,14 +65,16 @@ const CommandPalette = lazy(() =>
 );
 import { AccountMenu } from '@/components/AccountMenu';
 import { VaultSheet } from '@/components/VaultSheet';
-import { BrandGlyph } from '@/components/Brand';
 import { ShortcutsDialog } from '@/components/ShortcutsDialog';
 import { applyTheme, loadTheme, type Theme } from '@/lib/theme';
 import { session, clearLastUsername, getLastUsername } from '@/lib/session';
 import { api } from '@/lib/api';
-import { vaultSync } from '@/lib/vaultSync';
 import { vaultCache } from '@/lib/vaultCache';
-import { SyncStatusBar } from '@/components/SyncStatusBar';
+import { SyncBoundary } from '@/components/sync/SyncBoundary';
+import { KeychainRequired } from '@/components/keychain/KeychainRequired';
+import { VaultSidebar } from '@/components/vault/shell/VaultSidebar';
+import { BottomTabBar } from '@/components/vault/shell/BottomTabBar';
+import { ListPanelAnimator, MainAnimator } from '@/components/vault/shell/ListPanelAnimator';
 import {
   Dialog,
   DialogClose,
@@ -112,9 +110,6 @@ const TYPE_OPTIONS = [
 ];
 
 const STORAGE_KEY = 'bp:vault:typeFilter';
-
-const NAV_LINK_CLASS =
-  'relative flex items-center justify-center gap-2 rounded-md px-2 lg:px-3 lg:justify-start py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors [&.active]:bg-primary/10 [&.active]:text-primary [&.active]:font-medium [&.active]:before:absolute [&.active]:before:left-0 [&.active]:before:top-1.5 [&.active]:before:bottom-1.5 [&.active]:before:w-0.5 [&.active]:before:rounded-full [&.active]:before:bg-primary';
 
 function loadStoredTypes(): string[] {
   try {
@@ -1246,8 +1241,6 @@ function VaultLayout() {
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const { data: trashItems } = useTrashItems();
-  const trashCount = trashItems?.length ?? 0;
   const { data: adminStatus } = useQuery({
     queryKey: ['adminStatus'],
     queryFn: () => api.getAdminStatus(),
@@ -1268,7 +1261,6 @@ function VaultLayout() {
   }, []);
 
   function handleLock() {
-    vaultSync.stopPolling();
     session.clearIdleTimer();
     session.lock();
     qc.clear();
@@ -1276,11 +1268,7 @@ function VaultLayout() {
   }
 
   useEffect(() => {
-    const s = session.get();
-    if (s?.activeVaultId) vaultSync.startPolling(s.activeVaultId, qc);
-
     function onExpiry() {
-      vaultSync.stopPolling();
       session.lock();
       qc.clear();
       void router.navigate({ to: '/unlock' });
@@ -1319,7 +1307,6 @@ function VaultLayout() {
     document.addEventListener('keydown', onPaletteShortcut);
 
     return () => {
-      vaultSync.stopPolling();
       session.clearIdleTimer();
       document.removeEventListener('mousemove', handleActivity);
       document.removeEventListener('keydown', handleActivity);
@@ -1330,7 +1317,6 @@ function VaultLayout() {
   }, [qc, router]);
 
   function handleLogout() {
-    vaultSync.stopPolling();
     void api.logout().catch(() => {});
     session.clear();
     clearLastUsername();
@@ -1341,224 +1327,161 @@ function VaultLayout() {
   }
 
   return (
-    <div
-      className="h-dvh bg-background flex relative overflow-hidden"
-      style={{ backgroundImage: 'var(--glow-bg)' }}
-    >
-      <aside className="hidden md:flex md:w-14 lg:w-52 shrink-0 border-r glass-panel flex-col">
-        <div className="px-0 lg:px-4 pt-5 pb-4 flex items-center justify-center lg:justify-start gap-2.5">
-          <BrandGlyph className="w-7 h-7 text-foreground shrink-0" ariaLabel="BlindPass" />
-          <span className="hidden lg:inline font-heading font-semibold text-sm tracking-tight text-foreground">
-            Blind<span className="text-primary">Pass</span>
-          </span>
-        </div>
-        <Separator />
-        <div className="hidden lg:block">
-          <VaultPicker />
-          <Separator />
-        </div>
-        <div className="px-2 pt-2 hidden lg:block">
-          <button
-            type="button"
-            data-testid="open-command-palette"
-            onClick={() => setPaletteOpen(true)}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border/60 text-xs text-muted-foreground hover:text-foreground hover:border-border bg-background/40 transition-colors"
-            aria-label="Open command palette"
-          >
-            <Search className="w-3 h-3" />
-            <span className="flex-1 text-left">Search…</span>
-            <kbd className="font-mono text-[10px] border border-border/60 rounded px-1 py-px flex items-center gap-0.5">
-              <Command className="w-2.5 h-2.5" />K
-            </kbd>
-          </button>
-        </div>
-        <div className="lg:hidden px-2 pt-2">
-          <button
-            type="button"
-            data-testid="open-command-palette-icon"
-            onClick={() => setPaletteOpen(true)}
-            aria-label="Open command palette"
-            className="w-full flex items-center justify-center py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="md:block lg:hidden px-2 pb-2">
-          <button
-            type="button"
-            onClick={() => setVaultSheetOpen(true)}
-            className="w-full flex items-center justify-center py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
-            aria-label="Account and vaults"
-          >
-            <User className="w-4 h-4" />
-          </button>
-        </div>
-        <nav className="flex-1 p-2 space-y-0.5">
-          <Link to="/" className={NAV_LINK_CLASS} title="Vault" aria-label="Vault">
-            <KeyRound className="w-4 h-4" />
-            <span className="hidden lg:inline">Vault</span>
-          </Link>
-          <Link to="/health" className={NAV_LINK_CLASS} title="Health" aria-label="Health">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="hidden lg:inline">Health</span>
-          </Link>
-          <Link to="/trash" className={NAV_LINK_CLASS} title="Trash" aria-label="Trash">
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden lg:inline flex-1">Trash</span>
-            {trashCount > 0 && (
-              <span
-                data-testid="trash-count-badge"
-                className="text-[10px] font-mono font-medium px-1.5 py-px rounded-full bg-muted text-muted-foreground"
-              >
-                {trashCount}
-              </span>
-            )}
-          </Link>
-          <Link to="/settings" className={NAV_LINK_CLASS} title="Settings" aria-label="Settings">
-            <Settings className="w-4 h-4" />
-            <span className="hidden lg:inline">Settings</span>
-          </Link>
-          <Link to="/sessions" className={NAV_LINK_CLASS} title="Sessions" aria-label="Sessions">
-            <MonitorSmartphone className="w-4 h-4" />
-            <span className="hidden lg:inline">Sessions</span>
-          </Link>
-        </nav>
-        <div className="hidden lg:block">
-          <SyncStatusBar />
-          <Separator />
-        </div>
-        <div className="hidden lg:block">
-          {session.get()?.username && (
-            <AccountMenu
-              username={session.get()!.username!}
-              theme={theme}
-              onThemeChange={handleThemeChange}
-              onLock={handleLock}
-              onSignOutRequested={() => setShowSignOutConfirm(true)}
-              isAdmin={adminStatus?.isAdmin ?? false}
-            />
-          )}
-        </div>
-      </aside>
-      <div className="flex-1 relative overflow-hidden flex">
-        <AnimatePresence initial={false}>
-          {showListPanel && (
-            <motion.div
-              key="vault-list"
-              initial={{
-                opacity: 0,
-                x: isMobile && mobileHideList ? '-100%' : -8,
-              }}
-              animate={{
-                opacity: 1,
-                x: isMobile && mobileHideList ? '-100%' : 0,
-              }}
-              exit={{
-                opacity: 0,
-                x: isMobile ? '-100%' : -8,
-              }}
-              transition={{
-                type: 'tween',
-                duration: 0.22,
-                ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
-              }}
-              className="glass-list-panel border-r-0 md:border-r absolute inset-0 md:static md:inset-auto md:w-72 md:shrink-0 flex flex-col"
+    <KeychainRequired>
+      <VaultLayoutContent
+        adminStatus={adminStatus}
+        handleLock={handleLock}
+        handleLogout={handleLogout}
+        handleThemeChange={handleThemeChange}
+        isMobile={isMobile}
+        mobileHideList={mobileHideList}
+        paletteOpen={paletteOpen}
+        setPaletteOpen={setPaletteOpen}
+        setShortcutsOpen={setShortcutsOpen}
+        setShowSignOutConfirm={setShowSignOutConfirm}
+        setVaultSheetOpen={setVaultSheetOpen}
+        shortcutsOpen={shortcutsOpen}
+        showListPanel={showListPanel}
+        showSignOutConfirm={showSignOutConfirm}
+        theme={theme}
+        vaultSheetOpen={vaultSheetOpen}
+      />
+    </KeychainRequired>
+  );
+}
+
+interface VaultLayoutContentProps {
+  adminStatus: { isAdmin: boolean } | undefined;
+  handleLock: () => void;
+  handleLogout: () => void;
+  handleThemeChange: (theme: Theme) => void;
+  isMobile: boolean;
+  mobileHideList: boolean;
+  paletteOpen: boolean;
+  setPaletteOpen: Dispatch<SetStateAction<boolean>>;
+  setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
+  setShowSignOutConfirm: Dispatch<SetStateAction<boolean>>;
+  setVaultSheetOpen: Dispatch<SetStateAction<boolean>>;
+  shortcutsOpen: boolean;
+  showListPanel: boolean;
+  showSignOutConfirm: boolean;
+  theme: Theme;
+  vaultSheetOpen: boolean;
+}
+
+function VaultLayoutContent({
+  adminStatus,
+  handleLock,
+  handleLogout,
+  handleThemeChange,
+  isMobile,
+  mobileHideList,
+  paletteOpen,
+  setPaletteOpen,
+  setShortcutsOpen,
+  setShowSignOutConfirm,
+  setVaultSheetOpen,
+  shortcutsOpen,
+  showListPanel,
+  showSignOutConfirm,
+  theme,
+  vaultSheetOpen,
+}: VaultLayoutContentProps) {
+  const { data: trashItems } = useTrashItems();
+  const trashCount = trashItems?.length ?? 0;
+
+  return (
+    <>
+      <SyncBoundary>
+        <div
+          className="h-dvh bg-background flex relative overflow-hidden"
+          style={{ backgroundImage: 'var(--glow-bg)' }}
+        >
+          <VaultSidebar
+            trashCount={trashCount}
+            vaultPicker={<VaultPicker />}
+            accountMenu={
+              session.get()?.username ? (
+                <AccountMenu
+                  username={session.get()!.username!}
+                  theme={theme}
+                  onThemeChange={handleThemeChange}
+                  onLock={handleLock}
+                  onSignOutRequested={() => setShowSignOutConfirm(true)}
+                  isAdmin={adminStatus?.isAdmin ?? false}
+                />
+              ) : null
+            }
+            onOpenCommandPalette={() => setPaletteOpen(true)}
+            onOpenVaultSheet={() => setVaultSheetOpen(true)}
+          />
+          <div className="flex-1 relative overflow-hidden flex">
+            <ListPanelAnimator
+              show={showListPanel}
+              isMobile={isMobile}
+              mobileHideList={mobileHideList}
             >
               <VaultListPanel
                 onOpenVaultSheet={() => setVaultSheetOpen(true)}
                 onOpenCommandPalette={() => setPaletteOpen(true)}
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <motion.main
-          className="absolute inset-0 md:static md:inset-auto md:flex-1 overflow-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
-          initial={{ x: isMobile && showListPanel && !mobileHideList ? '100%' : 0 }}
-          animate={{ x: isMobile && showListPanel && !mobileHideList ? '100%' : 0 }}
-          transition={{
-            type: 'tween',
-            duration: 0.22,
-            ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
-          }}
-        >
-          <Outlet />
-        </motion.main>
-      </div>
-      <nav
-        data-testid="bottom-tab-bar"
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-popover/95 backdrop-blur-sm flex"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        aria-label="Primary"
-        inert={vaultSheetOpen || undefined}
-      >
-        {[
-          { to: '/', label: 'Vault', Icon: KeyRound, manualActive: showListPanel },
-          { to: '/health', label: 'Health', Icon: ShieldCheck },
-          { to: '/trash', label: 'Trash', Icon: Trash2, badge: trashCount },
-          { to: '/settings', label: 'Settings', Icon: Settings },
-          { to: '/sessions', label: 'Sessions', Icon: MonitorSmartphone },
-        ].map(({ to, label, Icon, badge, manualActive }) => (
-          <Link
-            key={to}
-            to={to as '/' | '/health' | '/trash' | '/settings' | '/sessions'}
-            className={`relative flex-1 h-14 flex flex-col items-center justify-center gap-0.5 text-[10px] transition-colors ${
-              manualActive !== undefined
-                ? manualActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
-                : 'text-muted-foreground [&.active]:text-primary'
-            }`}
-            activeOptions={{ exact: to === '/' }}
-          >
-            <Icon className="w-4 h-4" />
-            <span>{label}</span>
-            {badge && badge > 0 ? (
-              <span className="absolute top-1 right-1/3 text-[9px] font-mono px-1 rounded-full bg-destructive text-destructive-foreground">
-                {badge}
-              </span>
-            ) : null}
-          </Link>
-        ))}
-      </nav>
-      <VaultSheet
-        open={vaultSheetOpen}
-        onOpenChange={setVaultSheetOpen}
-        onLock={handleLock}
-        onSignOut={() => setShowSignOutConfirm(true)}
-        username={session.get()?.username ?? ''}
-        theme={theme}
-        onThemeChange={handleThemeChange}
-        isAdmin={adminStatus?.isAdmin ?? false}
-      />
-      <Suspense fallback={null}>
-        <CommandPalette
-          open={paletteOpen}
-          onOpenChange={setPaletteOpen}
-          onLockRequested={handleLock}
-          onSignOutRequested={() => setShowSignOutConfirm(true)}
-          onToggleTheme={() =>
-            handleThemeChange(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')
-          }
-          isDark={document.documentElement.classList.contains('dark')}
-        />
-      </Suspense>
-      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-      <ResponsiveDialog
-        open={showSignOutConfirm}
-        onOpenChange={setShowSignOutConfirm}
-        title="Sign out?"
-        description="Your vault will be locked. You will need to sign in again to access it."
-        footer={
-          <>
-            <Button variant="destructive" onClick={handleLogout}>
-              Sign out
-            </Button>
-            <Button variant="outline" onClick={() => setShowSignOutConfirm(false)}>
-              Cancel
-            </Button>
-          </>
-        }
-      />
-    </div>
+            </ListPanelAnimator>
+            <MainAnimator
+              isMobile={isMobile}
+              showListPanel={showListPanel}
+              mobileHideList={mobileHideList}
+            >
+              <Outlet />
+            </MainAnimator>
+          </div>
+          <BottomTabBar
+            showListPanel={showListPanel}
+            trashCount={trashCount}
+            inert={vaultSheetOpen}
+          />
+          <VaultSheet
+            open={vaultSheetOpen}
+            onOpenChange={setVaultSheetOpen}
+            onLock={handleLock}
+            onSignOut={() => setShowSignOutConfirm(true)}
+            username={session.get()?.username ?? ''}
+            theme={theme}
+            onThemeChange={handleThemeChange}
+            isAdmin={adminStatus?.isAdmin ?? false}
+          />
+          <Suspense fallback={null}>
+            <CommandPalette
+              open={paletteOpen}
+              onOpenChange={setPaletteOpen}
+              onLockRequested={handleLock}
+              onSignOutRequested={() => setShowSignOutConfirm(true)}
+              onToggleTheme={() =>
+                handleThemeChange(
+                  theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark',
+                )
+              }
+              isDark={document.documentElement.classList.contains('dark')}
+            />
+          </Suspense>
+          <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+          <ResponsiveDialog
+            open={showSignOutConfirm}
+            onOpenChange={setShowSignOutConfirm}
+            title="Sign out?"
+            description="Your vault will be locked. You will need to sign in again to access it."
+            footer={
+              <>
+                <Button variant="destructive" onClick={handleLogout}>
+                  Sign out
+                </Button>
+                <Button variant="outline" onClick={() => setShowSignOutConfirm(false)}>
+                  Cancel
+                </Button>
+              </>
+            }
+          />
+        </div>
+      </SyncBoundary>
+    </>
   );
 }

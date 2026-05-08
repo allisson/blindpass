@@ -77,6 +77,51 @@ The recovery ceremony. Decrypts **MasterKey** with the **RecoveryKey** mnemonic,
 **Rekey**:
 The re-wrap ceremony. Given a held **MasterKey** and a new password, derives a new **KEK**, generates a new **RecoveryKey**, and produces fresh `{encryptedMasterKey, encryptedMasterKeyForRecovery, encryptedRecoveryKey}` for `POST /auth/recovery/complete`. Zeros the new **KEK** before returning.
 
+### Browser VaultItem editor
+
+**VaultItemFieldsComponent**:
+The per-type editor module for one **VaultItem** discriminator (login, secure_note, payment_card, identity, totp, developer_credential, crypto_wallet). Lives under `components/vault/item-fields/<Type>Fields.tsx`. Owns its type-specific fields, validation, and any local reveal/mode-switch UI. Reads RHF methods through `useFormContext()` so the outer shell doesn't prop-drill.
+
+**VaultItemFieldsRegistry**:
+The `Record<VaultItem['type'], {schema, Component}>` map exported from `components/vault/item-fields/index.ts`. The outer **ItemForm** shell looks up the active type and renders the registered component inside a `FormProvider`. Schemas are imported from `@blindpass/vault` so the wire schema stays the source of truth.
+
+### Browser ceremony plumbing
+
+**CeremonyPhase**:
+The typed step a browser keychain ceremony reports while running: `'idle' | 'fetching_keys' | 'deriving_kek' | 'decrypting' | 'finalizing' | 'done' | 'error'`. UI labels are derived from the phase, not from free-form messages. Lets KDF progress and network steps be distinguished without each route re-inventing copy.
+
+**CeremonyError**:
+The discriminated-union error returned by every browser keychain ceremony hook. Shape: `{code: 'wrong_password' | 'session_expired' | 'network' | 'no_vault' | 'kdf_failed' | 'unknown', message: string, cause?: unknown}`. Routes pattern-match on `code` for UX (re-prompt vs redirect to `/login` vs toast). Mirrors the server-side **ServiceResult** intent on the client.
+
+**runCeremony**:
+The shared core that wraps every **UnlockWithPassword**, **UnlockWithRecovery**, and **Rekey** hook. Owns phase transitions, **CeremonyError** mapping, key zeroing on failure, and the final `session.set` write on success. Accepts injected `{api, primitives}` so tests substitute fakes without mocking modules.
+
+### Browser mutation builder
+
+**useOptimisticListMutation**:
+The hook wrapper used by every browser mutation that touches a list-shaped query (e.g. `vaultItems`, `trashItems`). Caller declares `{queryKey, patch: {kind: 'append' | 'updateById' | 'removeById', ...}, mutationFn, errorMessage?, syncOnSuccess?}`; wrapper composes optimistic apply → rollback → toast → invalidate → **SyncBoundary** `forceSync`. One audit point for the optimistic UX contract.
+
+### Browser keychain access
+
+**KeychainRequired**:
+The React context boundary mounted inside `_vault/route.tsx` that gates every authenticated subtree on a hot **Keychain**. If `session.get()?.keychain` is `null` at mount or becomes `null` mid-render, the boundary redirects to `/unlock`; otherwise it provides the unwrapped Keychain via `useKeychain()`. Children type the Keychain as non-null and never have to re-check.
+
+**useKeychain**:
+The hook exposed by **KeychainRequired**. Returns the held `{masterKey, vaultKey, keyPair, vaults}` plus the helpers `decryptItem(envelope)`, `encryptItem(payload)`, and `getVaultKey(vaultId)`. Every **VaultItem** decrypt and encrypt in the browser routes through these helpers — a single audit point for memory hygiene and `EncryptedVaultItem` envelope handling.
+
+**CachedVaultItem**:
+The IndexedDB-at-rest shape for an **EncryptedVaultItem**. Same fields as the wire envelope; distinct name signals intent (cache vs network). Lives in `lib/vaultCache.ts`. Cleared on `session.lock()` and `session.clear()` — ciphertext never outlives the keychain that can read it.
+
+### Browser sync
+
+**SyncEngine**:
+The pluggable adapter that performs one round of vault synchronisation: pulls **EncryptedVaultItem** changes since the last cursor, pushes pending local mutations, updates `vaultCache`. Pure I/O; no React. Exposes `runOnce()`, `subscribe(listener)`, and emits typed `SyncEvent`s (`started`, `succeeded`, `failed`).
+_Avoid_: syncer, sync service.
+
+**SyncBoundary**:
+The React context provider mounted inside `_vault/route` that owns one **SyncEngine** lifecycle and surfaces sync state to the layout. Triggers a run on mount, on interval, on window focus, and after each successful **VaultItem** mutation (squash-merged). Exposes `{phase: 'idle' | 'syncing' | 'error', lastError, pendingItemIds: Set<string>, lastSyncedAt, forceSync(), markPending(id), clearPending(id)}`. Retries failed runs with capped exponential backoff; toast surfaces single failures, persistent banner surfaces stuck state. Tests substitute a fake **SyncEngine** through the provider's `engine` prop.
+_Avoid_: SyncProvider (the term is **SyncBoundary**; the React component happens to be a provider).
+
 ## Relationships
 
 - A user has one **KEK** salt → derives one **KEK** → wraps one **MasterKey** → wraps many **VaultKeys** → each wraps many **ItemKeys**.

@@ -30,7 +30,6 @@ import { type DecryptedItem, useVaultItems } from '@/hooks/useVault';
 import { useFolders } from '@/hooks/useFolders';
 import { getItemSubtitle } from '@/components/vault/ItemCard';
 import { session } from '@/lib/session';
-import { vaultSync } from '@/lib/vaultSync';
 
 type Action = {
   id: string;
@@ -224,7 +223,6 @@ export function CommandPalette({
           if (s) {
             session.switchVault(v.id);
             qc.removeQueries();
-            vaultSync.startPolling(v.id, qc);
             window.dispatchEvent(new CustomEvent('bp:vault-switch'));
             void router.invalidate();
           }
@@ -246,7 +244,9 @@ export function CommandPalette({
     }
 
     for (const item of items) {
-      const subtitle = getItemSubtitle(item) || item.type.replace('_', ' ');
+      const subtitle =
+        getItemSubtitle(item as unknown as { type: string; [key: string]: unknown }) ||
+        item.type.replace('_', ' ');
       const cred = itemPasswordOrCode(item);
       list.push({
         id: `item:${item.id}`,

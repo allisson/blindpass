@@ -45,14 +45,14 @@ function NewItemPage() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(folderId);
 
   async function handleSubmit(data: VaultItem) {
-    let itemId: string;
+    let result: { id: string };
     try {
-      itemId = await createItem.mutateAsync({ vaultItem: data, folderId: selectedFolderId });
+      result = await createItem.mutateAsync({ vaultItem: data, folderId: selectedFolderId });
     } catch {
       return;
     }
     toast.success('Item created');
-    navigate({ to: '/$itemId', params: { itemId } });
+    navigate({ to: '/$itemId', params: { itemId: result.id } });
   }
 
   const breadcrumb = (

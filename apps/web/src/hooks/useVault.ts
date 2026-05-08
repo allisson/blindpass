@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { decryptVaultItem, encryptVaultItem, encryptVaultMetadata } from '@blindpass/vault';
+import { decryptVaultItem, encryptVaultMetadata } from '@blindpass/vault';
 import { generateKey, encryptSymmetric, decryptSymmetric } from '@blindpass/crypto';
 import type { VaultItem } from '@blindpass/vault';
-import type { EncryptedGlobalTrashedItem, EncryptedVaultItem } from '@blindpass/api-schema';
+import type { EncryptedGlobalTrashedItem } from '@blindpass/api-schema';
 import { api } from '@/lib/api';
 import { extractErrorMessage } from '@/lib/errors';
 import { fetchAllPages } from '@/lib/fetchAllPages';
@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { session } from '@/lib/session';
 import { fromBase64EncryptedValue, toBase64EncryptedValue } from '@/lib/b64';
 import { vaultCache } from '@/lib/vaultCache';
-import { vaultSync } from '@/lib/vaultSync';
+import { useKeychain } from '@/components/keychain/KeychainRequired';
+import { useOptimisticListMutation } from './useOptimisticListMutation';
 import { VAULT_ITEMS_KEY, TRASH_ITEMS_KEY, FOLDERS_KEY } from './queryKeys';
 
 export { VAULT_ITEMS_KEY, TRASH_ITEMS_KEY };
@@ -22,48 +23,26 @@ export type DecryptedItem = VaultItem & {
   createdAt?: string;
 };
 
-function getSession() {
-  const s = session.get();
-  if (!s?.keychain) throw new Error('Not authenticated');
-  return s as typeof s & { keychain: NonNullable<typeof s.keychain> };
-}
-
-async function decryptItem(item: EncryptedVaultItem, vaultKey: Uint8Array): Promise<DecryptedItem> {
-  const itemKey = await decryptSymmetric(fromBase64EncryptedValue(item.encryptedItemKey), vaultKey);
-  const vaultItem = await decryptVaultItem(fromBase64EncryptedValue(item.encryptedData), itemKey);
-  itemKey.fill(0);
-  return {
-    ...vaultItem,
-    id: item.id,
-    folderId: item.folderId,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-  };
-}
-
 export function useVaultItems() {
+  const k = useKeychain();
   return useQuery({
     queryKey: VAULT_ITEMS_KEY,
     queryFn: async () => {
-      const s = getSession();
-
       if (!navigator.onLine) {
-        const cached = await vaultCache.getItems(s.activeVaultId);
-        return Promise.all(
-          cached.map((item) => decryptItem(item as EncryptedVaultItem, s.keychain.vaultKey)),
-        );
+        const cached = await vaultCache.getItems(k.activeVaultId);
+        return Promise.all(cached.map((item) => k.decryptItem(item)));
       }
 
       const items = await fetchAllPages((cursor) =>
         api
-          .getItems(s.activeVaultId, cursor)
+          .getItems(k.activeVaultId, cursor)
           .then((r) => ({ data: r.items, nextCursor: r.nextCursor })),
       );
 
       void vaultCache.upsertItems(
         items.map((item) => ({
           id: item.id,
-          vaultId: s.activeVaultId,
+          vaultId: k.activeVaultId,
           folderId: item.folderId,
           encryptedData: item.encryptedData,
           encryptedItemKey: item.encryptedItemKey,
@@ -72,79 +51,57 @@ export function useVaultItems() {
         })),
       );
 
-      return Promise.all(items.map((item) => decryptItem(item, s.keychain.vaultKey)));
+      return Promise.all(items.map((item) => k.decryptItem(item)));
     },
   });
 }
 
 export function useCreateItem() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      vaultItem,
-      folderId,
-    }: {
-      vaultItem: VaultItem;
-      folderId?: string | null;
-    }) => {
-      const s = getSession();
-      const itemKey = await generateKey();
-      const encryptedData = await encryptVaultItem(vaultItem, itemKey);
-      const encryptedItemKey = await encryptSymmetric(itemKey, s.keychain.vaultKey);
-      itemKey.fill(0);
-      const { item } = await api.createItem(s.activeVaultId, {
-        encryptedData: toBase64EncryptedValue(encryptedData),
-        encryptedItemKey: toBase64EncryptedValue(encryptedItemKey),
+  const k = useKeychain();
+  return useOptimisticListMutation<
+    { vaultItem: VaultItem; folderId?: string | null },
+    { id: string },
+    DecryptedItem
+  >({
+    queryKey: VAULT_ITEMS_KEY,
+    errorMessage: 'Failed to save item',
+    mutationFn: async ({ vaultItem, folderId }) => {
+      const { encryptedData, encryptedItemKey } = await k.encryptItem(vaultItem);
+      const { item } = await api.createItem(k.activeVaultId, {
+        encryptedData,
+        encryptedItemKey,
         folderId: folderId ?? undefined,
       });
-      return item.id;
+      return { id: item.id };
     },
-    onMutate: async ({ vaultItem, folderId }) => {
-      await qc.cancelQueries({ queryKey: VAULT_ITEMS_KEY });
-      const previous = qc.getQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY);
-      const tempId = `pending-${Date.now()}`;
-      qc.setQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY, (old) => [
-        ...(old ?? []),
-        { ...vaultItem, id: tempId, folderId: folderId ?? null },
-      ]);
-      return { previous };
+    patch: {
+      kind: 'append',
+      build: ({ vaultItem, folderId }) =>
+        ({
+          ...vaultItem,
+          id: `pending-${Date.now()}`,
+          folderId: folderId ?? null,
+        }) as DecryptedItem,
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(VAULT_ITEMS_KEY, ctx.previous);
-      toast.error(extractErrorMessage(_err, 'Failed to save item'));
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY }),
   });
 }
 
 export function useUpdateItem() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, vaultItem }: { id: string; vaultItem: VaultItem }) => {
-      const s = getSession();
-      const itemKey = await generateKey();
-      const encryptedData = await encryptVaultItem(vaultItem, itemKey);
-      const encryptedItemKey = await encryptSymmetric(itemKey, s.keychain.vaultKey);
-      itemKey.fill(0);
-      await api.updateItem(s.activeVaultId, id, {
-        encryptedData: toBase64EncryptedValue(encryptedData),
-        encryptedItemKey: toBase64EncryptedValue(encryptedItemKey),
-      });
+  const k = useKeychain();
+  return useOptimisticListMutation<{ id: string; vaultItem: VaultItem }, void, DecryptedItem>({
+    queryKey: VAULT_ITEMS_KEY,
+    errorMessage: 'Failed to update item',
+    mutationFn: async ({ id, vaultItem }) => {
+      const { encryptedData, encryptedItemKey } = await k.encryptItem(vaultItem);
+      await api.updateItem(k.activeVaultId, id, { encryptedData, encryptedItemKey });
     },
-    onMutate: async ({ id, vaultItem }) => {
-      await qc.cancelQueries({ queryKey: VAULT_ITEMS_KEY });
-      const previous = qc.getQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY);
-      qc.setQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY, (old) =>
-        old?.map((item) => (item.id === id ? { ...item, ...vaultItem } : item)),
-      );
-      return { previous };
+    patch: {
+      kind: 'updateById',
+      id: ({ id }) => id,
+      merge: ({ vaultItem }, prev) => ({ ...prev, ...vaultItem }) as DecryptedItem,
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(VAULT_ITEMS_KEY, ctx.previous);
-      toast.error(extractErrorMessage(_err, 'Failed to update item'));
-    },
-    onSuccess: (_data, { id }) => {
-      qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY });
+    onSuccessExtra: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ['itemVersions', id] });
     },
   });
@@ -153,14 +110,14 @@ export function useUpdateItem() {
 export type DecryptedVersion = VaultItem & { versionNum: number; createdAt: string };
 
 export function useItemVersions(itemId: string) {
+  const k = useKeychain();
   return useQuery({
     queryKey: ['itemVersions', itemId],
     enabled: !!itemId,
     queryFn: async () => {
-      const s = getSession();
       return fetchAllPages((cursor) =>
         api
-          .getVersions(s.activeVaultId, itemId, cursor)
+          .getVersions(k.activeVaultId, itemId, cursor)
           .then((r) => ({ data: r.versions, nextCursor: r.nextCursor })),
       );
     },
@@ -168,16 +125,16 @@ export function useItemVersions(itemId: string) {
 }
 
 export function useItemVersion(itemId: string, versionId: string | null) {
+  const k = useKeychain();
   return useQuery({
     queryKey: ['itemVersion', itemId, versionId],
     enabled: versionId !== null,
     queryFn: async () => {
       if (!versionId) return null;
-      const s = getSession();
-      const { version } = await api.getVersion(s.activeVaultId, itemId, versionId);
+      const { version } = await api.getVersion(k.activeVaultId, itemId, versionId);
       const itemKey = await decryptSymmetric(
         fromBase64EncryptedValue(version.encryptedItemKey),
-        s.keychain.vaultKey,
+        k.vaultKey,
       );
       const vaultItem = await decryptVaultItem(
         fromBase64EncryptedValue(version.encryptedData),
@@ -194,25 +151,15 @@ export function useItemVersion(itemId: string, versionId: string | null) {
 }
 
 export function useDeleteItem() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const s = getSession();
-      await api.deleteItem(s.activeVaultId, id);
+  const k = useKeychain();
+  return useOptimisticListMutation<string, void, DecryptedItem>({
+    queryKey: VAULT_ITEMS_KEY,
+    errorMessage: 'Failed to delete item',
+    mutationFn: async (id) => {
+      await api.deleteItem(k.activeVaultId, id);
     },
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: VAULT_ITEMS_KEY });
-      const previous = qc.getQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY);
-      qc.setQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY, (old) =>
-        old?.filter((item) => item.id !== id),
-      );
-      return { previous };
-    },
-    onError: (_err, _id, ctx) => {
-      if (ctx?.previous) qc.setQueryData(VAULT_ITEMS_KEY, ctx.previous);
-      toast.error(extractErrorMessage(_err, 'Failed to delete item'));
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: TRASH_ITEMS_KEY }),
+    patch: { kind: 'removeById', id: (id) => id },
+    alsoInvalidate: [TRASH_ITEMS_KEY],
   });
 }
 
@@ -233,16 +180,16 @@ async function decryptTrashedItem(
 }
 
 export function useTrashItems() {
+  const k = useKeychain();
   return useQuery({
     queryKey: TRASH_ITEMS_KEY,
     queryFn: async () => {
-      const s = getSession();
       const items = await fetchAllPages((cursor) =>
         api.getGlobalTrash(cursor).then((r) => ({ data: r.items, nextCursor: r.nextCursor })),
       );
       return Promise.all(
         items.map((item) => {
-          const vaultEntry = s.vaults.get(item.vaultId);
+          const vaultEntry = k.vaults.get(item.vaultId);
           if (!vaultEntry) throw new Error(`Vault not found for trash item: ${item.vaultId}`);
           return decryptTrashedItem(item, vaultEntry.vaultKey);
         }),
@@ -261,13 +208,17 @@ export function useActiveVaultId() {
 }
 
 export function useMoveItem() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, folderId }: { id: string; folderId: string | null }) => {
-      const s = getSession();
-      await api.moveItem(s.activeVaultId, id, { folderId });
+  const k = useKeychain();
+  return useOptimisticListMutation<{ id: string; folderId: string | null }, void, DecryptedItem>({
+    queryKey: VAULT_ITEMS_KEY,
+    mutationFn: async ({ id, folderId }) => {
+      await api.moveItem(k.activeVaultId, id, { folderId });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY }),
+    patch: {
+      kind: 'updateById',
+      id: ({ id }) => id,
+      merge: ({ folderId }, prev) => ({ ...prev, folderId }),
+    },
   });
 }
 
@@ -279,24 +230,27 @@ export function useSwitchVault() {
     qc.removeQueries({ queryKey: TRASH_ITEMS_KEY });
     qc.removeQueries({ queryKey: FOLDERS_KEY });
     qc.removeQueries({ predicate: (q) => q.queryKey[0] === 'itemVersions' });
-    vaultSync.startPolling(vaultId, qc);
+    window.dispatchEvent(new CustomEvent('bp:vault-switch'));
   };
 }
 
 export function useCreateVault() {
+  const k = useKeychain();
   return useMutation({
     mutationFn: async (name: string) => {
-      const s = getSession();
       const vaultKey = await generateKey();
-      const encryptedVaultKey = await encryptSymmetric(vaultKey, s.keychain.masterKey);
+      const encryptedVaultKey = await encryptSymmetric(vaultKey, k.masterKey);
       const encryptedVaultData = await encryptVaultMetadata({ name }, vaultKey);
       const { vault } = await api.createVault({
         encryptedVaultKey: toBase64EncryptedValue(encryptedVaultKey),
         encryptedVaultData: toBase64EncryptedValue(encryptedVaultData),
       });
-      s.vaults.set(vault.id, { vaultKey, name, isShared: false });
-      s.activeVaultId = vault.id;
-      s.keychain.vaultKey = vaultKey;
+      const s = session.get();
+      if (s) {
+        s.vaults.set(vault.id, { vaultKey, name, isShared: false });
+        s.activeVaultId = vault.id;
+        if (s.keychain) s.keychain.vaultKey = vaultKey;
+      }
       window.dispatchEvent(new CustomEvent('bp:vault-switch'));
       return vault;
     },
@@ -304,10 +258,10 @@ export function useCreateVault() {
 }
 
 export function useRenameVault() {
+  const k = useKeychain();
   return useMutation({
     mutationFn: async ({ vaultId, name }: { vaultId: string; name: string }) => {
-      const s = getSession();
-      const entry = s.vaults.get(vaultId);
+      const entry = k.vaults.get(vaultId);
       if (!entry) throw new Error('Vault not found');
       const encryptedVaultData = await encryptVaultMetadata({ name }, entry.vaultKey);
       await api.updateVault(vaultId, {
@@ -319,48 +273,26 @@ export function useRenameVault() {
 }
 
 export function useRestoreItem() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, vaultId }: { id: string; vaultId: string }) => {
+  return useOptimisticListMutation<{ id: string; vaultId: string }, void, DecryptedTrashedItem>({
+    queryKey: TRASH_ITEMS_KEY,
+    errorMessage: 'Failed to restore item',
+    mutationFn: async ({ id, vaultId }) => {
       await api.restoreItem(vaultId, id);
     },
-    onMutate: async ({ id }) => {
-      await qc.cancelQueries({ queryKey: TRASH_ITEMS_KEY });
-      const previous = qc.getQueryData<DecryptedTrashedItem[]>(TRASH_ITEMS_KEY);
-      qc.setQueryData<DecryptedTrashedItem[]>(TRASH_ITEMS_KEY, (old) =>
-        old?.filter((item) => item.id !== id),
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(TRASH_ITEMS_KEY, ctx.previous);
-      toast.error(extractErrorMessage(_err, 'Failed to restore item'));
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY });
-      qc.invalidateQueries({ queryKey: TRASH_ITEMS_KEY });
-    },
+    patch: { kind: 'removeById', id: ({ id }) => id },
+    alsoInvalidate: [VAULT_ITEMS_KEY],
   });
 }
 
 export function usePurgeItem() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, vaultId }: { id: string; vaultId: string }) => {
+  return useOptimisticListMutation<{ id: string; vaultId: string }, void, DecryptedTrashedItem>({
+    queryKey: TRASH_ITEMS_KEY,
+    errorMessage: 'Failed to permanently delete item',
+    mutationFn: async ({ id, vaultId }) => {
       await api.purgeItem(vaultId, id);
     },
-    onMutate: async ({ id }) => {
-      await qc.cancelQueries({ queryKey: TRASH_ITEMS_KEY });
-      const previous = qc.getQueryData<DecryptedTrashedItem[]>(TRASH_ITEMS_KEY);
-      qc.setQueryData<DecryptedTrashedItem[]>(TRASH_ITEMS_KEY, (old) =>
-        old?.filter((item) => item.id !== id),
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) qc.setQueryData(TRASH_ITEMS_KEY, ctx.previous);
-      toast.error(extractErrorMessage(_err, 'Failed to permanently delete item'));
-    },
+    patch: { kind: 'removeById', id: ({ id }) => id },
+    syncOnSuccess: false,
   });
 }
 

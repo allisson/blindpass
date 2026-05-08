@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
-import { registerUserKeysRoute } from '../keys.js';
+import { registerUserKeysRoute, USER_KEYS_GET_RATE_LIMIT_MAX } from '../keys.js';
 
 function makeChain(result: unknown) {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -114,8 +114,8 @@ describe('rate limiting', () => {
     registerUserKeysRoute(app);
     await app.ready();
 
-    // GET /user/keys has max: 30 per minute — exhaust with 30 requests
-    for (let i = 0; i < 30; i++) {
+    // GET /user/keys has a route-specific cap — exhaust it, then confirm 429.
+    for (let i = 0; i < USER_KEYS_GET_RATE_LIMIT_MAX; i++) {
       await app.inject({ method: 'GET', url: '/user/keys' });
     }
     const res = await app.inject({ method: 'GET', url: '/user/keys' });

@@ -1,10 +1,11 @@
 import { Link } from '@tanstack/react-router';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, RefreshCw } from 'lucide-react';
 import { memo, useState } from 'react';
 import { toast } from 'sonner';
 import { generateTotpCode } from '@blindpass/crypto';
 import { getAvatarColor, withAlpha } from '@/lib/avatar';
 import type { DecryptedItem } from '@/hooks/useVault';
+import { useSyncBoundary } from '@/components/sync/SyncBoundary';
 import { ItemAvatar } from './ItemAvatar';
 
 interface Props {
@@ -47,6 +48,8 @@ export function getItemSubtitle(item: { type: string; [key: string]: unknown }):
 export const ItemCard = memo(function ItemCard({ item, isWeak, isReused }: Props) {
   const [copied, setCopied] = useState(false);
   const color = getAvatarColor(item.title);
+  const { pendingItemIds } = useSyncBoundary();
+  const isPending = pendingItemIds.has(item.id);
 
   async function handleCopy(e: React.MouseEvent) {
     e.preventDefault();
@@ -85,6 +88,13 @@ export const ItemCard = memo(function ItemCard({ item, isWeak, isReused }: Props
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+          {isPending && (
+            <RefreshCw
+              className="w-3 h-3 text-primary animate-spin shrink-0"
+              aria-label="Saving"
+              data-testid="item-pending-spinner"
+            />
+          )}
           {(isWeak || isReused) && (
             <span className="flex items-center gap-1 shrink-0">
               {isWeak && (

@@ -1,4 +1,9 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { z } from 'zod';
+import type { VaultItem } from '@blindpass/vault';
+import { ItemForm } from '@/components/vault/ItemForm';
+import { useUpdateItem } from '@/hooks/useVault';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import {
   ArrowLeft,
   Check,
@@ -15,7 +20,7 @@ import {
 } from 'lucide-react';
 import type { DecryptedItem } from '@/hooks/useVault';
 import { toast } from 'sonner';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useCopyWithAutoClear } from '@/hooks/useCopyWithAutoClear';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
@@ -29,7 +34,6 @@ import { TotpCode } from '@/components/vault/TotpCode';
 import { getAvatarColor, withAlpha } from '@/lib/avatar';
 import { ItemAvatar } from '@/components/vault/ItemAvatar';
 import { session } from '@/lib/session';
-import { pushRecentlyViewed } from '@/lib/recentlyViewed';
 
 function getHostname(url: string): string {
   try {
@@ -39,7 +43,20 @@ function getHostname(url: string): string {
   }
 }
 
+const itemSearchSchema = z.object({
+  edit: z.literal('1').optional(),
+});
+
 export const Route = createFileRoute('/_vault/$itemId')({
+  validateSearch: itemSearchSchema,
+  beforeLoad: ({ params, search }) => {
+    if (search.edit !== '1') return;
+    const s = session.get();
+    const isReadOnly = s ? s.vaults.get(s.activeVaultId)?.role === 'viewer' : false;
+    if (isReadOnly) {
+      throw redirect({ to: '/$itemId', params: { itemId: params.itemId } });
+    }
+  },
   component: ItemDetailPage,
 });
 
@@ -400,20 +417,35 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
 
 function ItemDetailPage() {
   const { itemId } = Route.useParams();
+  const search = Route.useSearch();
+  const isEditing = search.edit === '1';
   const navigate = useNavigate();
   const { data: items, isLoading } = useVaultItems();
   const { data: folders = [] } = useFolders();
   const deleteItem = useDeleteItem();
   const moveItem = useMoveItem();
+  const updateItem = useUpdateItem();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [folderPopoverOpen, setFolderPopoverOpen] = useState(false);
   const s = session.get();
   const isReadOnly = s ? s.vaults.get(s.activeVaultId)?.role === 'viewer' : false;
   const reduceMotion = useReducedMotion();
 
-  useEffect(() => {
-    if (s?.activeVaultId && itemId) pushRecentlyViewed(s.activeVaultId, itemId);
-  }, [itemId, s?.activeVaultId]);
+  useRecentlyViewed(itemId);
+
+  function exitEditMode() {
+    navigate({ to: '/$itemId', params: { itemId }, search: {} });
+  }
+
+  function enterEditMode() {
+    navigate({ to: '/$itemId', params: { itemId }, search: { edit: '1' } });
+  }
+
+  async function handleEditSubmit(data: VaultItem) {
+    await updateItem.mutateAsync({ id: itemId, vaultItem: data });
+    toast.success('Changes saved');
+    exitEditMode();
+  }
 
   if (isLoading) {
     return (
@@ -487,14 +519,14 @@ function ItemDetailPage() {
         <span className="hidden lg:inline-flex items-center text-[10px] uppercase font-mono text-muted-foreground/70 bg-muted px-1.5 py-px rounded">
           {item.type.replace('_', ' ')}
         </span>
-        {!isReadOnly && (
+        {!isReadOnly && !isEditing && (
           <>
             <Button
               size="sm"
               variant="default"
               data-testid="action-bar-edit"
               aria-label="Edit item"
-              onClick={() => navigate({ to: '/$itemId/edit', params: { itemId } })}
+              onClick={enterEditMode}
               className="h-7 gap-1"
             >
               <PencilLine className="w-3.5 h-3.5" />
@@ -521,110 +553,135 @@ function ItemDetailPage() {
             </Popover>
           </>
         )}
+        {isEditing && (
+          <span className="text-[10px] uppercase font-mono text-primary bg-primary/10 px-1.5 py-px rounded">
+            Editing
+          </span>
+        )}
       </div>
-      <div className="p-6 max-w-2xl">
-        {/* Gradient header */}
-        <div
-          className="relative -mx-6 -mt-6 mb-6 px-6 pt-8 pb-5"
-          style={{
-            background: `linear-gradient(180deg, ${withAlpha(color, 0.1)} 0%, transparent 100%)`,
-          }}
-        >
-          <div className="flex items-start gap-4">
-            <ItemAvatar item={item} size="lg" />
-            <div className="flex-1 min-w-0 pt-1.5">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">{item.title}</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                {itemUrl && (
-                  <a
-                    href={itemUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-                  >
-                    <Globe className="w-3 h-3" />
-                    {getHostname(itemUrl)}
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                )}
-                {isReadOnly ? (
-                  currentFolder && (
-                    <span
-                      data-testid="item-folder"
-                      className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground"
+      {isEditing ? (
+        <div className="p-4 md:p-6 max-w-2xl">
+          <div className="rounded-lg border border-border bg-card p-4 md:p-6">
+            <ItemForm
+              key={item.id}
+              type={item.type}
+              defaultValues={item}
+              onSubmit={handleEditSubmit}
+              onCancel={exitEditMode}
+              submitLabel="Save changes"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 max-w-2xl">
+          {/* Gradient header */}
+          <div
+            className="relative -mx-6 -mt-6 mb-6 px-6 pt-8 pb-5"
+            style={{
+              background: `linear-gradient(180deg, ${withAlpha(color, 0.1)} 0%, transparent 100%)`,
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <ItemAvatar item={item} size="lg" />
+              <div className="flex-1 min-w-0 pt-1.5">
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                  {item.title}
+                </h1>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  {itemUrl && (
+                    <a
+                      href={itemUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
                     >
-                      <Folder className="w-3 h-3" />
-                      {currentFolder.name}
-                    </span>
-                  )
-                ) : (
-                  <Popover open={folderPopoverOpen} onOpenChange={setFolderPopoverOpen}>
-                    <PopoverTrigger
-                      data-testid="move-folder-trigger"
-                      className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-                    >
-                      <Folder className="w-3 h-3" />
-                      {currentFolder ? currentFolder.name : 'No folder'}
-                      <ChevronDown className="w-2.5 h-2.5" />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      data-testid="folder-popover-content"
-                      align="start"
-                      className="w-40 p-1"
-                    >
-                      <button
-                        data-testid="move-folder-none"
-                        onClick={() => void handleMoveToFolder(null)}
-                        className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
-                          !item.folderId
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                        }`}
+                      <Globe className="w-3 h-3" />
+                      {getHostname(itemUrl)}
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  )}
+                  {isReadOnly ? (
+                    currentFolder && (
+                      <span
+                        data-testid="item-folder"
+                        className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground"
                       >
-                        No folder
-                      </button>
-                      {folders.map((f) => (
+                        <Folder className="w-3 h-3" />
+                        {currentFolder.name}
+                      </span>
+                    )
+                  ) : (
+                    <Popover open={folderPopoverOpen} onOpenChange={setFolderPopoverOpen}>
+                      <PopoverTrigger
+                        data-testid="move-folder-trigger"
+                        className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+                      >
+                        <Folder className="w-3 h-3" />
+                        {currentFolder ? currentFolder.name : 'No folder'}
+                        <ChevronDown className="w-2.5 h-2.5" />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        data-testid="folder-popover-content"
+                        align="start"
+                        className="w-40 p-1"
+                      >
                         <button
-                          key={f.id}
-                          data-testid={`move-folder-option-${f.id}`}
-                          onClick={() => void handleMoveToFolder(f.id)}
+                          data-testid="move-folder-none"
+                          onClick={() => void handleMoveToFolder(null)}
                           className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
-                            item.folderId === f.id
+                            !item.folderId
                               ? 'bg-primary/10 text-primary'
                               : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                           }`}
                         >
-                          {f.name}
+                          No folder
                         </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                )}
+                        {folders.map((f) => (
+                          <button
+                            key={f.id}
+                            data-testid={`move-folder-option-${f.id}`}
+                            onClick={() => void handleMoveToFolder(f.id)}
+                            className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+                              item.folderId === f.id
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                            }`}
+                          >
+                            {f.name}
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {item.type === 'totp' && <TotpCode item={item} />}
-        <div className="space-y-3">
-          <ItemFields item={item} color={color} />
-          {(item.customFields?.length ?? 0) > 0 && (
-            <div>
-              <SectionLabel label="Custom fields" />
-              <div
-                className="divide-y rounded-2xl overflow-hidden"
-                style={{ border: `1px solid ${withAlpha(color, 0.25)}`, background: 'var(--card)' }}
-              >
-                {item.customFields!.map((f, i) => (
-                  <FieldRow key={i} label={f.label} value={f.value} />
-                ))}
+          {item.type === 'totp' && <TotpCode item={item} />}
+          <div className="space-y-3">
+            <ItemFields item={item} color={color} />
+            {(item.customFields?.length ?? 0) > 0 && (
+              <div>
+                <SectionLabel label="Custom fields" />
+                <div
+                  className="divide-y rounded-2xl overflow-hidden"
+                  style={{
+                    border: `1px solid ${withAlpha(color, 0.25)}`,
+                    background: 'var(--card)',
+                  }}
+                >
+                  {item.customFields!.map((f, i) => (
+                    <FieldRow key={i} label={f.label} value={f.value} />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <ItemHistory itemId={itemId} />
-      </div>
+          <ItemHistory itemId={itemId} />
+        </div>
+      )}
 
       <ResponsiveDialog
         open={showDeleteDialog}
