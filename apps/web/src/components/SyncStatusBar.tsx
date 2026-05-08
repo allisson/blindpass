@@ -1,7 +1,7 @@
 import { AlertCircle, Check, RefreshCw, WifiOff } from 'lucide-react';
-import { useSyncStatus } from '@/hooks/useSyncStatus';
-import { vaultSync } from '@/lib/vaultSync';
-import { session } from '@/lib/session';
+import { useSyncBoundary } from '@/components/sync/SyncBoundary';
+
+const STUCK_THRESHOLD = 2;
 
 function formatLastSynced(at: number | null): string {
   if (!at) return 'never';
@@ -14,42 +14,40 @@ function formatLastSynced(at: number | null): string {
 }
 
 export function SyncStatusBar() {
-  const { status, lastSyncedAt, error } = useSyncStatus();
-
-  function handleForceSync() {
-    const s = session.get();
-    if (s?.activeVaultId) void vaultSync.sync(s.activeVaultId, true);
-  }
+  const { phase, lastError, lastSyncedAt, consecutiveFailures, forceSync } = useSyncBoundary();
+  const stuck = phase === 'error' && consecutiveFailures >= STUCK_THRESHOLD;
 
   return (
     <div
       className="px-3 py-1.5 flex items-center gap-1.5"
       data-testid="sync-status-bar"
-      data-sync-status={status}
+      data-sync-status={phase}
+      data-stuck={stuck ? 'true' : undefined}
     >
-      {status === 'offline' && <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />}
-      {status === 'syncing' && <RefreshCw className="w-3 h-3 text-primary animate-spin shrink-0" />}
-      {status === 'idle' && lastSyncedAt !== null && (
+      {phase === 'offline' && <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />}
+      {phase === 'syncing' && <RefreshCw className="w-3 h-3 text-primary animate-spin shrink-0" />}
+      {phase === 'idle' && lastSyncedAt !== null && (
         <Check className="w-3 h-3 text-green-500 shrink-0" />
       )}
-      {status === 'error' && <AlertCircle className="w-3 h-3 text-destructive shrink-0" />}
+      {phase === 'error' && <AlertCircle className="w-3 h-3 text-destructive shrink-0" />}
       <span
         className={`text-[10px] flex-1 truncate ${
-          status === 'error' ? 'text-destructive' : 'text-muted-foreground'
+          phase === 'error' ? 'text-destructive' : 'text-muted-foreground'
         }`}
-        title={status === 'error' ? (error ?? undefined) : undefined}
+        title={phase === 'error' ? (lastError?.message ?? undefined) : undefined}
       >
-        {status === 'offline' &&
+        {phase === 'offline' &&
           (lastSyncedAt
             ? `Offline · last synced ${formatLastSynced(lastSyncedAt)}`
             : 'Offline · changes queued')}
-        {status === 'syncing' && 'Syncing…'}
-        {status === 'idle' && lastSyncedAt !== null && `Synced ${formatLastSynced(lastSyncedAt)}`}
-        {status === 'error' && 'Sync failed'}
+        {phase === 'syncing' && 'Syncing…'}
+        {phase === 'idle' && lastSyncedAt !== null && `Synced ${formatLastSynced(lastSyncedAt)}`}
+        {phase === 'error' &&
+          (stuck ? `Sync stuck (${consecutiveFailures} retries)` : 'Sync failed')}
       </span>
-      {status === 'error' ? (
+      {phase === 'error' ? (
         <button
-          onClick={handleForceSync}
+          onClick={() => void forceSync()}
           className="text-[10px] font-medium text-destructive hover:text-destructive/80 transition-colors shrink-0"
           aria-label="Retry sync"
           data-testid="force-sync-btn"
@@ -57,9 +55,9 @@ export function SyncStatusBar() {
           Retry
         </button>
       ) : (
-        status !== 'syncing' && (
+        phase !== 'syncing' && (
           <button
-            onClick={handleForceSync}
+            onClick={() => void forceSync()}
             className="p-0.5 rounded text-muted-foreground/60 hover:text-foreground transition-colors shrink-0"
             aria-label="Force sync"
             title="Force sync"

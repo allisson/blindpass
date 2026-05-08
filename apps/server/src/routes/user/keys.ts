@@ -5,10 +5,12 @@ import { b64 } from '../../utils/base64.js';
 import { fromUserRow } from '../../auth/bundle/from-user-row.js';
 import { findFullById, updateKeyBundle } from '../../auth/users/repository.js';
 
+export const USER_KEYS_GET_RATE_LIMIT_MAX = 120;
+
 export function registerUserKeysRoute(app: FastifyInstance): void {
   app.get(
     '/user/keys',
-    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    { config: { rateLimit: { max: USER_KEYS_GET_RATE_LIMIT_MAX, timeWindow: '1 minute' } } },
     async (request, reply) => {
       const user = await findFullById(app.db, request.userId);
       if (!user || !user.kekSalt) {

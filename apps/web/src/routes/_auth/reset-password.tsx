@@ -11,12 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { TotpQrSetup } from '@/components/ui/totp-qr-setup';
-import { api } from '@/lib/api';
 import { authFlow } from '@/lib/authFlow';
-import { rekey, unlockWithRecovery } from '@/lib/keychain';
-import { fetchAllPages } from '@/lib/fetchAllPages';
-import { session } from '@/lib/session';
-import { buildVaultsMap } from '@/lib/vaultUtils';
+import { CEREMONY_PHASE_LABEL } from '@/lib/keychain/ceremony';
+import { useUnlockWithRecovery } from '@/hooks/useUnlockWithRecovery';
 import { MIN_PASSWORD_LENGTH } from '@/lib/constants';
 
 export const Route = createFileRoute('/_auth/reset-password')({
@@ -41,11 +38,13 @@ type FormData = z.infer<typeof schema>;
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const [loadingMsg, setLoadingMsg] = useState('');
   const [recovery] = useState(() => authFlow.getRecovery());
   const [recoveryPhrase] = useState(() => authFlow.getRecoveryKey());
   const [showPasswords, setShowPasswords] = useState(false);
+  const ceremony = useUnlockWithRecovery();
+  const loadingMsg = CEREMONY_PHASE_LABEL[ceremony.phase];
+  const isRunning =
+    ceremony.phase !== 'idle' && ceremony.phase !== 'error' && ceremony.phase !== 'done';
 
   useEffect(() => {
     if (!recovery || !recoveryPhrase) {
@@ -63,72 +62,12 @@ function ResetPasswordPage() {
   const passwordValue = watch('password', '');
 
   async function onSubmit(data: FormData) {
-    setError(null);
     if (!recovery || !recoveryPhrase) return;
-
-    try {
-      const { bundle } = recovery;
-
-      setLoadingMsg('Recovering keys…');
-      const { masterKey, keyPair } = await unlockWithRecovery(recoveryPhrase, bundle);
-
-      setLoadingMsg('Deriving encryption key…');
-      const re = await rekey(masterKey, data.password);
-
-      setLoadingMsg('Completing recovery…');
-      await api.completeRecovery({
-        username: recovery.username,
-        recoveryToken: recovery.recoveryToken,
-        enrollmentId: recovery.enrollment.enrollmentId,
-        authenticatorCode: data.authenticatorCode,
-        kekSalt: re.kekSalt,
-        publicKey: bundle.publicKey,
-        encryptedMasterKey: re.encryptedMasterKey,
-        encryptedMasterKeyForRecovery: re.encryptedMasterKeyForRecovery,
-        encryptedPrivateKey: bundle.encryptedPrivateKey,
-        encryptedRecoveryKey: re.encryptedRecoveryKey,
-        recoveryVerifier: re.recoveryVerifier,
-      });
-
-      setLoadingMsg('Restoring session…');
-      const vaults = await fetchAllPages((cursor) =>
-        api.getVault(cursor).then((r) => ({ data: r.vaults, nextCursor: r.nextCursor })),
-      );
-      const vault = vaults.find((v) => !v.isShared);
-      if (!vault) throw new Error('No vault found.');
-      const vaultsMap = await buildVaultsMap(vaults, masterKey, keyPair);
-      const activeVaultId = vault.id;
-      const activeVault = vaultsMap.get(activeVaultId);
-      if (!activeVault) throw new Error('Recovered vault missing from session');
-      const keychain = { masterKey, vaultKey: activeVault.vaultKey };
-
-      authFlow.clearRecovery();
-      authFlow.setRecoveryKey(re.newRecoveryKey);
-      authFlow.setPendingSession({
-        username: recovery.username,
-        activeVaultId,
-        vaults: vaultsMap,
-        keychain,
-        keyPair,
-      });
-      session.set({
-        username: recovery.username,
-        activeVaultId,
-        vaults: vaultsMap,
-        keychain: null,
-        keyPair,
-      });
-      navigate({ to: '/recovery-key' });
-    } catch (err) {
-      setLoadingMsg('');
-      session.clear();
-      const msg = err instanceof Error ? err.message : 'Recovery failed';
-      setError(
-        msg.includes('wrong') || msg.includes('ciphertext') || msg.includes('mac')
-          ? 'Invalid recovery phrase. Check your 24 words and try again.'
-          : msg,
-      );
-    }
+    const result = await ceremony.completeRecovery({
+      newPassword: data.password,
+      authenticatorCode: data.authenticatorCode,
+    });
+    if (result.ok) navigate({ to: '/recovery-key' });
   }
 
   if (!recovery || !recoveryPhrase) return null;
@@ -143,7 +82,7 @@ function ResetPasswordPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" aria-busy={!!loadingMsg}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" aria-busy={isRunning}>
           <TotpQrSetup
             otpauthUri={recovery.enrollment.otpauthUri}
             setupKey={recovery.enrollment.setupKey}
@@ -212,8 +151,8 @@ function ResetPasswordPage() {
             </div>
             <FieldError id="rp-confirm-error" message={errors.confirmPassword?.message} />
           </div>
-          <FieldError message={error ?? undefined} />
-          <Button type="submit" className="w-full" loading={!!loadingMsg} disabled={!!loadingMsg}>
+          <FieldError message={ceremony.error?.message} />
+          <Button type="submit" className="w-full" loading={isRunning} disabled={isRunning}>
             {loadingMsg || 'Complete recovery'}
           </Button>
         </form>

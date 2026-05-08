@@ -59,4 +59,10 @@ describe('loadZxcvbn', () => {
     // weak password produces feedback
     expect(r.warning.length + r.suggestion.length).toBeGreaterThan(0);
   });
+
+  it('handles user inputs without @ sign', async () => {
+    const estimate = await loadZxcvbn();
+    const r = estimate('correct horse battery staple', ['plaintext']);
+    expect(typeof r.score).toBe('number');
+  });
 });

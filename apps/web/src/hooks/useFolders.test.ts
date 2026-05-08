@@ -38,6 +38,22 @@ vi.mock('@/lib/b64', () => ({
   toBase64EncryptedValue: vi.fn((v: unknown) => v),
 }));
 
+vi.mock('@/components/keychain/KeychainRequired', () => ({
+  useKeychain: () => ({
+    masterKey: new Uint8Array([1]),
+    vaultKey: new Uint8Array([2]),
+    keyPair: { publicKey: new Uint8Array([3]), privateKey: new Uint8Array([4]) },
+    activeVaultId: 'v1',
+    vaults: new Map([
+      ['v1', { vaultKey: new Uint8Array([2]), name: 'Personal', isShared: false, role: 'owner' }],
+    ]),
+    username: 'tester',
+    getVaultKey: () => new Uint8Array([2]),
+    decryptItem: vi.fn(),
+    encryptItem: vi.fn(),
+  }),
+}));
+
 import { api } from '@/lib/api';
 import { encryptFolderName, decryptFolderName } from '@blindpass/vault';
 
@@ -103,17 +119,7 @@ describe('useFolders', () => {
     expect(result.current.data).toEqual([]);
   });
 
-  it('fails when not authenticated', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (session.get as any).mockReturnValue(null);
-    vi.mocked(api.listFolders).mockResolvedValue({ folders: [] } as never);
-
-    const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useFolders(), { wrapper });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as Error).message).toBe('Not authenticated');
-  });
+  // No-session error path now handled by KeychainRequired boundary (redirects to /unlock).
 });
 
 describe('useCreateFolder', () => {

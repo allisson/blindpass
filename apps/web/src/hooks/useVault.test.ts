@@ -81,13 +81,63 @@ vi.mock('@/lib/vaultCache', () => ({
   },
 }));
 
-vi.mock('@/lib/vaultSync', () => ({
-  vaultSync: {
-    startPolling: vi.fn(),
-    stopPolling: vi.fn(),
-    sync: vi.fn(),
-  },
+vi.mock('@/components/sync/SyncBoundary', () => ({
+  useSyncBoundary: () => ({
+    phase: 'idle',
+    lastError: null,
+    lastSyncedAt: null,
+    pendingItemIds: new Set(),
+    consecutiveFailures: 0,
+    forceSync: vi.fn().mockResolvedValue(undefined),
+    markPending: vi.fn(),
+    clearPending: vi.fn(),
+  }),
 }));
+
+vi.mock('@/components/keychain/KeychainRequired', async () => {
+  const vaultMod = await import('@blindpass/vault');
+  return {
+    useKeychain: () => ({
+      masterKey: new Uint8Array([1]),
+      vaultKey: new Uint8Array([2]),
+      keyPair: { publicKey: new Uint8Array([3]), privateKey: new Uint8Array([4]) },
+      activeVaultId: 'v1',
+      vaults: new Map([
+        ['v1', { vaultKey: new Uint8Array([2]), name: 'Personal', isShared: false, role: 'owner' }],
+      ]),
+      username: 'tester',
+      getVaultKey: () => new Uint8Array([2]),
+      decryptItem: async (envelope: {
+        id: string;
+        folderId?: string | null;
+        createdAt: string;
+        updatedAt: string;
+        encryptedData: unknown;
+        encryptedItemKey: unknown;
+      }) => {
+        const vaultItem = await vaultMod.decryptVaultItem(
+          envelope.encryptedData as never,
+          new Uint8Array(32),
+        );
+        return {
+          ...vaultItem,
+          id: envelope.id,
+          folderId: envelope.folderId,
+          createdAt: envelope.createdAt,
+          updatedAt: envelope.updatedAt,
+        };
+      },
+      encryptItem: async (payload: unknown) => {
+        const enc = await vaultMod.encryptVaultItem(payload as never, new Uint8Array(32));
+        void enc;
+        return {
+          encryptedData: { ciphertext: 'c', nonce: 'n' },
+          encryptedItemKey: { ciphertext: 'c', nonce: 'n' },
+        };
+      },
+    }),
+  };
+});
 
 import { api } from '@/lib/api';
 import { generateKey, encryptSymmetric, decryptSymmetric } from '@blindpass/crypto';
@@ -648,17 +698,7 @@ describe('useTrashItems', () => {
     expect(result.current.data![0].title).toBe('Deleted');
   });
 
-  it('fails with "Not authenticated" when no session', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (session.get as any).mockReturnValue(null);
-    vi.mocked(api.getGlobalTrash).mockResolvedValue({ items: [] } as never);
-
-    const { wrapper } = makeWrapper();
-    const { result } = renderHook(() => useTrashItems(), { wrapper });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as Error).message).toBe('Not authenticated');
-  });
+  // No-session error path now handled by KeychainRequired boundary (redirects to /unlock).
 });
 
 describe('useVaultItems', () => {
