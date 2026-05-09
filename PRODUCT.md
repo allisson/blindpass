@@ -8,7 +8,7 @@ product
 
 Privacy-pragmatic technical individuals: developers, sysadmins, and security-aware people who self-host their own infrastructure. They reach for BlindPass because they refuse to entrust their secrets to a SaaS vendor and want a tool small enough to audit themselves. They are comfortable with a terminal, comfortable reading source, and impatient with hand-holding.
 
-Their context is daily credential use across desktop browsers and (eventually) a Chrome extension. They want to unlock fast, find a secret faster, and forget the tool exists between actions. They are not the audience for marketing pastels or onboarding tours.
+Their context is daily credential use across desktop browsers. They want to unlock fast, find a secret faster, and forget the tool exists between actions. They are not the audience for marketing pastels or onboarding tours.
 
 ## Product Purpose
 

@@ -6,7 +6,6 @@
     { "path": "./packages/crypto" },
     { "path": "./packages/vault" },
     { "path": "./apps/server" },
-    { "path": "./apps/web" },
-    { "path": "./apps/extension" }
+    { "path": "./apps/web" }
   ]
 }

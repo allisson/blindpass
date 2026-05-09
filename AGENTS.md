@@ -23,7 +23,6 @@ make db:studio                 # open Drizzle Studio
 apps/
   server/      Fastify 5 REST API (TypeScript)
   web/         React 19, TanStack Router, Vite, Tailwind, shadcn/ui
-  extension/   Chrome extension Manifest V3 (React popup, Vite build)
 packages/
   api-schema/  Zod schemas shared between server and clients
   crypto/      libsodium-wrappers-sumo primitives + Argon2id key derivation
@@ -42,3 +41,17 @@ packages/
 ## Design Context
 
 UI/UX work is governed by [PRODUCT.md](PRODUCT.md) (register, users, voice, anti-references, principles) and, when present, `DESIGN.md` (visual tokens). Register is **product**; personality is _quiet, exact, sovereign_. Run `/impeccable` commands for design tasks — they load this context automatically.
+
+## Releasing
+
+Versions are bumped in **lockstep**: root `package.json` plus every workspace `package.json` move to the same number on every release. Internal packages aren't published, so per-package semver buys nothing — one version is the product version.
+
+Ritual:
+
+1. Land all release content on `main` via PR; `make ci` green.
+2. One `chore(release): X.Y.Z` PR that bumps all 7 `package.json` files and moves `[Unreleased]` into a dated `## [X.Y.Z]` section in `CHANGELOG.md`.
+3. Merge, then tag the merge commit `vX.Y.Z` and push the tag — this triggers `docker-push.yml` to publish `allisson/blindpass-server:X.Y.Z` and `allisson/blindpass-webapp:X.Y.Z` to Docker Hub.
+4. Create the GitHub release from the tag; body = the new `CHANGELOG.md` section, hand-written (do not use auto-generated notes).
+5. Verify Docker Hub has the new tags before announcing.
+
+Pre-flight: `grep '"version"'` across the 7 `package.json` files must show one consistent number.

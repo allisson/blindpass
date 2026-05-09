@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.3.0] - 2026-05-09
+
+### Changed
+
+- Repositioned README around "web-only by design" with a competitive comparison table; sharpened PRODUCT.md and AGENTS.md to drop browser-extension framing.
+
+### Removed
+
+- Browser extension scaffold (`apps/extension/`). Will not be pursued — see [ADR-0002](docs/adr/0002-no-browser-extension.md) for the security rationale (web-store supply chain, host-permission scope creep, MV3 cookie isolation).
+
 ## [0.2.1] - 2026-05-09
 
 ### Changed
