@@ -10,7 +10,7 @@
     "lint": "eslint src",
     "test": "vitest run --coverage",
     "preview": "vite preview",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --grep-invert @screenshot",
     "screenshots": "playwright test e2e/screenshots.spec.ts"
   },
   "dependencies": {
