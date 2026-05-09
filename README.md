@@ -16,6 +16,7 @@ Four containers (Web app, Server, PostgreSQL, Redis). MIT licensed. Small enough
 ## Contents
 
 - [Why BlindPass?](#-why-blindpass)
+- [Screenshots](#-screenshots)
 - [Features](#-features)
 - [How Encryption Works](#-how-encryption-works)
 - [Security](#-security)
@@ -37,6 +38,21 @@ Your master password never leaves your device — not even as a hash. Sign-in us
 BlindPass does not ask for your email address. Account creation requires only a username and a master password. There is no profile to harvest, no email address to breach, no identity to subpoena. Your account exists as an encrypted blob identified by a username you chose — nothing more.
 
 BlindPass is MIT-licensed and self-hostable on four containers — your data lives on your infrastructure, under your control. And because the codebase is small enough to audit in an afternoon, you don't have to accept security claims on faith. Read the code. Verify the crypto. Run it yourself.
+
+---
+
+## 📸 Screenshots
+
+|                                                                 |                                                                                    |
+| :-------------------------------------------------------------: | :--------------------------------------------------------------------------------: |
+|         ![Sign in](docs/screenshots/light/01-login.png)         | ![Recovery key reveal during registration](docs/screenshots/light/02-register.png) |
+|                             Sign in                             |                      Recovery key reveal during registration                       |
+|    ![Vault — populated](docs/screenshots/light/03-vault.png)    |                 ![Item detail](docs/screenshots/light/04-item.png)                 |
+|               Vault list with items of every type               |                                    Item detail                                     |
+| ![New item type picker](docs/screenshots/light/05-new-item.png) |                ![Settings](docs/screenshots/light/06-settings.png)                 |
+|                      New item type picker                       |                                      Settings                                      |
+
+> Screenshots are captured by `make screenshots` (Playwright). The recovery key shown is the canonical all-zeros BIP39 placeholder phrase, not a real secret.
 
 ---
 
