@@ -28,7 +28,7 @@ test.beforeAll(async ({ browser }) => {
 
 test('"Recover with key" link on login navigates to /recover', async ({ page }) => {
   await page.goto('/login');
-  await page.getByRole('link', { name: 'Recover account' }).click();
+  await page.getByRole('link', { name: 'Recover access' }).click();
   await expect(page).toHaveURL('/recover');
   await expect(page.getByText('Recover account')).toBeVisible();
 });
@@ -52,7 +52,7 @@ test('full recovery flow resets password; old password cannot unlock after', asy
   await page.getByLabel('I have saved my recovery key in a safe place').click();
   await page.getByRole('button', { name: "I've saved my recovery key" }).click();
   await page.waitForURL('/', { timeout: 15_000 });
-  await expect(page.getByText('Your vault is unlocked')).toBeVisible();
+  await expect(page.getByLabel('Search vault items')).toBeVisible();
 
   // Lock and verify old password no longer works
   await lockVault(page);

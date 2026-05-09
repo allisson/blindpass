@@ -23,10 +23,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('vault index shows welcome state when authenticated', async ({ page }) => {
-  await expect(page.getByText('Your vault is unlocked')).toBeVisible();
-  await expect(page.getByText('Welcome back')).toBeVisible();
+  await expect(page.getByTestId('onboarding-empty')).toBeVisible();
+  await expect(page.getByText('Welcome to your vault')).toBeVisible();
 });
 
 test('new item link is visible', async ({ page }) => {
-  await expect(page.getByRole('main').getByRole('link', { name: 'New item' })).toBeVisible();
+  await expect(
+    page.getByTestId('onboarding-empty').getByRole('link', { name: /New item/ }),
+  ).toBeVisible();
 });

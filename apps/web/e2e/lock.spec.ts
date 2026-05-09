@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 test('lock vault button navigates to /unlock with locked heading', async ({ page }) => {
   await lockVault(page);
   await expect(page).toHaveURL('/unlock');
-  await expect(page.getByRole('heading', { name: 'Vault locked' })).toBeVisible();
+  await expect(page.getByText('Vault locked')).toBeVisible();
 });
 
 test('correct password on /unlock restores vault access', async ({ page }) => {
@@ -34,7 +34,7 @@ test('correct password on /unlock restores vault access', async ({ page }) => {
   await page.getByLabel('Master password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Unlock vault' }).click();
   await page.waitForURL('/', { timeout: 30_000 });
-  await expect(page.getByText('Your vault is unlocked')).toBeVisible();
+  await expect(page.getByLabel('Search vault items')).toBeVisible();
 });
 
 test('wrong password on /unlock shows error and stays locked', async ({ page }) => {

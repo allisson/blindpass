@@ -32,7 +32,7 @@ async function refetchSessions(ownerPage: Page): Promise<void> {
   await ownerPage.waitForURL('/');
   await ownerPage.getByRole('link', { name: 'Sessions' }).click();
   await ownerPage.waitForURL('/sessions');
-  await expect(ownerPage.getByRole('heading', { name: 'Active Sessions' })).toBeVisible();
+  await expect(ownerPage.getByRole('heading', { name: 'Active sessions' })).toBeVisible();
 }
 
 async function getSessionCount(page: Page): Promise<number> {
@@ -100,19 +100,19 @@ test.describe.serial('sessions page basics', () => {
   });
 
   test('sessions page shows active sessions heading', async () => {
-    await expect(ownerPage.getByRole('heading', { name: 'Active Sessions' })).toBeVisible();
+    await expect(ownerPage.getByRole('heading', { name: 'Active sessions' })).toBeVisible();
   });
 
-  test('current session shows "This device" badge', async () => {
-    await expect(ownerPage.getByText('This device')).toBeVisible({ timeout: 10_000 });
+  test('current session shows "Current device" badge', async () => {
+    await expect(ownerPage.getByText('Current device.')).toBeAttached({ timeout: 10_000 });
   });
 
   test('current session has no revoke button', async () => {
-    await ownerPage.getByText('This device', { exact: true }).waitFor({ timeout: 10_000 });
+    await ownerPage.getByText('Current device.').waitFor({ state: 'attached', timeout: 10_000 });
 
     const currentSessionRow = ownerPage
       .locator('[data-testid="session-row"]')
-      .filter({ has: ownerPage.getByText('This device', { exact: true }) });
+      .filter({ has: ownerPage.getByText('Current device.') });
     await expect(currentSessionRow.getByRole('button', { name: 'Revoke' })).not.toBeVisible();
   });
 });
@@ -139,7 +139,7 @@ test.describe.serial('revocation', () => {
       const revokeBtn = ownerPage.getByRole('button', { name: 'Revoke' }).first();
       await expect(revokeBtn).toBeVisible({ timeout: 10_000 });
       await revokeBtn.click();
-      await expect(ownerPage.getByRole('heading', { name: 'Revoke session?' })).toBeVisible();
+      await expect(ownerPage.getByRole('heading', { name: 'Revoke this session?' })).toBeVisible();
     });
 
     test('confirming revoke removes the session from the list', async () => {
@@ -214,7 +214,7 @@ test.describe.serial('revocation', () => {
       await expect(ownerPage.locator('[data-testid="session-row"]')).toHaveCount(1, {
         timeout: 15_000,
       });
-      await expect(ownerPage.getByText('This device')).toBeVisible();
+      await expect(ownerPage.getByText('Current device.')).toBeAttached();
       await expect(
         ownerPage.getByRole('button', { name: 'Sign out all other devices' }),
       ).toHaveCount(0);

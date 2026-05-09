@@ -111,6 +111,8 @@ test('imports Chrome CSV via batch endpoint and shows items in vault list', asyn
     .first()
     .click();
   await page.waitForURL('/settings', { timeout: 10_000 });
+  await page.getByRole('link', { name: 'Import', exact: true }).first().click();
+  await page.waitForURL('/settings/import', { timeout: 10_000 });
 
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(path.join(__dirname, 'fixtures/chrome-import.csv'));

@@ -19,6 +19,12 @@ async function openSettings(page: Page): Promise<void> {
   await page.waitForURL('/settings', { timeout: 10_000 });
 }
 
+async function openDeleteAccountPage(page: Page): Promise<void> {
+  await openSettings(page);
+  await page.getByRole('link', { name: 'Delete account' }).first().click();
+  await page.waitForURL('/settings/delete-account', { timeout: 10_000 });
+}
+
 test.describe('Delete account flow', () => {
   test('settings page does not auto-focus the danger-zone OTP on mount', async ({ page }) => {
     test.setTimeout(60_000);
@@ -41,7 +47,7 @@ test.describe('Delete account flow', () => {
     const setupKey = await registerUser(page, username, TEST_PASSWORD);
     await loginAs(page, username, TEST_PASSWORD, setupKey);
 
-    await openSettings(page);
+    await openDeleteAccountPage(page);
     await page.getByRole('button', { name: /delete account/i }).click();
 
     const dialog = page.getByRole('dialog');
@@ -52,9 +58,9 @@ test.describe('Delete account flow', () => {
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    // Still on settings, vault still unlocked.
-    await expect(page).toHaveURL(/\/settings$/);
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    // Still on delete-account page, vault still unlocked.
+    await expect(page).toHaveURL(/\/settings\/delete-account$/);
+    await expect(page.getByRole('heading', { name: 'Delete account', level: 1 })).toBeVisible();
   });
 
   test('back button on OTP step returns to consequence and clears the entered code', async ({
@@ -65,7 +71,7 @@ test.describe('Delete account flow', () => {
     const setupKey = await registerUser(page, username, TEST_PASSWORD);
     await loginAs(page, username, TEST_PASSWORD, setupKey);
 
-    await openSettings(page);
+    await openDeleteAccountPage(page);
     await page.getByRole('button', { name: /delete account/i }).click();
 
     const dialog = page.getByRole('dialog');
@@ -89,7 +95,7 @@ test.describe('Delete account flow', () => {
     const setupKey = await registerUser(page, username, TEST_PASSWORD);
     await loginAs(page, username, TEST_PASSWORD, setupKey);
 
-    await openSettings(page);
+    await openDeleteAccountPage(page);
     await page.getByRole('button', { name: /delete account/i }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('button', { name: /i understand/i }).click();
@@ -98,8 +104,8 @@ test.describe('Delete account flow', () => {
     await fillAuthenticatorCode(page, '000000');
     await dialog.getByRole('button', { name: /permanently delete/i }).click();
 
-    // Still on settings, dialog still open, OTP step still visible.
-    await expect(page).toHaveURL(/\/settings$/);
+    // Still on delete-account page, dialog still open, OTP step still visible.
+    await expect(page).toHaveURL(/\/settings\/delete-account$/);
     await expect(dialog).toBeVisible();
     await expect(dialog.getByLabel('Digit 1 of 6')).toBeVisible();
   });
@@ -110,7 +116,7 @@ test.describe('Delete account flow', () => {
     const setupKey = await registerUser(page, username, TEST_PASSWORD);
     await loginAs(page, username, TEST_PASSWORD, setupKey);
 
-    await openSettings(page);
+    await openDeleteAccountPage(page);
     await page.getByRole('button', { name: /delete account/i }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('button', { name: /i understand/i }).click();

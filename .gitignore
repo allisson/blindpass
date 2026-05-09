@@ -150,3 +150,11 @@ dist/
 .DS_Store
 .superpowers
 apps/web/test-results
+
+# Impeccable live mode (local runtime state; config.json and design.json stay tracked)
+.impeccable/live/sessions/
+.impeccable/live/annotations/
+.impeccable/live/server.json
+
+# Per-developer Claude permission state
+.claude/settings.local.json

@@ -167,7 +167,7 @@ function PasswordRow({
             transition={reduceMotion ? { duration: 0 } : { duration: 0.15 }}
             className={
               show
-                ? 'text-sm font-mono tracking-wider text-primary break-all'
+                ? 'text-sm font-mono tracking-[0.06em] text-primary break-all'
                 : 'text-lg tracking-[0.25em] text-muted-foreground leading-none py-0.5'
             }
           >
@@ -203,18 +203,12 @@ function passwordStrength(p: string): number {
   return score;
 }
 
-const STRENGTH_COLORS = [
-  'bg-muted',
-  'bg-destructive',
-  'bg-amber-500',
-  'bg-[var(--accent-teal)]',
-  'bg-primary',
-];
 const STRENGTH_LABELS = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const score = passwordStrength(password);
   if (!password) return null;
+  const label = STRENGTH_LABELS[score] || 'None';
   return (
     <div
       className="px-4 pb-3 -mt-1"
@@ -222,17 +216,15 @@ function PasswordStrengthBar({ password }: { password: string }) {
       aria-valuenow={score}
       aria-valuemin={0}
       aria-valuemax={4}
-      aria-label={`Password strength: ${STRENGTH_LABELS[score] || 'None'}`}
+      aria-label={`Password strength: ${label}`}
     >
-      <div className="flex gap-1 mb-1">
-        {[1, 2, 3, 4].map((level) => (
-          <div
-            key={level}
-            className={`h-1 flex-1 rounded-full transition-colors ${score >= level ? STRENGTH_COLORS[score] : 'bg-muted'}`}
-          />
-        ))}
+      <div className="pw-strength mb-1" data-score={score}>
+        <span />
+        <span />
+        <span />
+        <span />
       </div>
-      <p className="text-[10px] text-muted-foreground">{STRENGTH_LABELS[score]}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -247,7 +239,7 @@ function SectionLabel({ label }: { label: string }) {
 
 function NotesArea({ notes }: { notes: string }) {
   return (
-    <div className="bg-muted/30 rounded-xl px-4 py-3">
+    <div className="bg-muted/30 rounded-lg px-4 py-3">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 mb-1.5">
         Notes
       </p>
@@ -260,7 +252,18 @@ function NotesArea({ notes }: { notes: string }) {
 
 function FieldCard({ children }: { children: ReactNode }) {
   return (
-    <div className="divide-y rounded-2xl overflow-hidden border border-border/60 bg-card">
+    <div className="divide-y rounded-lg overflow-hidden border border-border/60 bg-card">
+      {children}
+    </div>
+  );
+}
+
+function TintedCard({ color, children }: { color: string; children: ReactNode }) {
+  return (
+    <div
+      className="divide-y rounded-lg overflow-hidden bg-card"
+      style={{ border: `1px solid ${withAlpha(color, 0.25)}` }}
+    >
       {children}
     </div>
   );
@@ -272,13 +275,10 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
       <div className="space-y-3">
         <div>
           <SectionLabel label="Credentials" />
-          <div
-            className="divide-y rounded-2xl overflow-hidden"
-            style={{ border: `1px solid ${withAlpha(color, 0.25)}`, background: 'var(--card)' }}
-          >
+          <TintedCard color={color}>
             <FieldRow label="Username" value={item.username} />
             <PasswordRow password={item.password} />
-          </div>
+          </TintedCard>
           <PasswordStrengthBar password={item.password} />
         </div>
         {item.url && (
@@ -301,15 +301,12 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
       <div className="space-y-3">
         <div>
           <SectionLabel label="Card details" />
-          <div
-            className="divide-y rounded-2xl overflow-hidden"
-            style={{ border: `1px solid ${withAlpha(color, 0.25)}`, background: 'var(--card)' }}
-          >
+          <TintedCard color={color}>
             <FieldRow label="Cardholder" value={item.cardholderName} />
             <PasswordRow password={item.number} label="Card number" />
             <FieldRow label="Expires" value={`${item.expMonth}/${item.expYear}`} />
             {item.cvv && <PasswordRow password={item.cvv} label="CVV" />}
-          </div>
+          </TintedCard>
         </div>
         {item.notes && <NotesArea notes={item.notes} />}
       </div>
@@ -320,17 +317,14 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
       <div className="space-y-3">
         <div>
           <SectionLabel label="Identity" />
-          <div
-            className="divide-y rounded-2xl overflow-hidden"
-            style={{ border: `1px solid ${withAlpha(color, 0.25)}`, background: 'var(--card)' }}
-          >
+          <TintedCard color={color}>
             <FieldRow label="Name" value={`${item.firstName} ${item.lastName}`} />
             {item.email && <FieldRow label="Email" value={item.email} />}
             {item.phone && <FieldRow label="Phone" value={item.phone} />}
             {item.address && <FieldRow label="Address" value={item.address} />}
             {item.city && <FieldRow label="City" value={item.city} />}
             {item.country && <FieldRow label="Country" value={item.country} />}
-          </div>
+          </TintedCard>
         </div>
         {item.notes && <NotesArea notes={item.notes} />}
       </div>
@@ -344,10 +338,7 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
       <div className="space-y-3">
         <div>
           <SectionLabel label="Developer credential" />
-          <div
-            className="divide-y rounded-2xl overflow-hidden"
-            style={{ border: `1px solid ${withAlpha(color, 0.25)}`, background: 'var(--card)' }}
-          >
+          <TintedCard color={color}>
             {item.credentialMode === 'token' ? (
               <>
                 <FieldRow label="Provider" value={item.provider} />
@@ -373,7 +364,7 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
                 {item.passphrase && <PasswordRow password={item.passphrase} label="Passphrase" />}
               </>
             )}
-          </div>
+          </TintedCard>
         </div>
         {item.credentialMode !== 'ssh_key' && item.baseUrl && (
           <div>
@@ -392,10 +383,7 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
       <div className="space-y-3">
         <div>
           <SectionLabel label="Wallet" />
-          <div
-            className="divide-y rounded-2xl overflow-hidden"
-            style={{ border: `1px solid ${withAlpha(color, 0.25)}`, background: 'var(--card)' }}
-          >
+          <TintedCard color={color}>
             <PasswordRow password={item.mnemonic} label="Seed phrase" secureCopy />
             {item.passphrase && (
               <PasswordRow password={item.passphrase} label="Passphrase" secureCopy />
@@ -406,7 +394,7 @@ function ItemFields({ item, color }: { item: DecryptedItem; color: string }) {
               <FieldRow label="Derivation path" value={item.derivationPath} />
             )}
             {item.addressHint && <FieldRow label="Address hint" value={item.addressHint} />}
-          </div>
+          </TintedCard>
         </div>
         {item.notes && <NotesArea notes={item.notes} />}
       </div>
@@ -457,7 +445,7 @@ function ItemDetailPage() {
             <Skeleton className="h-4 w-24" />
           </div>
         </div>
-        <Skeleton className="h-36 rounded-xl" />
+        <Skeleton className="h-36 rounded-lg" />
       </div>
     );
   }

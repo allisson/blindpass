@@ -82,9 +82,10 @@ function RecoverPage() {
             <Label htmlFor="mnemonic">Recovery phrase</Label>
             <textarea
               id="mnemonic"
+              data-slot="input"
               rows={4}
               placeholder="Enter your 24 recovery words, space-separated"
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus-visible:border-ring resize-none transition-all dark:bg-input/20"
+              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono tracking-[0.06em] placeholder:text-muted-foreground resize-none transition-all dark:bg-input/20"
               aria-invalid={!!errors.mnemonic}
               {...register('mnemonic')}
             />
@@ -94,12 +95,11 @@ function RecoverPage() {
           <Button type="submit" className="w-full" loading={isSubmitting}>
             Continue recovery
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Remembered it?{' '}
-            <Link to="/login" className="text-primary hover:underline">
+          <nav className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <Link to="/login" className="transition-colors hover:text-foreground">
               Sign in
             </Link>
-          </p>
+          </nav>
         </form>
       </CardContent>
     </Card>

@@ -8,7 +8,6 @@ import {
 } from '@tanstack/react-router';
 import { lazy, Suspense, type Dispatch, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import {
   AlertCircle,
   Check,
@@ -118,19 +117,6 @@ function loadStoredTypes(): string[] {
     return [];
   }
 }
-
-const listItemVariants = {
-  hidden: { opacity: 0, y: 6 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.2,
-      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
-      delay: Math.min(i, 8) * 0.04,
-    },
-  }),
-};
 
 function VaultPicker() {
   const [open, setOpen] = useState(false);
@@ -1026,28 +1012,30 @@ function VaultListPanel({
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-1 mt-2">
+        <div className="flex flex-wrap items-center gap-1 mt-2">
           {TYPE_OPTIONS.map(({ value, label, Icon }) => {
             const active = selectedTypes.includes(value);
             return (
               <button
                 key={value}
                 onClick={() => toggleType(value)}
-                className={`flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-full border transition-colors ${
+                title={label}
+                aria-label={`Filter by ${label}`}
+                aria-pressed={active}
+                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${
                   active
                     ? 'bg-primary/15 border-primary/40 text-primary'
                     : 'border-border/60 text-muted-foreground hover:text-foreground hover:border-border'
                 }`}
               >
-                <Icon className="w-3 h-3" />
-                {label}
+                <Icon className="w-3.5 h-3.5" />
               </button>
             );
           })}
           {selectedTypes.length > 0 && (
             <button
               onClick={clearTypes}
-              className="text-xs font-medium px-2 py-1 rounded-full border border-border/40 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              className="text-[11px] font-medium px-2 h-7 rounded-full text-muted-foreground/70 hover:text-foreground transition-colors"
             >
               Clear
             </button>
@@ -1115,7 +1103,7 @@ function VaultListPanel({
         )}
         {!isLoading &&
           !isError &&
-          filtered.map((item, i) => {
+          filtered.map((item) => {
             const isSelected = selection.has(item.id);
             return (
               <div
@@ -1132,18 +1120,11 @@ function VaultListPanel({
                   isSelected ? 'ring-1 ring-primary/60 bg-primary/5' : ''
                 } ${!isReadOnly ? 'cursor-grab active:cursor-grabbing' : ''}`}
               >
-                <motion.div
-                  custom={i}
-                  initial="hidden"
-                  animate="visible"
-                  variants={listItemVariants}
-                >
-                  <ItemCard
-                    item={item}
-                    isWeak={weakIds.has(item.id)}
-                    isReused={reusedIds.has(item.id)}
-                  />
-                </motion.div>
+                <ItemCard
+                  item={item}
+                  isWeak={weakIds.has(item.id)}
+                  isReused={reusedIds.has(item.id)}
+                />
               </div>
             );
           })}

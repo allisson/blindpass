@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TrashPage } from './trash';
 import type { DecryptedTrashedItem } from '@/hooks/useVault';
@@ -135,6 +135,73 @@ beforeEach(() => {
 });
 
 describe('TrashPage', () => {
+  describe('deleted-at formatting', () => {
+    const NOW = new Date('2026-05-08T15:00:00.000Z').getTime();
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(NOW);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('shows "today" for items deleted within the same day', () => {
+      renderTrash({
+        items: [loginItem({ id: 'today', deletedAt: '2026-05-08T08:00:00.000Z' })],
+      });
+      const row = screen.getByTestId('trash-row-today');
+      expect(within(row).getByText(/today/)).toBeInTheDocument();
+    });
+
+    it('shows "yesterday" for items deleted exactly one day ago', () => {
+      renderTrash({
+        items: [loginItem({ id: 'y', deletedAt: '2026-05-07T08:00:00.000Z' })],
+      });
+      const row = screen.getByTestId('trash-row-y');
+      expect(within(row).getByText(/yesterday/)).toBeInTheDocument();
+    });
+
+    it('shows "Xd ago" for items deleted within the last week', () => {
+      renderTrash({
+        items: [loginItem({ id: 'r', deletedAt: '2026-05-05T08:00:00.000Z' })],
+      });
+      const row = screen.getByTestId('trash-row-r');
+      expect(within(row).getByText(/3d ago/)).toBeInTheDocument();
+    });
+
+    it('omits a relative label for items older than a week', () => {
+      renderTrash({
+        items: [loginItem({ id: 'old', deletedAt: '2026-04-01T12:00:00.000Z' })],
+      });
+      const row = screen.getByTestId('trash-row-old');
+      expect(within(row).queryByText(/today|yesterday|d ago/i)).not.toBeInTheDocument();
+    });
+
+    it('falls back gracefully for unparseable timestamps', () => {
+      renderTrash({
+        items: [loginItem({ id: 'bad', deletedAt: 'not-a-date' })],
+      });
+      const row = screen.getByTestId('trash-row-bad');
+      expect(within(row).getByText(/not-a-dat/)).toBeInTheDocument();
+    });
+  });
+
+  it('search matches items whose source vault has been deleted', async () => {
+    const user = userEvent.setup();
+    renderTrash({
+      items: [
+        loginItem({ id: 'orphan', vaultId: 'missing', title: 'Orphan' }),
+        loginItem({ id: 'kept', vaultId: 'vault-1', title: 'Kept' }),
+      ],
+    });
+
+    await user.type(screen.getByLabelText('Search trash'), 'orph');
+    expect(screen.getByText('Orphan')).toBeInTheDocument();
+    expect(screen.queryByText('Kept')).not.toBeInTheDocument();
+  });
+
   it('renders detailed rows with title, subtitle, source vault, and deleted date', () => {
     renderTrash({
       items: [loginItem({ title: 'GitHub', username: 'dev@example.com' })],
@@ -144,7 +211,7 @@ describe('TrashPage', () => {
     expect(within(row).getByText('GitHub')).toBeInTheDocument();
     expect(within(row).getByText('dev@example.com')).toBeInTheDocument();
     expect(within(row).getByText('Personal')).toBeInTheDocument();
-    expect(within(row).getByText(/Apr 20, 2026/)).toBeInTheDocument();
+    expect(within(row).getByText(/2026-04-20/)).toBeInTheDocument();
   });
 
   it('falls back when subtitle and source vault are missing', () => {
@@ -154,7 +221,19 @@ describe('TrashPage', () => {
 
     const row = screen.getByTestId('trash-row-item-missing');
     expect(within(row).getByText('No subtitle')).toBeInTheDocument();
-    expect(within(row).getByText('Vault')).toBeInTheDocument();
+    expect(within(row).getByText('(deleted vault)')).toBeInTheDocument();
+  });
+
+  it('restore confirmation surfaces "deleted vault" wording when source vault is missing', async () => {
+    const user = userEvent.setup();
+    renderTrash({
+      items: [loginItem({ id: 'item-missing', vaultId: 'missing-vault', title: 'Orphan' })],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Restore Orphan' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/deleted vault/i)).toBeInTheDocument();
   });
 
   it('search filters by title, subtitle, and source vault', async () => {
@@ -224,11 +303,11 @@ describe('TrashPage', () => {
     expect(rows()[0]).toContain('Alpha');
   });
 
-  it('empty state appears when trash has no items and empty trash is disabled', () => {
+  it('empty state appears when trash has no items and empty trash button is hidden', () => {
     renderTrash({ items: [] });
 
     expect(screen.getByText('Trash is empty')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Empty trash' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Empty trash' })).not.toBeInTheDocument();
   });
 
   it('error state appears when trash query fails', () => {
@@ -242,7 +321,7 @@ describe('TrashPage', () => {
     renderTrash({ items: [], isLoading: true });
 
     expect(screen.getByText('Trash')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Empty trash' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Empty trash' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('trash-table')).not.toBeInTheDocument();
   });
 
@@ -250,7 +329,7 @@ describe('TrashPage', () => {
     renderTrash({ items: undefined, isLoading: false, isError: false });
 
     expect(screen.getByText('Trash')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Empty trash' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Empty trash' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('trash-table')).not.toBeInTheDocument();
   });
 
@@ -269,12 +348,14 @@ describe('TrashPage', () => {
     expect(mocks.restoreMutate).toHaveBeenCalledWith({ id: 'item-1', vaultId: 'vault-1' });
 
     vi.clearAllMocks();
-    renderTrash({
+    const view = renderTrash({
       items: [loginItem({ id: 'item-1', vaultId: 'vault-1', title: 'GitHub' })],
       restorePending: true,
     });
 
-    const rowButton = screen.getAllByRole('button', { name: 'Restore GitHub' }).at(-1)!;
+    // Pending state surfaces on the row only while its dialog is open.
+    const rowButton = within(view.container).getByRole('button', { name: 'Restore GitHub' });
+    await user.click(rowButton);
     expect(rowButton).toBeDisabled();
     expect(rowButton).toHaveTextContent('Restoring…');
   });
@@ -361,5 +442,213 @@ describe('TrashPage', () => {
     view.rerender(<TrashPage />);
 
     expect(screen.getByRole('button', { name: 'Emptying…' })).toBeDisabled();
+  });
+
+  describe('keyboard navigation', () => {
+    function buildItems() {
+      return [
+        loginItem({ id: 'a', title: 'Alpha', deletedAt: '2026-04-25T12:00:00.000Z' }),
+        loginItem({ id: 'b', title: 'Beta', deletedAt: '2026-04-20T12:00:00.000Z' }),
+        loginItem({ id: 'c', title: 'Gamma', deletedAt: '2026-04-15T12:00:00.000Z' }),
+      ];
+    }
+
+    function getRows() {
+      return screen.getAllByTestId(/^trash-row-/) as HTMLElement[];
+    }
+
+    it("'/' anywhere on the page focuses the search input", () => {
+      renderTrash({ items: buildItems() });
+
+      fireEvent.keyDown(document.body, { key: '/' });
+
+      expect(screen.getByLabelText('Search trash')).toHaveFocus();
+    });
+
+    it("'/' is ignored while focus is inside an input or textarea", () => {
+      renderTrash({ items: buildItems() });
+
+      const input = document.createElement('input');
+      const textarea = document.createElement('textarea');
+      const select = document.createElement('select');
+      document.body.append(input, textarea, select);
+      input.focus();
+
+      fireEvent.keyDown(input, { key: '/' });
+      expect(screen.getByLabelText('Search trash')).not.toHaveFocus();
+
+      textarea.focus();
+      fireEvent.keyDown(textarea, { key: '/' });
+      expect(screen.getByLabelText('Search trash')).not.toHaveFocus();
+
+      select.focus();
+      fireEvent.keyDown(select, { key: '/' });
+      expect(screen.getByLabelText('Search trash')).not.toHaveFocus();
+
+      input.remove();
+      textarea.remove();
+      select.remove();
+    });
+
+    it('ArrowDown from search jumps to first row', () => {
+      renderTrash({ items: buildItems() });
+      const search = screen.getByLabelText('Search trash');
+      search.focus();
+
+      fireEvent.keyDown(search, { key: 'ArrowDown' });
+
+      expect(getRows()[0]).toHaveFocus();
+    });
+
+    it('non-ArrowDown keys in search do not move focus to rows', () => {
+      renderTrash({ items: buildItems() });
+      const search = screen.getByLabelText('Search trash');
+      search.focus();
+
+      fireEvent.keyDown(search, { key: 'a' });
+      expect(search).toHaveFocus();
+    });
+
+    it('ArrowDown / j move focus down rows; ArrowUp / k move up; ArrowUp at first row returns to search', () => {
+      renderTrash({ items: buildItems() });
+      const rows = getRows();
+      rows[0].focus();
+
+      fireEvent.keyDown(rows[0], { key: 'ArrowDown' });
+      expect(rows[1]).toHaveFocus();
+
+      fireEvent.keyDown(rows[1], { key: 'j' });
+      expect(rows[2]).toHaveFocus();
+
+      // Past last row — clamped to last row.
+      fireEvent.keyDown(rows[2], { key: 'ArrowDown' });
+      expect(rows[2]).toHaveFocus();
+
+      fireEvent.keyDown(rows[2], { key: 'k' });
+      expect(rows[1]).toHaveFocus();
+
+      fireEvent.keyDown(rows[1], { key: 'ArrowUp' });
+      expect(rows[0]).toHaveFocus();
+
+      fireEvent.keyDown(rows[0], { key: 'ArrowUp' });
+      expect(screen.getByLabelText('Search trash')).toHaveFocus();
+    });
+
+    it('Escape on a row returns focus to search', () => {
+      renderTrash({ items: buildItems() });
+      const row = getRows()[0];
+      row.focus();
+
+      fireEvent.keyDown(row, { key: 'Escape' });
+
+      expect(screen.getByLabelText('Search trash')).toHaveFocus();
+    });
+
+    it('Enter, r, and R on a row open the restore dialog', () => {
+      renderTrash({ items: buildItems() });
+      const rows = getRows();
+
+      rows[0].focus();
+      fireEvent.keyDown(rows[0], { key: 'Enter' });
+      expect(screen.getByRole('heading', { name: 'Restore item?' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      rows[1].focus();
+      fireEvent.keyDown(rows[1], { key: 'r' });
+      expect(screen.getByRole('heading', { name: 'Restore item?' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      rows[2].focus();
+      fireEvent.keyDown(rows[2], { key: 'R' });
+      expect(screen.getByRole('heading', { name: 'Restore item?' })).toBeInTheDocument();
+    });
+
+    it('Delete and Backspace on a row open the purge dialog', () => {
+      renderTrash({ items: buildItems() });
+      const rows = getRows();
+
+      rows[0].focus();
+      fireEvent.keyDown(rows[0], { key: 'Delete' });
+      expect(screen.getByRole('heading', { name: 'Delete permanently?' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      rows[1].focus();
+      fireEvent.keyDown(rows[1], { key: 'Backspace' });
+      expect(screen.getByRole('heading', { name: 'Delete permanently?' })).toBeInTheDocument();
+    });
+
+    it('action keys fired from inside a row button do not open dialogs', () => {
+      renderTrash({ items: buildItems() });
+      const button = screen.getByRole('button', { name: 'Restore Alpha' });
+      button.focus();
+
+      fireEvent.keyDown(button, { key: 'r' });
+      expect(screen.queryByRole('heading', { name: 'Restore item?' })).not.toBeInTheDocument();
+
+      fireEvent.keyDown(button, { key: 'Delete' });
+      expect(
+        screen.queryByRole('heading', { name: 'Delete permanently?' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('navigation keys still work when focus is on a row button', () => {
+      renderTrash({ items: buildItems() });
+      const button = screen.getByRole('button', { name: 'Restore Alpha' });
+      button.focus();
+
+      fireEvent.keyDown(button, { key: 'ArrowDown' });
+
+      expect(getRows()[1]).toHaveFocus();
+    });
+
+    it('keyboard events outside any row are ignored', () => {
+      renderTrash({ items: buildItems() });
+      const table = screen.getByTestId('trash-table');
+
+      fireEvent.keyDown(table, { key: 'r' });
+
+      expect(screen.queryByRole('heading', { name: 'Restore item?' })).not.toBeInTheDocument();
+    });
+
+    it('unknown keys on a row are ignored', () => {
+      renderTrash({ items: buildItems() });
+      const row = getRows()[0];
+      row.focus();
+
+      fireEvent.keyDown(row, { key: 'x' });
+
+      expect(screen.queryByRole('heading', { name: 'Restore item?' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Delete permanently?' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('dialog dismissal via onOpenChange', () => {
+    it('Escape on the restore dialog clears the restore target', async () => {
+      const user = userEvent.setup();
+      renderTrash({ items: [loginItem({ id: 'item-1', title: 'GitHub' })] });
+
+      await user.click(screen.getByRole('button', { name: 'Restore GitHub' }));
+      expect(screen.getByRole('heading', { name: 'Restore item?' })).toBeInTheDocument();
+
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('heading', { name: 'Restore item?' })).not.toBeInTheDocument();
+    });
+
+    it('Escape on the purge dialog clears the purge target', async () => {
+      const user = userEvent.setup();
+      renderTrash({ items: [loginItem({ id: 'item-1', title: 'GitHub' })] });
+
+      await user.click(screen.getByRole('button', { name: 'Delete GitHub permanently' }));
+      expect(screen.getByRole('heading', { name: 'Delete permanently?' })).toBeInTheDocument();
+
+      await user.keyboard('{Escape}');
+
+      expect(
+        screen.queryByRole('heading', { name: 'Delete permanently?' }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
