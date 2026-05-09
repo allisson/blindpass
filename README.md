@@ -51,17 +51,17 @@ BlindPass is MIT-licensed and self-hostable on four containers. Your data lives 
 
 Research checked May 9, 2026. "Zero knowledge" below means the vendor says vault contents are encrypted/decrypted client-side and unavailable to employees. It does not mean every product has the same metadata exposure, recovery model, sharing model, or server compromise resistance.
 
-| Product         | Best fit                                                                      | Hosting model                                  | Source transparency                                             | Account identity         | Master password / verifier posture                                                                 | Notable strengths                                                                                                | Trade-offs vs BlindPass                                                                                                     |
-| --------------- | ----------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **BlindPass**   | Technical users who want self-hosted, low-identity password management        | Self-hosted by design                          | MIT-licensed repo; small audit surface                          | Username only            | Master password never leaves browser; no server-side master-password hash                          | No email identity, Argon2id browser key derivation, TOTP sign-in, encrypted import/export, simple deployment     | Younger project; fewer native clients and enterprise controls; Chrome extension planned                                     |
-| **1Password**   | Families, teams, businesses needing polished apps and recovery/admin features | Vendor cloud membership                        | Proprietary apps with published audits and certifications       | Email/account membership | Account password plus device-generated Secret Key; 1Password says both are needed to decrypt data  | Mature apps, strong UX, Secret Key hardens weak account passwords, Watchtower, admin controls                    | Not self-hosted; 1Password 8 requires membership; email/account identity required                                           |
-| **Bitwarden**   | Users wanting mature open source, broad clients, optional self-hosting        | Vendor cloud or supported self-host            | Open source/source available, third-party audits                | Email account            | Email + master password derive keys; Bitwarden says it never stores master password or crypto keys | Excellent client coverage, strong free/premium tiers, org sharing, self-host options including Docker/Kubernetes | Larger system to audit; self-hosting more operationally complex; email identity required                                    |
-| **Proton Pass** | Proton ecosystem users who want privacy features plus password management     | Vendor cloud                                   | Open-source apps, public audits                                 | Proton account/email     | Proton says data is end-to-end encrypted, including metadata                                       | Email aliases, Proton Sentinel, open-source clients, strong privacy brand                                        | Not self-hosted; tied to Proton account ecosystem; broader suite trust surface                                              |
-| **KeePassXC**   | Local-first users who want no cloud account at all                            | Local encrypted file; user chooses sync method | GPLv3 open source                                               | None                     | Local database password/key file; no remote auth service                                           | Cloud-free, subscription-free, mature desktop app, ANSSI security visa                                           | No built-in managed sync/sharing/server; user owns backup/sync ergonomics                                                   |
-| **Dashlane**    | Consumers and businesses wanting polished managed security features           | Vendor cloud                                   | Client transparency and security docs; not fully open source    | Email/account            | Dashlane says vaults encrypt/decrypt locally; Argon2d key derivation documented                    | Strong UX, passkeys/passwordless options, confidential computing for some enterprise flows                       | Not self-hosted; email/account identity required; broader managed-service dependency                                        |
-| **NordPass**    | Users wanting simple cloud sync and modern managed UX                         | Vendor cloud                                   | Proprietary with audits                                         | Email/account            | NordPass says local encryption with Argon2id-derived key and zero-knowledge architecture           | XChaCha20 positioning, breach scanner, email masking, simple apps                                                | Not self-hosted; email/account identity required; product is vendor-cloud centered                                          |
-| **Keeper**      | Businesses needing compliance, sharing, and admin control                     | Vendor cloud                                   | Proprietary with security documentation, certifications, audits | Email/account            | Keeper says encryption/decryption happen locally and master password is not transmitted            | Enterprise controls, record-level sharing, compliance posture, secrets manager                                   | Not self-hosted for normal vault use; larger enterprise platform; email/account identity required                           |
-| **LastPass**    | Users already in LastPass or businesses needing managed migration path        | Vendor cloud                                   | Proprietary with security documentation                         | Email/account            | LastPass says master password derives encryption/auth material; PBKDF2-SHA256 documented           | Familiar UX, business features, broad platform support                                                           | 2022 incident exposed backups containing customer vault data and metadata; not self-hosted; email/account identity required |
+| Product         | Best fit                                                                      | Hosting model                                  | Source transparency                                             | Account identity         | Master password / verifier posture                                                                 | Notable strengths                                                                                                | Trade-offs vs BlindPass                                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **BlindPass**   | Technical users who want self-hosted, low-identity password management        | Self-hosted by design                          | MIT-licensed repo; small audit surface                          | Username only            | Master password never leaves browser; no server-side master-password hash                          | No email identity, Argon2id browser key derivation, TOTP sign-in, encrypted import/export, simple deployment     | Younger project; fewer native clients and enterprise controls; no browser extension by design (see [ADR-0002](docs/adr/0002-no-browser-extension.md)) |
+| **1Password**   | Families, teams, businesses needing polished apps and recovery/admin features | Vendor cloud membership                        | Proprietary apps with published audits and certifications       | Email/account membership | Account password plus device-generated Secret Key; 1Password says both are needed to decrypt data  | Mature apps, strong UX, Secret Key hardens weak account passwords, Watchtower, admin controls                    | Not self-hosted; 1Password 8 requires membership; email/account identity required                                                                     |
+| **Bitwarden**   | Users wanting mature open source, broad clients, optional self-hosting        | Vendor cloud or supported self-host            | Open source/source available, third-party audits                | Email account            | Email + master password derive keys; Bitwarden says it never stores master password or crypto keys | Excellent client coverage, strong free/premium tiers, org sharing, self-host options including Docker/Kubernetes | Larger system to audit; self-hosting more operationally complex; email identity required                                                              |
+| **Proton Pass** | Proton ecosystem users who want privacy features plus password management     | Vendor cloud                                   | Open-source apps, public audits                                 | Proton account/email     | Proton says data is end-to-end encrypted, including metadata                                       | Email aliases, Proton Sentinel, open-source clients, strong privacy brand                                        | Not self-hosted; tied to Proton account ecosystem; broader suite trust surface                                                                        |
+| **KeePassXC**   | Local-first users who want no cloud account at all                            | Local encrypted file; user chooses sync method | GPLv3 open source                                               | None                     | Local database password/key file; no remote auth service                                           | Cloud-free, subscription-free, mature desktop app, ANSSI security visa                                           | No built-in managed sync/sharing/server; user owns backup/sync ergonomics                                                                             |
+| **Dashlane**    | Consumers and businesses wanting polished managed security features           | Vendor cloud                                   | Client transparency and security docs; not fully open source    | Email/account            | Dashlane says vaults encrypt/decrypt locally; Argon2d key derivation documented                    | Strong UX, passkeys/passwordless options, confidential computing for some enterprise flows                       | Not self-hosted; email/account identity required; broader managed-service dependency                                                                  |
+| **NordPass**    | Users wanting simple cloud sync and modern managed UX                         | Vendor cloud                                   | Proprietary with audits                                         | Email/account            | NordPass says local encryption with Argon2id-derived key and zero-knowledge architecture           | XChaCha20 positioning, breach scanner, email masking, simple apps                                                | Not self-hosted; email/account identity required; product is vendor-cloud centered                                                                    |
+| **Keeper**      | Businesses needing compliance, sharing, and admin control                     | Vendor cloud                                   | Proprietary with security documentation, certifications, audits | Email/account            | Keeper says encryption/decryption happen locally and master password is not transmitted            | Enterprise controls, record-level sharing, compliance posture, secrets manager                                   | Not self-hosted for normal vault use; larger enterprise platform; email/account identity required                                                     |
+| **LastPass**    | Users already in LastPass or businesses needing managed migration path        | Vendor cloud                                   | Proprietary with security documentation                         | Email/account            | LastPass says master password derives encryption/auth material; PBKDF2-SHA256 documented           | Familiar UX, business features, broad platform support                                                           | 2022 incident exposed backups containing customer vault data and metadata; not self-hosted; email/account identity required                           |
 
 BlindPass is not trying to beat every product on feature count. 1Password, Bitwarden, Keeper, Dashlane, Proton Pass, NordPass, LastPass, and KeePassXC all have valid use cases. BlindPass exists for a narrower reason: you want a password manager whose server cannot become an identity dossier, whose storage can live on your infrastructure, and whose implementation is small enough that trust can be replaced with inspection.
 
@@ -129,7 +129,7 @@ Sources: [1Password security model](https://support.1password.com/1password-secu
 ### Clients
 
 - 🌐 **Web app** — access your vault anywhere from the browser
-- 🧩 **Chrome extension** — _(planned)_
+- 🚫 **No browser extension** — by design; see [ADR-0002](docs/adr/0002-no-browser-extension.md)
 
 ---
 
@@ -218,15 +218,16 @@ All crypto uses **[libsodium](https://libsodium.org)**, a battle-tested, audited
 
 ### Threat model
 
-| Threat                        | Status          | Notes                                                                 |
-| ----------------------------- | --------------- | --------------------------------------------------------------------- |
-| Server compromise             | ✅ Protected    | Server stores only ciphertext — no keys, no plaintext                 |
-| Network interception          | ✅ Protected    | All data encrypted client-side before transmission                    |
-| Brute-force via server        | ✅ Protected    | No server-side password verifier or password hash to attack           |
-| Weak master password          | ⚠️ Partial      | Argon2id hardens derivation; a weak password is still a weak password |
-| Forgotten password            | ✅ Mitigated    | BIP39 recovery key generated at registration                          |
-| Malware on your device        | ❌ Out of scope | Client-side malware can read in-memory keys                           |
-| Phishing / social engineering | ❌ Out of scope | No technical control can prevent this                                 |
+| Threat                        | Status          | Notes                                                                                              |
+| ----------------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
+| Server compromise             | ✅ Protected    | Server stores only ciphertext — no keys, no plaintext                                              |
+| Network interception          | ✅ Protected    | All data encrypted client-side before transmission                                                 |
+| Brute-force via server        | ✅ Protected    | No server-side password verifier or password hash to attack                                        |
+| Weak master password          | ⚠️ Partial      | Argon2id hardens derivation; a weak password is still a weak password                              |
+| Forgotten password            | ✅ Mitigated    | BIP39 recovery key generated at registration                                                       |
+| Malware on your device        | ❌ Out of scope | Client-side malware can read in-memory keys                                                        |
+| Phishing / social engineering | ❌ Out of scope | No technical control can prevent this                                                              |
+| Browser extension surface     | ❌ Not shipped  | No autofill or capture extension by design — see [ADR-0002](docs/adr/0002-no-browser-extension.md) |
 
 ### Session security
 
@@ -402,24 +403,22 @@ BlindPass is a pnpm monorepo with separate web, server, and shared package bound
 ```
 ┌──────────────────────────────────────────────┐
 │                   Browser                    │
-│  ┌──────────────┐   ┌────────────────────┐   │
-│  │   apps/web   │   │  apps/extension    │   │
-│  │              │   │    (planned)       │   │
-│  └──────┬───────┘   └────────┬───────────┘   │
-│         └──────────┬─────────┘               │
-│           ┌────────▼────────┐                │
+│           ┌──────────────┐                   │
+│           │   apps/web   │                   │
+│           └──────┬───────┘                   │
+│           ┌──────▼──────────┐                │
 │           │ packages/vault  │◄── packages/   │
 │           │ (domain logic)  │    crypto      │
-│           └────────┬────────┘                │
-└────────────────────┼────────────────────────┘
-                     │ HTTPS (encrypted blobs only)
-              ┌──────▼──────┐
-              │ apps/server │  Fastify REST API
-              └──────┬──────┘
-         ┌───────────┴───────────┐
-    ┌────▼────┐           ┌──────▼──────┐
-    │  Redis  │  sessions │  PostgreSQL │  ciphertext
-    └─────────┘           └─────────────┘
+│           └──────┬──────────┘                │
+└──────────────────┼───────────────────────────┘
+                   │ HTTPS (encrypted blobs only)
+            ┌──────▼──────┐
+            │ apps/server │  Fastify REST API
+            └──────┬──────┘
+       ┌───────────┴───────────┐
+  ┌────▼────┐           ┌──────▼──────┐
+  │  Redis  │  sessions │  PostgreSQL │  ciphertext
+  └─────────┘           └─────────────┘
 ```
 
 ### Packages
