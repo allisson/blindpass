@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { getItemSubtitle } from '@/components/vault/ItemCard';
-import { motion } from 'framer-motion';
 import {
   AlertCircle,
   ArrowDownAZ,
@@ -11,7 +10,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,155 +32,22 @@ export const Route = createFileRoute('/_vault/trash')({
 
 type TrashSort = 'deleted-desc' | 'deleted-asc' | 'title-asc';
 
-const listItemVariants = {
-  hidden: { opacity: 0, y: 6 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.18,
-      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
-      delay: i * 0.03,
-    },
-  }),
-};
+const GRID_COLS =
+  'sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(8rem,0.9fr)_minmax(8rem,0.7fr)_auto] sm:gap-3 sm:items-center';
 
-function TrashItemRow({
-  item,
-  index,
-  vaultLabel,
-}: {
-  item: DecryptedTrashedItem;
-  index: number;
-  vaultLabel: string;
-}) {
-  const restore = useRestoreItem();
-  const purge = usePurgeItem();
-  const [showPurgeDialog, setShowPurgeDialog] = useState(false);
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+const ISO_DATE_RE = /^(\d{4}-\d{2}-\d{2})/;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-  async function handleRestore() {
-    await restore.mutateAsync({ id: item.id, vaultId: item.vaultId });
-    setShowRestoreDialog(false);
-    toast.success(`"${item.title}" restored`);
-  }
-
-  async function handlePurge() {
-    await purge.mutateAsync({ id: item.id, vaultId: item.vaultId });
-    setShowPurgeDialog(false);
-    toast.success(`"${item.title}" permanently deleted`);
-  }
-
-  const deletedDate = new Date(item.deletedAt).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const subtitle = getItemSubtitle(item);
-
-  return (
-    <>
-      <motion.div
-        role="row"
-        data-testid={`trash-row-${item.id}`}
-        custom={index}
-        initial="hidden"
-        animate="visible"
-        variants={listItemVariants}
-        className="grid gap-3 rounded-lg border border-border bg-card px-3 py-3 transition-colors hover:bg-accent/40 sm:grid-cols-[minmax(0,1.5fr)_minmax(8rem,0.9fr)_minmax(7rem,0.7fr)_auto] sm:items-center"
-      >
-        <div role="cell" className="min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
-            <span className="text-[10px] uppercase text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded shrink-0">
-              {item.type.replace('_', ' ')}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground truncate">{subtitle || 'No subtitle'}</p>
-        </div>
-        <div role="cell" className="min-w-0">
-          <p className="text-[10px] font-medium uppercase text-muted-foreground/60 sm:hidden">
-            Source vault
-          </p>
-          <p className="text-xs text-muted-foreground truncate">{vaultLabel}</p>
-        </div>
-        <div role="cell" className="min-w-0">
-          <p className="text-[10px] font-medium uppercase text-muted-foreground/60 sm:hidden">
-            Deleted
-          </p>
-          <p className="text-xs text-muted-foreground truncate">{deletedDate}</p>
-        </div>
-        <div role="cell" className="flex items-center gap-1 justify-end shrink-0">
-          <Button
-            variant="default"
-            size="sm"
-            className="h-9 px-3 sm:h-7 sm:px-2 text-xs gap-1.5"
-            onClick={() => setShowRestoreDialog(true)}
-            disabled={restore.isPending}
-            aria-label={`Restore ${item.title}`}
-            title={`Restore ${item.title}`}
-          >
-            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-            {restore.isPending ? 'Restoring…' : 'Restore'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 px-3 sm:h-7 sm:px-2 text-xs gap-1.5 text-muted-foreground hover:text-destructive"
-            onClick={() => setShowPurgeDialog(true)}
-            aria-label={`Delete ${item.title} permanently`}
-            title={`Delete ${item.title} permanently`}
-          >
-            <X className="w-3.5 h-3.5" aria-hidden="true" />
-            <span className="hidden md:inline">Delete permanently</span>
-          </Button>
-        </div>
-      </motion.div>
-
-      <ResponsiveDialog
-        open={showRestoreDialog}
-        onOpenChange={setShowRestoreDialog}
-        title="Restore item?"
-        description={
-          <>
-            <strong>{item.title}</strong> will be moved back to its original vault ({vaultLabel}).
-          </>
-        }
-        footer={
-          <>
-            <Button onClick={handleRestore} disabled={restore.isPending}>
-              {restore.isPending ? 'Restoring…' : 'Restore'}
-            </Button>
-            <Button variant="outline" onClick={() => setShowRestoreDialog(false)}>
-              Cancel
-            </Button>
-          </>
-        }
-      />
-
-      <ResponsiveDialog
-        open={showPurgeDialog}
-        onOpenChange={setShowPurgeDialog}
-        title="Delete permanently?"
-        description={
-          <>
-            <strong>{item.title}</strong> and all its version history will be permanently removed.
-            This cannot be undone.
-          </>
-        }
-        footer={
-          <>
-            <Button variant="destructive" onClick={handlePurge} disabled={purge.isPending}>
-              {purge.isPending ? 'Deleting…' : 'Delete permanently'}
-            </Button>
-            <Button variant="outline" onClick={() => setShowPurgeDialog(false)}>
-              Cancel
-            </Button>
-          </>
-        }
-      />
-    </>
-  );
+function formatDeletedAt(deletedAt: string) {
+  const iso = ISO_DATE_RE.exec(deletedAt)?.[1] ?? deletedAt.slice(0, 10);
+  const t = new Date(deletedAt).getTime();
+  if (!Number.isFinite(t)) return { iso, relative: null as string | null };
+  const days = Math.floor((Date.now() - t) / DAY_MS);
+  let relative: string | null = null;
+  if (days <= 0) relative = 'today';
+  else if (days === 1) relative = 'yesterday';
+  else if (days < 7) relative = `${days}d ago`;
+  return { iso, relative };
 }
 
 function getSortIcon(sort: TrashSort) {
@@ -190,25 +56,127 @@ function getSortIcon(sort: TrashSort) {
   return <ArrowDownZA className="w-3.5 h-3.5" aria-hidden="true" />;
 }
 
+type RowProps = {
+  item: DecryptedTrashedItem;
+  vaultName: string;
+  vaultMissing: boolean;
+  onAskRestore: (item: DecryptedTrashedItem) => void;
+  onAskPurge: (item: DecryptedTrashedItem) => void;
+  restorePending: boolean;
+};
+
+function TrashItemRow({
+  item,
+  vaultName,
+  vaultMissing,
+  onAskRestore,
+  onAskPurge,
+  restorePending,
+}: RowProps) {
+  const subtitle = getItemSubtitle(item);
+  const { iso, relative } = formatDeletedAt(item.deletedAt);
+
+  return (
+    <div
+      role="row"
+      tabIndex={-1}
+      data-testid={`trash-row-${item.id}`}
+      data-trash-row="true"
+      data-item-id={item.id}
+      data-vault-id={item.vaultId}
+      className={`grid gap-3 px-3 py-3 outline-none transition-colors duration-150 hover:bg-accent/40 focus-visible:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset border-b border-border/60 last:border-b-0 ${GRID_COLS}`}
+    >
+      <div role="cell" className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+          <span className="text-[10px] uppercase text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded shrink-0">
+            {item.type.replace('_', ' ')}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground truncate">{subtitle || 'No subtitle'}</p>
+      </div>
+      <div role="cell" className="min-w-0">
+        <p className="text-[10px] font-medium uppercase text-muted-foreground/60 sm:hidden">
+          Source vault
+        </p>
+        <p
+          className={`text-xs truncate ${
+            vaultMissing ? 'italic text-muted-foreground/70' : 'text-muted-foreground'
+          }`}
+        >
+          {vaultMissing ? '(deleted vault)' : vaultName}
+        </p>
+      </div>
+      <div role="cell" className="min-w-0">
+        <p className="text-[10px] font-medium uppercase text-muted-foreground/60 sm:hidden">
+          Deleted
+        </p>
+        <p
+          className="text-xs text-muted-foreground truncate font-mono tabular-nums tracking-tight"
+          title={item.deletedAt}
+        >
+          <span>{iso}</span>
+          {relative && (
+            <span className="font-sans tracking-normal text-muted-foreground/60 ml-1.5">
+              · {relative}
+            </span>
+          )}
+        </p>
+      </div>
+      <div role="cell" className="flex items-center gap-1 justify-end shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-9 px-3 sm:h-7 sm:px-2 text-xs gap-1.5 text-foreground/80 hover:text-primary hover:bg-primary/10"
+          onClick={() => onAskRestore(item)}
+          disabled={restorePending}
+          aria-label={`Restore ${item.title}`}
+          title={`Restore ${item.title}`}
+        >
+          <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+          {restorePending ? 'Restoring…' : 'Restore'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-9 px-3 sm:h-7 sm:px-2 text-xs gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          onClick={() => onAskPurge(item)}
+          aria-label={`Delete ${item.title} permanently`}
+          title={`Delete ${item.title} permanently`}
+        >
+          <X className="w-3.5 h-3.5" aria-hidden="true" />
+          <span className="hidden md:inline">Delete permanently</span>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function TrashPage() {
   const { data: items, isLoading, isError } = useTrashItems();
   const vaults = useVaultList();
   const emptyTrash = useEmptyTrash();
+  const restore = useRestoreItem();
+  const purge = usePurgeItem();
+
   const [showEmptyDialog, setShowEmptyDialog] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<DecryptedTrashedItem | null>(null);
+  const [purgeTarget, setPurgeTarget] = useState<DecryptedTrashedItem | null>(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<TrashSort>('deleted-desc');
 
-  const vaultLabel = useMemo(() => {
-    const map = new Map(vaults.map((v) => [v.id, v.name]));
-    return (id: string) => map.get(id) ?? 'Vault';
-  }, [vaults]);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const vaultMap = useMemo(() => new Map(vaults.map((v) => [v.id, v.name])), [vaults]);
+  const vaultLabel = (id: string) => vaultMap.get(id);
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLowerCase();
     return [...(items ?? [])]
       .filter((item) => {
         if (!query) return true;
-        return [item.title, getItemSubtitle(item), vaultLabel(item.vaultId)]
+        return [item.title, getItemSubtitle(item), vaultMap.get(item.vaultId) ?? '']
           .join(' ')
           .toLowerCase()
           .includes(query);
@@ -218,7 +186,7 @@ export function TrashPage() {
         const diff = new Date(a.deletedAt).getTime() - new Date(b.deletedAt).getTime();
         return sort === 'deleted-asc' ? diff : -diff;
       });
-  }, [items, search, sort, vaultLabel]);
+  }, [items, search, sort, vaultMap]);
 
   async function handleEmptyTrash() {
     await emptyTrash.mutateAsync();
@@ -226,35 +194,140 @@ export function TrashPage() {
     toast.success('Trash emptied');
   }
 
+  async function handleRestore() {
+    const target = restoreTarget!;
+    await restore.mutateAsync({ id: target.id, vaultId: target.vaultId });
+    setRestoreTarget(null);
+    toast.success(`"${target.title}" restored`);
+  }
+
+  async function handlePurge() {
+    const target = purgeTarget!;
+    await purge.mutateAsync({ id: target.id, vaultId: target.vaultId });
+    setPurgeTarget(null);
+    toast.success(`"${target.title}" permanently deleted`);
+  }
+
+  // `/` focuses search anywhere on the page (mirrors vault list pattern).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (
+        e.key === '/' &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target instanceof HTMLSelectElement)
+      ) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  function focusRowAt(idx: number) {
+    const rows = listRef.current!.querySelectorAll<HTMLDivElement>('[data-trash-row="true"]');
+    const clamped = Math.max(0, Math.min(idx, rows.length - 1));
+    rows[clamped]?.focus();
+  }
+
+  function handleListKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const row = (e.target as HTMLElement).closest<HTMLElement>('[data-trash-row="true"]');
+    // Allow nav keys to work even when focus is inside an action button on the row.
+    if (!row) return;
+
+    const rows = Array.from(
+      listRef.current!.querySelectorAll<HTMLDivElement>('[data-trash-row="true"]'),
+    );
+    const idx = rows.indexOf(row as HTMLDivElement);
+
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault();
+      focusRowAt(idx + 1);
+      return;
+    }
+    if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault();
+      if (idx === 0) {
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      } else {
+        focusRowAt(idx - 1);
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      searchRef.current?.focus();
+      return;
+    }
+    // Action keys only fire on the row itself, not when focus is inside a button child.
+    if (e.target !== row) return;
+    const id = row.dataset.itemId;
+    const item = visibleItems.find((it) => it.id === id)!;
+    if (e.key === 'r' || e.key === 'R' || e.key === 'Enter') {
+      e.preventDefault();
+      setRestoreTarget(item);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      setPurgeTarget(item);
+    }
+  }
+
+  // When the search input is focused and the user presses ↓, jump to the first row.
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusRowAt(0);
+    }
+  }
+
+  const itemCount = items?.length ?? 0;
+  const hasItems = itemCount > 0;
+
   return (
-    <div className="p-4 sm:p-6 h-full overflow-auto">
-      <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Trash2 className="w-5 h-5 text-muted-foreground" />
-          <h1 className="text-xl font-semibold text-foreground">Trash</h1>
-          {items && items.length > 0 && (
-            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-              {items.length}
-            </span>
-          )}
+    <div className="h-full overflow-y-auto px-4 py-6 lg:px-6 lg:py-8 max-w-4xl mx-auto w-full">
+      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70">Recovery</p>
+          <div className="flex items-baseline gap-2">
+            <h1 className="font-heading text-xl font-semibold text-foreground tracking-tight">
+              Trash
+            </h1>
+            {hasItems && (
+              <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                {itemCount}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 max-w-prose">
+            Items remain here until you purge them. Nothing is ever auto-deleted.
+          </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="self-start text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 disabled:text-muted-foreground sm:self-auto"
-          onClick={() => setShowEmptyDialog(true)}
-          disabled={!items?.length || emptyTrash.isPending}
-        >
-          Empty trash
-        </Button>
-      </div>
+        {hasItems && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="self-start text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 sm:self-auto"
+            onClick={() => setShowEmptyDialog(true)}
+            disabled={emptyTrash.isPending}
+          >
+            Empty trash
+          </Button>
+        )}
+      </header>
 
       {isLoading && (
-        <div className="space-y-1.5" aria-busy="true" aria-label="Loading trashed items">
+        <div
+          className="rounded-lg border border-border/60 bg-card overflow-hidden"
+          aria-busy="true"
+          aria-label="Loading trashed items"
+        >
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="grid gap-3 rounded-lg border border-border bg-card px-3 py-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(8rem,0.9fr)_minmax(7rem,0.7fr)_auto] sm:items-center"
+              className={`grid gap-3 px-3 py-3 border-b border-border/60 last:border-b-0 ${GRID_COLS}`}
             >
               <div className="space-y-1.5 min-w-0">
                 <Skeleton className="h-3 w-2/3 rounded" />
@@ -282,22 +355,24 @@ export function TrashPage() {
         </div>
       )}
 
-      {!isLoading && !isError && items?.length === 0 && (
+      {!isLoading && !isError && itemCount === 0 && (
         <EmptyState
           Icon={Trash2}
           title="Trash is empty"
-          hint="Deleted vault items will appear here before permanent deletion."
+          hint="Deleted vault items will appear here. They stay until you purge them."
         />
       )}
 
-      {!isLoading && !isError && items && items.length > 0 && (
+      {!isLoading && !isError && hasItems && (
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative sm:max-w-xs sm:flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               <Input
+                ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="Search trash..."
                 aria-label="Search trash"
                 className="h-8 pl-8 pr-8 text-sm"
@@ -319,7 +394,7 @@ export function TrashPage() {
                 value={sort}
                 onChange={(e) => setSort(e.target.value as TrashSort)}
                 aria-label="Sort trash"
-                className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground transition-colors outline-none hover:border-ring/40"
               >
                 <option value="deleted-desc">Newest deleted</option>
                 <option value="deleted-asc">Oldest deleted</option>
@@ -329,14 +404,16 @@ export function TrashPage() {
           </div>
 
           <div
+            ref={listRef}
             role="table"
             aria-label="Trashed items"
-            className="space-y-1.5"
+            className="rounded-lg border border-border/60 bg-card overflow-hidden"
             data-testid="trash-table"
+            onKeyDown={handleListKeyDown}
           >
             <div
               role="row"
-              className="hidden px-3 text-[10px] font-medium uppercase text-muted-foreground/60 sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(8rem,0.9fr)_minmax(7rem,0.7fr)_auto] sm:gap-3 border border-transparent"
+              className={`hidden px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 border-b border-border/60 bg-muted/30 ${GRID_COLS}`}
             >
               <span role="columnheader">Item</span>
               <span role="columnheader">Source vault</span>
@@ -345,25 +422,81 @@ export function TrashPage() {
                 Actions
               </span>
             </div>
-            {visibleItems.map((item, i) => (
-              <TrashItemRow
-                key={item.id}
-                item={item}
-                index={i}
-                vaultLabel={vaultLabel(item.vaultId)}
-              />
-            ))}
+            {visibleItems.length === 0 ? (
+              <EmptyState Icon={Search} title="No matches" size="sm" />
+            ) : (
+              visibleItems.map((item) => {
+                const name = vaultLabel(item.vaultId);
+                return (
+                  <TrashItemRow
+                    key={item.id}
+                    item={item}
+                    vaultName={name ?? ''}
+                    vaultMissing={!name}
+                    onAskRestore={setRestoreTarget}
+                    onAskPurge={setPurgeTarget}
+                    restorePending={restore.isPending && restoreTarget?.id === item.id}
+                  />
+                );
+              })
+            )}
           </div>
-
-          {visibleItems.length === 0 && <EmptyState Icon={Search} title="No matches" size="sm" />}
         </div>
       )}
+
+      <ResponsiveDialog
+        open={!!restoreTarget}
+        onOpenChange={() => setRestoreTarget(null)}
+        title="Restore item?"
+        description={
+          restoreTarget && (
+            <>
+              <strong>{restoreTarget.title}</strong> will be moved back to its original vault (
+              {vaultLabel(restoreTarget.vaultId) ?? 'deleted vault'}).
+            </>
+          )
+        }
+        footer={
+          <>
+            <Button onClick={handleRestore} disabled={restore.isPending}>
+              {restore.isPending ? 'Restoring…' : 'Restore'}
+            </Button>
+            <Button variant="outline" onClick={() => setRestoreTarget(null)}>
+              Cancel
+            </Button>
+          </>
+        }
+      />
+
+      <ResponsiveDialog
+        open={!!purgeTarget}
+        onOpenChange={() => setPurgeTarget(null)}
+        title="Delete permanently?"
+        description={
+          purgeTarget && (
+            <>
+              <strong>{purgeTarget.title}</strong> and all its version history will be permanently
+              removed. This cannot be undone.
+            </>
+          )
+        }
+        footer={
+          <>
+            <Button variant="destructive" onClick={handlePurge} disabled={purge.isPending}>
+              {purge.isPending ? 'Deleting…' : 'Delete permanently'}
+            </Button>
+            <Button variant="outline" onClick={() => setPurgeTarget(null)}>
+              Cancel
+            </Button>
+          </>
+        }
+      />
 
       <ResponsiveDialog
         open={showEmptyDialog}
         onOpenChange={setShowEmptyDialog}
         title="Empty trash?"
-        description={`All ${items?.length ?? 0} item${(items?.length ?? 0) !== 1 ? 's' : ''} and their version history will be permanently deleted. This cannot be undone.`}
+        description={`All ${itemCount} item${itemCount !== 1 ? 's' : ''} and their version history will be permanently deleted. This cannot be undone.`}
         footer={
           <>
             <Button

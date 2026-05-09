@@ -25,13 +25,13 @@ export function AppearanceSection() {
           role="radio"
           aria-checked={theme === value}
           onClick={() => handleTheme(value)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
             theme === value
-              ? 'bg-primary/10 border-primary/30 text-primary'
-              : 'border-border text-muted-foreground hover:text-foreground hover:border-border/80'
+              ? 'bg-accent border-border text-foreground'
+              : 'border-border text-muted-foreground hover:bg-accent/60 hover:text-foreground'
           }`}
         >
-          <Icon className="w-3 h-3" aria-hidden="true" />
+          <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           {label}
         </button>
       ))}

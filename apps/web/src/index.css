@@ -6,6 +6,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@utility text-caption {
+  font-size: 0.625rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 @theme inline {
   --font-heading: 'Bricolage Grotesque Variable', 'Geist Variable', sans-serif;
   --font-sans: 'Geist Variable', sans-serif;
@@ -27,6 +34,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-accent-teal: var(--accent-teal);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -51,9 +59,13 @@
 }
 
 :root {
-  /* Density tokens — overridden via [data-density] on <html> */
+  /* Density tokens — overridden via [data-density] on <html> or any scoped container */
   --row-py: 0.625rem; /* cozy default = py-2.5 */
   --row-gap: 0.75rem; /* gap-3 */
+}
+[data-density='cozy'] {
+  --row-py: 0.625rem;
+  --row-gap: 0.75rem;
 }
 [data-density='compact'] {
   --row-py: 0.375rem; /* py-1.5 */
@@ -100,6 +112,13 @@
   --sidebar-ring: oklch(0.38 0.16 295);
   /* Teal accent — muted for light mode */
   --accent-teal: oklch(0.55 0.12 195);
+  /* Unlock-icon ceremony state colors — teal at rest, violet while running */
+  --unlock-rest-bg: oklch(0.55 0.12 195 / 0.1);
+  --unlock-rest-border: oklch(0.55 0.12 195 / 0.3);
+  --unlock-rest-glow: 0 0 22px oklch(0.55 0.12 195 / 0.22);
+  --unlock-run-bg: oklch(0.58 0.21 295 / 0.18);
+  --unlock-run-border: oklch(0.58 0.21 295 / 0.4);
+  --unlock-run-glow: 0 0 36px oklch(0.58 0.21 295 / 0.45);
   /* Subtle violet glow for light mode */
   --glow-bg: radial-gradient(
     ellipse 60% 30% at 50% -5%,
@@ -154,6 +173,13 @@
     radial-gradient(ellipse 40% 25% at 80% 5%, oklch(0.72 0.155 195 / 0.1), transparent 60%);
   /* Teal accent token */
   --accent-teal: oklch(0.72 0.155 195);
+  /* Unlock-icon ceremony — brighter teal, brighter violet for obsidian backdrop */
+  --unlock-rest-bg: oklch(0.72 0.155 195 / 0.12);
+  --unlock-rest-border: oklch(0.72 0.155 195 / 0.35);
+  --unlock-rest-glow: 0 0 22px oklch(0.72 0.155 195 / 0.28);
+  --unlock-run-bg: oklch(0.58 0.21 295 / 0.22);
+  --unlock-run-border: oklch(0.58 0.21 295 / 0.5);
+  --unlock-run-glow: 0 0 36px oklch(0.58 0.21 295 / 0.55);
 }
 
 @layer base {
@@ -218,10 +244,36 @@
   @media (pointer: coarse) {
     button,
     [role='button'],
-    [data-slot='button'] {
+    [data-slot='button'],
+    a[href] {
       min-height: 2.75rem;
     }
   }
+}
+
+/* Native select — match Input appearance.
+ * Unlayered: needs to beat Tailwind's `pr-*` utilities (which live in
+ * @layer utilities) so the chevron clearance is preserved. */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  padding-right: 2rem;
+}
+select:focus-visible {
+  border-color: oklch(0.38 0.16 295 / 0.6);
+  box-shadow: 0 0 0 2px oklch(0.38 0.16 295 / 0.12);
+  outline: none;
+}
+.dark select:focus-visible {
+  border-color: oklch(0.58 0.21 295 / 0.65);
+  box-shadow:
+    0 0 0 1px oklch(0.58 0.21 295 / 0.15),
+    0 0 20px oklch(0.58 0.21 295 / 0.1);
+}
+.dark select option {
+  background: oklch(0.138 0.01 280);
 }
 
 @layer components {
@@ -420,33 +472,29 @@
     }
   }
 
-  /* Native select — match Input appearance */
-  select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.65rem center;
-    padding-right: 2rem !important;
-  }
-  select:focus-visible {
-    border-color: oklch(0.38 0.16 295 / 0.6);
-    box-shadow: 0 0 0 2px oklch(0.38 0.16 295 / 0.12);
-    outline: none;
-  }
-  .dark select:focus-visible {
-    border-color: oklch(0.58 0.21 295 / 0.65);
-    box-shadow:
-      0 0 0 1px oklch(0.58 0.21 295 / 0.15),
-      0 0 20px oklch(0.58 0.21 295 / 0.1);
-  }
-  .dark select option {
-    background: oklch(0.138 0.01 280);
-  }
-
   /* Monospace password fields — visual security cue */
   [data-slot='input'][type='password'] {
     font-family: ui-monospace, 'SFMono-Regular', 'Cascadia Code', monospace;
     letter-spacing: 0.06em;
+  }
+
+  /* Unlock-icon ceremony frame — driven entirely by [data-state] for token-driven motion */
+  .unlock-icon-frame {
+    background-color: var(--unlock-rest-bg);
+    border-color: var(--unlock-rest-border);
+    box-shadow: var(--unlock-rest-glow);
+    transform: scale(1);
+    transition:
+      background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .unlock-icon-frame[data-state='run'] {
+    background-color: var(--unlock-run-bg);
+    border-color: var(--unlock-run-border);
+    box-shadow: var(--unlock-run-glow);
+    transform: scale(1.06);
   }
 
   /* Auth card header separator */

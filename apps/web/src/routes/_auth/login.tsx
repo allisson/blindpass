@@ -1,6 +1,5 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { api } from '@/lib/api';
 import { authFlow } from '@/lib/authFlow';
 import { getLastUsername } from '@/lib/session';
@@ -27,7 +27,6 @@ type FormData = z.infer<typeof schema>;
 function LoginPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -74,45 +73,28 @@ function LoginPage() {
           </div>
           <div className="field-group" data-invalid={!!errors.password}>
             <Label htmlFor="password">Master password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="pr-9"
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-                {...register('password')}
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+            <PasswordInput
+              id="password"
+              autoComplete="current-password"
+              aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? 'password-error' : undefined}
+              {...register('password')}
+            />
             <FieldError id="password-error" message={errors.password?.message} />
           </div>
           <FieldError message={error ?? undefined} />
-          <Button type="submit" className="w-full" loading={isSubmitting}>
-            Continue
+          <Button type="submit" className="w-full" loading={isSubmitting} disabled={isSubmitting}>
+            {isSubmitting ? 'Signing in…' : 'Continue'}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            No account yet?{' '}
-            <Link to="/register" className="text-primary hover:underline">
-              Create one
+          <nav className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <Link to="/register" className="transition-colors hover:text-foreground">
+              Create account
             </Link>
-          </p>
-          <p className="text-center text-sm text-muted-foreground">
-            Lost your password or authenticator?{' '}
-            <Link to="/recover" className="text-primary hover:underline">
-              Recover account
+            <span aria-hidden="true">·</span>
+            <Link to="/recover" className="transition-colors hover:text-foreground">
+              Recover access
             </Link>
-          </p>
+          </nav>
         </form>
       </CardContent>
     </Card>

@@ -1,14 +1,14 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { PassphraseGenerator } from '@/components/ui/passphrase-generator';
 import { loadZxcvbn } from '@/lib/zxcvbn';
@@ -92,7 +92,7 @@ function RegisterPage() {
       <CardHeader>
         <CardTitle>Create account</CardTitle>
         <CardDescription>
-          Choose a permanent username and set up your zero-knowledge vault
+          Pick a username and master password, then pair an authenticator app
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -112,27 +112,15 @@ function RegisterPage() {
           </div>
           <div className="field-group" data-invalid={!!errors.password}>
             <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPasswords ? 'text' : 'password'}
-                autoComplete="new-password"
-                placeholder="••••••••"
-                className="pr-9"
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-                {...register('password')}
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setShowPasswords((v) => !v)}
-                aria-label={showPasswords ? 'Hide password' : 'Show password'}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+            <PasswordInput
+              id="password"
+              autoComplete="new-password"
+              revealed={showPasswords}
+              onRevealChange={setShowPasswords}
+              aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? 'password-error' : undefined}
+              {...register('password')}
+            />
             <PasswordStrength
               password={passwordValue}
               userInputs={usernameValue ? [usernameValue] : undefined}
@@ -148,39 +136,30 @@ function RegisterPage() {
           </div>
           <div className="field-group" data-invalid={!!errors.confirmPassword}>
             <Label htmlFor="confirmPassword">Confirm password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showPasswords ? 'text' : 'password'}
-                autoComplete="new-password"
-                placeholder="••••••••"
-                className="pr-9"
-                aria-invalid={!!errors.confirmPassword}
-                aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
-                {...register('confirmPassword')}
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setShowPasswords((v) => !v)}
-                aria-label={showPasswords ? 'Hide password' : 'Show password'}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+            <PasswordInput
+              id="confirmPassword"
+              autoComplete="new-password"
+              revealed={showPasswords}
+              onRevealChange={setShowPasswords}
+              aria-invalid={!!errors.confirmPassword}
+              aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
+              {...register('confirmPassword')}
+            />
             <FieldError id="confirm-password-error" message={errors.confirmPassword?.message} />
           </div>
           <FieldError message={error ?? undefined} />
           <Button type="submit" className="w-full" loading={!!loadingMsg} disabled={!!loadingMsg}>
             {loadingMsg || 'Create account'}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <a href="/login" className="text-primary hover:underline">
+          <nav className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <Link to="/login" className="transition-colors hover:text-foreground">
               Sign in
-            </a>
-          </p>
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/recover" className="transition-colors hover:text-foreground">
+              Recover access
+            </Link>
+          </nav>
         </form>
       </CardContent>
     </Card>

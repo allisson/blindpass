@@ -30,6 +30,18 @@ const SECTIONS = [
     title: 'Dashboard',
     rows: [{ keys: ['N'], desc: 'New item' }],
   },
+  {
+    title: 'Trash',
+    rows: [
+      { keys: ['/'], desc: 'Focus search' },
+      { keys: ['↑', '↓'], desc: 'Navigate items' },
+      { keys: ['j', 'k'], desc: 'Navigate items (vim)' },
+      { keys: ['R'], desc: 'Restore focused item' },
+      { keys: ['Enter'], desc: 'Restore focused item' },
+      { keys: ['Del'], desc: 'Delete focused item permanently' },
+      { keys: ['Esc'], desc: 'Back to search' },
+    ],
+  },
 ];
 
 interface Props {

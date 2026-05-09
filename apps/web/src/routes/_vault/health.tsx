@@ -51,6 +51,20 @@ function computeFindings(items: DecryptedItem[]): Findings {
   return { weak, reused, old };
 }
 
+type Tone = 'danger' | 'attention' | 'muted';
+
+const TONE_TEXT: Record<Tone, string> = {
+  danger: 'text-destructive',
+  attention: 'text-[var(--accent-teal)]',
+  muted: 'text-muted-foreground',
+};
+
+const TONE_CHIP: Record<Tone, string> = {
+  danger: 'text-destructive bg-destructive/10 border-destructive/20',
+  attention: 'text-[var(--accent-teal)] bg-[var(--accent-teal)]/10 border-[var(--accent-teal)]/25',
+  muted: 'text-muted-foreground bg-muted border-border',
+};
+
 function FindingRow({ item, hint }: { item: DecryptedItem; hint: string }) {
   return (
     <Link
@@ -63,7 +77,7 @@ function FindingRow({ item, hint }: { item: DecryptedItem; hint: string }) {
         <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
         <p className="text-xs text-muted-foreground truncate">{getItemSubtitle(item)}</p>
       </div>
-      <span className="text-[11px] text-destructive shrink-0">{hint}</span>
+      <span className="text-[11px] text-muted-foreground shrink-0 tabular-nums">{hint}</span>
     </Link>
   );
 }
@@ -77,29 +91,20 @@ function Section({
 }: {
   Icon: typeof AlertTriangle;
   title: string;
-  count: number;
-  tone: 'danger' | 'warn' | 'ok';
-  children: React.ReactNode;
+  count: number | string;
+  tone: Tone;
+  children?: React.ReactNode;
 }) {
-  const colors = {
-    danger: 'text-destructive bg-destructive/10 border-destructive/20',
-    warn: 'text-[oklch(0.55_0.12_60)] bg-[oklch(0.55_0.12_60/0.1)] border-[oklch(0.55_0.12_60/0.2)]',
-    ok: 'text-primary bg-primary/10 border-primary/20',
-  } as const;
   return (
     <section className="glass-card p-4">
-      <header className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-7 h-7 rounded-lg border flex items-center justify-center ${colors[tone]}`}
-          >
-            <Icon className="w-3.5 h-3.5" />
-          </span>
-          <h2 className="font-heading text-sm font-semibold text-foreground">{title}</h2>
+      <header className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-foreground">
+          <Icon className="w-4 h-4 text-muted-foreground" aria-hidden />
+          <h2 className="text-sm font-medium">{title}</h2>
         </div>
-        <span className="text-xs font-mono text-muted-foreground tabular-nums">{count}</span>
+        <span className={`text-xs font-mono tabular-nums ${TONE_TEXT[tone]}`}>{count}</span>
       </header>
-      {children}
+      {children ? <div className="mt-3">{children}</div> : null}
     </section>
   );
 }
@@ -113,16 +118,15 @@ function HealthPage() {
 
   const findings = useMemo(() => (items ? computeFindings(items) : null), [items]);
 
-  const score = useMemo(() => {
-    if (!findings || !items) return null;
-    const logins = items.filter(isLogin);
-    if (!logins.length) return null;
-    const reusedItemCount = findings.reused.reduce((acc, g) => acc + g.items.length, 0);
-    const issues = findings.weak.length + reusedItemCount + findings.old.length;
-    const breachCount = breaches?.length ?? 0;
-    const ratio = Math.max(0, logins.length - issues - breachCount * 2) / logins.length;
-    return Math.round(ratio * 100);
-  }, [findings, items, breaches]);
+  const affectedIds = useMemo(() => {
+    if (!findings) return null;
+    const ids = new Set<string>();
+    findings.weak.forEach((i) => ids.add(i.id));
+    findings.reused.forEach((g) => g.items.forEach((i) => ids.add(i.id)));
+    findings.old.forEach((i) => ids.add(i.id));
+    breaches?.forEach((b) => ids.add(b.itemId));
+    return ids;
+  }, [findings, breaches]);
 
   async function runBreachCheck() {
     if (!items) return;
@@ -161,24 +165,24 @@ function HealthPage() {
         <header className="mb-6 space-y-2">
           <Skeleton className="h-3 w-12 rounded" />
           <Skeleton className="h-6 w-40 rounded" />
-          <Skeleton className="h-3 w-3/4 rounded" />
+          <Skeleton className="h-3 w-44 rounded" />
         </header>
-        <div className="glass-card p-5 mb-6 flex items-baseline gap-3">
-          <Skeleton className="h-12 w-20 rounded" />
-          <Skeleton className="h-3 w-10 rounded" />
-          <Skeleton className="ml-auto h-2.5 w-24 rounded" />
+        <Skeleton className="h-4 w-64 rounded mb-3" />
+        <div className="flex flex-wrap gap-1.5 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-5 w-20 rounded-full" />
+          ))}
         </div>
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <section key={i} className="glass-card p-4">
-              <header className="flex items-center justify-between gap-2 mb-3">
+              <header className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Skeleton className="w-7 h-7 rounded-lg" />
+                  <Skeleton className="w-4 h-4 rounded" />
                   <Skeleton className="h-3.5 w-32 rounded" />
                 </div>
                 <Skeleton className="h-3 w-6 rounded" />
               </header>
-              <Skeleton className="h-3 w-2/3 rounded" />
             </section>
           ))}
         </div>
@@ -195,6 +199,11 @@ function HealthPage() {
     );
   }
 
+  const logins = items.filter(isLogin);
+  const reusedItemCount = findings.reused.reduce((acc, g) => acc + g.items.length, 0);
+  const breachCount = breaches?.length ?? 0;
+  const affected = affectedIds?.size ?? 0;
+
   const breachItems = breaches
     ? breaches
         .map((b) => {
@@ -204,6 +213,15 @@ function HealthPage() {
         .filter((x): x is { item: DecryptedItem; count: number } => x !== null)
     : null;
 
+  const chips: { label: string; tone: Tone }[] = [
+    { label: `${findings.weak.length} weak`, tone: findings.weak.length ? 'danger' : 'muted' },
+    { label: `${reusedItemCount} reused`, tone: reusedItemCount ? 'attention' : 'muted' },
+    { label: `${findings.old.length} old`, tone: findings.old.length ? 'attention' : 'muted' },
+    breaches !== null
+      ? { label: `${breachCount} breached`, tone: breachCount ? 'danger' : 'muted' }
+      : { label: '— breached', tone: 'muted' },
+  ];
+
   return (
     <div className="h-full overflow-y-auto px-4 py-6 lg:px-6 lg:py-8 max-w-3xl mx-auto w-full">
       <header className="mb-6">
@@ -211,90 +229,42 @@ function HealthPage() {
         <h1 className="font-heading text-xl font-semibold text-foreground tracking-tight">
           Vault health
         </h1>
-        <p className="text-xs text-muted-foreground mt-1">
-          All checks run locally. Breach check sends only a 5-character password-hash prefix
-          (k-anonymity) — never the full hash or password.
-        </p>
+        <p className="text-xs text-muted-foreground mt-1">All checks run locally.</p>
       </header>
 
-      {score !== null &&
-        (() => {
-          const verdict =
-            score >= 90
-              ? 'Excellent'
-              : score >= 80
-                ? 'Strong'
-                : score >= 50
-                  ? 'Needs attention'
-                  : 'At risk';
-          const tone =
-            score >= 80
-              ? 'text-primary'
-              : score >= 50
-                ? 'text-[oklch(0.55_0.12_60)]'
-                : 'text-destructive';
-          const reusedItemCount = findings.reused.reduce((acc, g) => acc + g.items.length, 0);
-          const breachCount = breaches?.length ?? 0;
-          const chips: { label: string; tone: 'danger' | 'warn' | 'ok' }[] = [
-            { label: `${findings.weak.length} weak`, tone: findings.weak.length ? 'danger' : 'ok' },
-            { label: `${reusedItemCount} reused`, tone: reusedItemCount ? 'warn' : 'ok' },
-            { label: `${findings.old.length} old`, tone: findings.old.length ? 'warn' : 'ok' },
-            ...(breaches !== null
-              ? [
-                  {
-                    label: `${breachCount} breached`,
-                    tone: (breachCount ? 'danger' : 'ok') as 'danger' | 'warn' | 'ok',
-                  },
-                ]
-              : []),
-          ];
-          const chipColors = {
-            danger: 'text-destructive bg-destructive/10 border-destructive/20',
-            warn: 'text-[oklch(0.55_0.12_60)] bg-[oklch(0.55_0.12_60/0.1)] border-[oklch(0.55_0.12_60/0.2)]',
-            ok: 'text-muted-foreground bg-muted border-border',
-          } as const;
-          return (
-            <div className="glass-card p-5 mb-6 space-y-3" data-testid="health-score-card">
-              <div className="flex items-baseline gap-3">
-                <span
-                  className={`font-heading text-5xl font-semibold tabular-nums ${tone}`}
-                  aria-label={`Health score ${score} out of 100`}
-                >
-                  {score}
-                </span>
-                <span className="text-sm text-muted-foreground/70">/ 100</span>
-                <span className={`ml-auto text-xs font-medium ${tone}`}>{verdict}</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {chips.map((c) => (
-                  <span
-                    key={c.label}
-                    className={`text-[11px] font-medium px-2 py-0.5 rounded-full border tabular-nums ${chipColors[c.tone]}`}
-                  >
-                    {c.label}
-                  </span>
-                ))}
-                <span className="ml-auto text-[11px] text-muted-foreground/70 self-center">
-                  {items.filter(isLogin).length} login
-                  {items.filter(isLogin).length === 1 ? '' : 's'} audited
-                </span>
-              </div>
-            </div>
-          );
-        })()}
+      <div className="mb-6" data-testid="health-summary">
+        <p className="text-sm text-foreground tabular-nums">
+          {affected > 0 ? (
+            <>
+              <span className="text-destructive font-medium">{affected}</span> of {logins.length}{' '}
+              logins need attention.
+            </>
+          ) : (
+            <span className="text-muted-foreground">
+              {logins.length} login{logins.length === 1 ? '' : 's'}, no findings.
+            </span>
+          )}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {chips.map((c) => (
+            <span
+              key={c.label}
+              className={`text-[11px] font-medium px-2 py-0.5 rounded-full border tabular-nums ${TONE_CHIP[c.tone]}`}
+            >
+              {c.label}
+            </span>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-3">
         <Section
           Icon={AlertTriangle}
           title="Weak passwords"
           count={findings.weak.length}
-          tone={findings.weak.length > 0 ? 'danger' : 'ok'}
+          tone={findings.weak.length > 0 ? 'danger' : 'muted'}
         >
-          {findings.weak.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-1 py-1">
-              All passwords meet minimum strength.
-            </p>
-          ) : (
+          {findings.weak.length > 0 ? (
             <ul className="space-y-0.5" data-testid="weak-list">
               {findings.weak.map((item) => (
                 <li key={item.id}>
@@ -302,20 +272,16 @@ function HealthPage() {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </Section>
 
         <Section
           Icon={RefreshCw}
           title="Reused passwords"
-          count={findings.reused.reduce((acc, g) => acc + g.items.length, 0)}
-          tone={findings.reused.length > 0 ? 'warn' : 'ok'}
+          count={reusedItemCount}
+          tone={reusedItemCount > 0 ? 'attention' : 'muted'}
         >
-          {findings.reused.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-1 py-1">
-              No password is used more than once.
-            </p>
-          ) : (
+          {findings.reused.length > 0 ? (
             <ul className="space-y-3" data-testid="reused-list">
               {findings.reused.map((group, idx) => (
                 <li key={idx}>
@@ -332,20 +298,16 @@ function HealthPage() {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </Section>
 
         <Section
           Icon={Calendar}
           title="Old passwords (>1 year)"
           count={findings.old.length}
-          tone={findings.old.length > 0 ? 'warn' : 'ok'}
+          tone={findings.old.length > 0 ? 'attention' : 'muted'}
         >
-          {findings.old.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-1 py-1">
-              No password is over a year old.
-            </p>
-          ) : (
+          {findings.old.length > 0 ? (
             <ul className="space-y-0.5" data-testid="old-list">
               {findings.old.map((item) => (
                 <li key={item.id}>
@@ -363,25 +325,27 @@ function HealthPage() {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </Section>
 
         <Section
           Icon={Siren}
           title="Breached passwords"
-          count={breachItems?.length ?? 0}
-          tone={breachItems && breachItems.length > 0 ? 'danger' : 'ok'}
+          count={breaches !== null ? (breachItems?.length ?? 0) : '—'}
+          tone={breaches !== null && breachItems && breachItems.length > 0 ? 'danger' : 'muted'}
         >
           {breaches === null ? (
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                Check passwords against the Have I Been Pwned database.
+                Sends only a 5-character SHA-1 prefix to Have I Been Pwned (k-anonymity); never the
+                password.
               </p>
               <Button
                 size="sm"
                 onClick={() => void runBreachCheck()}
                 disabled={breachProgress !== null}
                 data-testid="run-breach-check"
+                className="self-end sm:self-auto sm:shrink-0"
               >
                 {breachProgress ? (
                   <>
@@ -393,17 +357,15 @@ function HealthPage() {
                 )}
               </Button>
             </div>
-          ) : breachItems && breachItems.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-1 py-1">No breached passwords found.</p>
-          ) : (
+          ) : breachItems && breachItems.length > 0 ? (
             <ul className="space-y-0.5" data-testid="breach-list">
-              {breachItems!.map(({ item, count }) => (
+              {breachItems.map(({ item, count }) => (
                 <li key={item.id}>
                   <FindingRow item={item} hint={`seen ${count.toLocaleString()}× in breaches`} />
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </Section>
       </div>
     </div>

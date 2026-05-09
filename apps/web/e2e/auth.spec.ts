@@ -76,7 +76,7 @@ test.describe('Authenticated flows', () => {
       test.setTimeout(60_000);
       await loginAs(page, LOGIN_USERNAME, TEST_PASSWORD, loginSetupKey);
       await expect(page).toHaveURL('/');
-      await expect(page.getByText('Your vault is unlocked')).toBeVisible();
+      await expect(page.getByLabel('Search vault items')).toBeVisible();
     });
 
     test('invalid OTP shows error', async ({ page }) => {
@@ -147,7 +147,7 @@ test.describe('Authenticated flows', () => {
       await page.getByRole('button', { name: /Unlock vault/i }).click();
 
       await page.waitForURL('/', { timeout: 30_000 });
-      await expect(page.getByText('Your vault is unlocked')).toBeVisible();
+      await expect(page.getByLabel('Search vault items')).toBeVisible();
     });
   });
 });

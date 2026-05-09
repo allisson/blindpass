@@ -1,14 +1,14 @@
 import { useNavigate } from '@tanstack/react-router';
-import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
+import { Loader2, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field-error';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OtpInput } from '@/components/ui/otp-input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { MIN_PASSWORD_LENGTH } from '@/lib/constants';
 import { useChangePassword } from '@/hooks/useChangePassword';
@@ -37,7 +37,6 @@ export function ChangePasswordSection() {
   const navigate = useNavigate();
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [success, setSuccess] = useState(false);
-  const [showFields, setShowFields] = useState({ current: false, new: false, confirm: false });
   const ceremony = useChangePassword();
   const loadingMsg = CEREMONY_PHASE_LABEL[ceremony.phase];
   const isRunning =
@@ -70,15 +69,19 @@ export function ChangePasswordSection() {
     });
     if (result.ok) {
       setSuccess(true);
-      setTimeout(() => navigate({ to: '/login' }), 2000);
     }
   }
 
   if (success) {
     return (
-      <div className="flex items-center gap-2 text-sm text-green-500 py-2">
-        <Shield className="w-4 h-4" />
-        Password changed. Redirecting to sign in…
+      <div className="space-y-3 max-w-sm">
+        <div className="flex items-center gap-2 text-sm text-accent-teal">
+          <Shield className="w-4 h-4" />
+          Password changed. Sign in again to continue.
+        </div>
+        <Button size="sm" onClick={() => navigate({ to: '/login' })}>
+          Sign in
+        </Button>
       </div>
     );
   }
@@ -91,7 +94,7 @@ export function ChangePasswordSection() {
         aria-busy={isRunning || otpForm.formState.isSubmitting}
       >
         <p className="text-xs text-muted-foreground">
-          Enter a fresh 6-digit code from your authenticator app to confirm the password change.
+          Step 2 of 2 · Confirm with a fresh authenticator code.
         </p>
         <div className="space-y-1.5">
           <Controller
@@ -143,28 +146,15 @@ export function ChangePasswordSection() {
     >
       <div className="field-group" data-invalid={!!step1Form.formState.errors.currentPassword}>
         <Label htmlFor="cp-current">Current password</Label>
-        <div className="relative">
-          <Input
-            id="cp-current"
-            type={showFields.current ? 'text' : 'password'}
-            autoComplete="current-password"
-            className="pr-9"
-            aria-invalid={!!step1Form.formState.errors.currentPassword}
-            aria-describedby={
-              step1Form.formState.errors.currentPassword ? 'cp-current-error' : undefined
-            }
-            {...step1Form.register('currentPassword')}
-          />
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={() => setShowFields((v) => ({ ...v, current: !v.current }))}
-            aria-label={showFields.current ? 'Hide password' : 'Show password'}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showFields.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+        <PasswordInput
+          id="cp-current"
+          autoComplete="current-password"
+          aria-invalid={!!step1Form.formState.errors.currentPassword}
+          aria-describedby={
+            step1Form.formState.errors.currentPassword ? 'cp-current-error' : undefined
+          }
+          {...step1Form.register('currentPassword')}
+        />
         <FieldError
           id="cp-current-error"
           message={step1Form.formState.errors.currentPassword?.message}
@@ -172,53 +162,27 @@ export function ChangePasswordSection() {
       </div>
       <div className="field-group" data-invalid={!!step1Form.formState.errors.newPassword}>
         <Label htmlFor="cp-new">New password</Label>
-        <div className="relative">
-          <Input
-            id="cp-new"
-            type={showFields.new ? 'text' : 'password'}
-            autoComplete="new-password"
-            className="pr-9"
-            aria-invalid={!!step1Form.formState.errors.newPassword}
-            aria-describedby={step1Form.formState.errors.newPassword ? 'cp-new-error' : undefined}
-            {...step1Form.register('newPassword')}
-          />
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={() => setShowFields((v) => ({ ...v, new: !v.new }))}
-            aria-label={showFields.new ? 'Hide password' : 'Show password'}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showFields.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+        <PasswordInput
+          id="cp-new"
+          autoComplete="new-password"
+          aria-invalid={!!step1Form.formState.errors.newPassword}
+          aria-describedby={step1Form.formState.errors.newPassword ? 'cp-new-error' : undefined}
+          {...step1Form.register('newPassword')}
+        />
         <PasswordStrength password={newPasswordValue} />
         <FieldError id="cp-new-error" message={step1Form.formState.errors.newPassword?.message} />
       </div>
       <div className="field-group" data-invalid={!!step1Form.formState.errors.confirmPassword}>
         <Label htmlFor="cp-confirm">Confirm new password</Label>
-        <div className="relative">
-          <Input
-            id="cp-confirm"
-            type={showFields.confirm ? 'text' : 'password'}
-            autoComplete="new-password"
-            className="pr-9"
-            aria-invalid={!!step1Form.formState.errors.confirmPassword}
-            aria-describedby={
-              step1Form.formState.errors.confirmPassword ? 'cp-confirm-error' : undefined
-            }
-            {...step1Form.register('confirmPassword')}
-          />
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={() => setShowFields((v) => ({ ...v, confirm: !v.confirm }))}
-            aria-label={showFields.confirm ? 'Hide password' : 'Show password'}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showFields.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+        <PasswordInput
+          id="cp-confirm"
+          autoComplete="new-password"
+          aria-invalid={!!step1Form.formState.errors.confirmPassword}
+          aria-describedby={
+            step1Form.formState.errors.confirmPassword ? 'cp-confirm-error' : undefined
+          }
+          {...step1Form.register('confirmPassword')}
+        />
         <FieldError
           id="cp-confirm-error"
           message={step1Form.formState.errors.confirmPassword?.message}

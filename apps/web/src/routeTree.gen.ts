@@ -9,30 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnlockRouteImport } from './routes/unlock'
 import { Route as VaultRouteRouteImport } from './routes/_vault/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as VaultIndexRouteImport } from './routes/_vault/index'
 import { Route as VaultTrashRouteImport } from './routes/_vault/trash'
-import { Route as VaultSettingsRouteImport } from './routes/_vault/settings'
 import { Route as VaultSessionsRouteImport } from './routes/_vault/sessions'
 import { Route as VaultHealthRouteImport } from './routes/_vault/health'
 import { Route as VaultAdminRouteImport } from './routes/_vault/admin'
 import { Route as VaultItemIdRouteImport } from './routes/_vault/$itemId'
+import { Route as AuthUnlockRouteImport } from './routes/_auth/unlock'
 import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthRecoveryKeyRouteImport } from './routes/_auth/recovery-key'
 import { Route as AuthRecoverRouteImport } from './routes/_auth/recover'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthAuthenticatorRouteImport } from './routes/_auth/authenticator'
+import { Route as VaultSettingsRouteRouteImport } from './routes/_vault/settings/route'
+import { Route as VaultSettingsIndexRouteImport } from './routes/_vault/settings/index'
+import { Route as VaultSettingsVerificationIdRouteImport } from './routes/_vault/settings/verification-id'
+import { Route as VaultSettingsMasterPasswordRouteImport } from './routes/_vault/settings/master-password'
+import { Route as VaultSettingsInstallAppRouteImport } from './routes/_vault/settings/install-app'
+import { Route as VaultSettingsImportRouteImport } from './routes/_vault/settings/import'
+import { Route as VaultSettingsExportRouteImport } from './routes/_vault/settings/export'
+import { Route as VaultSettingsDensityRouteImport } from './routes/_vault/settings/density'
+import { Route as VaultSettingsDeleteAccountRouteImport } from './routes/_vault/settings/delete-account'
+import { Route as VaultSettingsAutoLockRouteImport } from './routes/_vault/settings/auto-lock'
+import { Route as VaultSettingsAppearanceRouteImport } from './routes/_vault/settings/appearance'
 import { Route as VaultItemsNewRouteImport } from './routes/_vault/items/new'
 import { Route as VaultItemIdEditRouteImport } from './routes/_vault/$itemId_.edit'
 
-const UnlockRoute = UnlockRouteImport.update({
-  id: '/unlock',
-  path: '/unlock',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const VaultRouteRoute = VaultRouteRouteImport.update({
   id: '/_vault',
   getParentRoute: () => rootRouteImport,
@@ -49,11 +54,6 @@ const VaultIndexRoute = VaultIndexRouteImport.update({
 const VaultTrashRoute = VaultTrashRouteImport.update({
   id: '/trash',
   path: '/trash',
-  getParentRoute: () => VaultRouteRoute,
-} as any)
-const VaultSettingsRoute = VaultSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
   getParentRoute: () => VaultRouteRoute,
 } as any)
 const VaultSessionsRoute = VaultSessionsRouteImport.update({
@@ -75,6 +75,11 @@ const VaultItemIdRoute = VaultItemIdRouteImport.update({
   id: '/$itemId',
   path: '/$itemId',
   getParentRoute: () => VaultRouteRoute,
+} as any)
+const AuthUnlockRoute = AuthUnlockRouteImport.update({
+  id: '/unlock',
+  path: '/unlock',
+  getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -106,6 +111,64 @@ const AuthAuthenticatorRoute = AuthAuthenticatorRouteImport.update({
   path: '/authenticator',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const VaultSettingsRouteRoute = VaultSettingsRouteRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => VaultRouteRoute,
+} as any)
+const VaultSettingsIndexRoute = VaultSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
+const VaultSettingsVerificationIdRoute =
+  VaultSettingsVerificationIdRouteImport.update({
+    id: '/verification-id',
+    path: '/verification-id',
+    getParentRoute: () => VaultSettingsRouteRoute,
+  } as any)
+const VaultSettingsMasterPasswordRoute =
+  VaultSettingsMasterPasswordRouteImport.update({
+    id: '/master-password',
+    path: '/master-password',
+    getParentRoute: () => VaultSettingsRouteRoute,
+  } as any)
+const VaultSettingsInstallAppRoute = VaultSettingsInstallAppRouteImport.update({
+  id: '/install-app',
+  path: '/install-app',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
+const VaultSettingsImportRoute = VaultSettingsImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
+const VaultSettingsExportRoute = VaultSettingsExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
+const VaultSettingsDensityRoute = VaultSettingsDensityRouteImport.update({
+  id: '/density',
+  path: '/density',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
+const VaultSettingsDeleteAccountRoute =
+  VaultSettingsDeleteAccountRouteImport.update({
+    id: '/delete-account',
+    path: '/delete-account',
+    getParentRoute: () => VaultSettingsRouteRoute,
+  } as any)
+const VaultSettingsAutoLockRoute = VaultSettingsAutoLockRouteImport.update({
+  id: '/auto-lock',
+  path: '/auto-lock',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
+const VaultSettingsAppearanceRoute = VaultSettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
 const VaultItemsNewRoute = VaultItemsNewRouteImport.update({
   id: '/items/new',
   path: '/items/new',
@@ -119,135 +182,185 @@ const VaultItemIdEditRoute = VaultItemIdEditRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof VaultIndexRoute
-  '/unlock': typeof UnlockRoute
+  '/settings': typeof VaultSettingsRouteRouteWithChildren
   '/authenticator': typeof AuthAuthenticatorRoute
   '/login': typeof AuthLoginRoute
   '/recover': typeof AuthRecoverRoute
   '/recovery-key': typeof AuthRecoveryKeyRoute
   '/register': typeof AuthRegisterRoute
   '/reset-password': typeof AuthResetPasswordRoute
+  '/unlock': typeof AuthUnlockRoute
   '/$itemId': typeof VaultItemIdRoute
   '/admin': typeof VaultAdminRoute
   '/health': typeof VaultHealthRoute
   '/sessions': typeof VaultSessionsRoute
-  '/settings': typeof VaultSettingsRoute
   '/trash': typeof VaultTrashRoute
   '/$itemId/edit': typeof VaultItemIdEditRoute
   '/items/new': typeof VaultItemsNewRoute
+  '/settings/appearance': typeof VaultSettingsAppearanceRoute
+  '/settings/auto-lock': typeof VaultSettingsAutoLockRoute
+  '/settings/delete-account': typeof VaultSettingsDeleteAccountRoute
+  '/settings/density': typeof VaultSettingsDensityRoute
+  '/settings/export': typeof VaultSettingsExportRoute
+  '/settings/import': typeof VaultSettingsImportRoute
+  '/settings/install-app': typeof VaultSettingsInstallAppRoute
+  '/settings/master-password': typeof VaultSettingsMasterPasswordRoute
+  '/settings/verification-id': typeof VaultSettingsVerificationIdRoute
+  '/settings/': typeof VaultSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof VaultIndexRoute
-  '/unlock': typeof UnlockRoute
   '/authenticator': typeof AuthAuthenticatorRoute
   '/login': typeof AuthLoginRoute
   '/recover': typeof AuthRecoverRoute
   '/recovery-key': typeof AuthRecoveryKeyRoute
   '/register': typeof AuthRegisterRoute
   '/reset-password': typeof AuthResetPasswordRoute
+  '/unlock': typeof AuthUnlockRoute
   '/$itemId': typeof VaultItemIdRoute
   '/admin': typeof VaultAdminRoute
   '/health': typeof VaultHealthRoute
   '/sessions': typeof VaultSessionsRoute
-  '/settings': typeof VaultSettingsRoute
   '/trash': typeof VaultTrashRoute
   '/$itemId/edit': typeof VaultItemIdEditRoute
   '/items/new': typeof VaultItemsNewRoute
+  '/settings/appearance': typeof VaultSettingsAppearanceRoute
+  '/settings/auto-lock': typeof VaultSettingsAutoLockRoute
+  '/settings/delete-account': typeof VaultSettingsDeleteAccountRoute
+  '/settings/density': typeof VaultSettingsDensityRoute
+  '/settings/export': typeof VaultSettingsExportRoute
+  '/settings/import': typeof VaultSettingsImportRoute
+  '/settings/install-app': typeof VaultSettingsInstallAppRoute
+  '/settings/master-password': typeof VaultSettingsMasterPasswordRoute
+  '/settings/verification-id': typeof VaultSettingsVerificationIdRoute
+  '/settings': typeof VaultSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_vault': typeof VaultRouteRouteWithChildren
-  '/unlock': typeof UnlockRoute
+  '/_vault/settings': typeof VaultSettingsRouteRouteWithChildren
   '/_auth/authenticator': typeof AuthAuthenticatorRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/recover': typeof AuthRecoverRoute
   '/_auth/recovery-key': typeof AuthRecoveryKeyRoute
   '/_auth/register': typeof AuthRegisterRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
+  '/_auth/unlock': typeof AuthUnlockRoute
   '/_vault/$itemId': typeof VaultItemIdRoute
   '/_vault/admin': typeof VaultAdminRoute
   '/_vault/health': typeof VaultHealthRoute
   '/_vault/sessions': typeof VaultSessionsRoute
-  '/_vault/settings': typeof VaultSettingsRoute
   '/_vault/trash': typeof VaultTrashRoute
   '/_vault/': typeof VaultIndexRoute
   '/_vault/$itemId_/edit': typeof VaultItemIdEditRoute
   '/_vault/items/new': typeof VaultItemsNewRoute
+  '/_vault/settings/appearance': typeof VaultSettingsAppearanceRoute
+  '/_vault/settings/auto-lock': typeof VaultSettingsAutoLockRoute
+  '/_vault/settings/delete-account': typeof VaultSettingsDeleteAccountRoute
+  '/_vault/settings/density': typeof VaultSettingsDensityRoute
+  '/_vault/settings/export': typeof VaultSettingsExportRoute
+  '/_vault/settings/import': typeof VaultSettingsImportRoute
+  '/_vault/settings/install-app': typeof VaultSettingsInstallAppRoute
+  '/_vault/settings/master-password': typeof VaultSettingsMasterPasswordRoute
+  '/_vault/settings/verification-id': typeof VaultSettingsVerificationIdRoute
+  '/_vault/settings/': typeof VaultSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/unlock'
+    | '/settings'
     | '/authenticator'
     | '/login'
     | '/recover'
     | '/recovery-key'
     | '/register'
     | '/reset-password'
+    | '/unlock'
     | '/$itemId'
     | '/admin'
     | '/health'
     | '/sessions'
-    | '/settings'
     | '/trash'
     | '/$itemId/edit'
     | '/items/new'
+    | '/settings/appearance'
+    | '/settings/auto-lock'
+    | '/settings/delete-account'
+    | '/settings/density'
+    | '/settings/export'
+    | '/settings/import'
+    | '/settings/install-app'
+    | '/settings/master-password'
+    | '/settings/verification-id'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/unlock'
     | '/authenticator'
     | '/login'
     | '/recover'
     | '/recovery-key'
     | '/register'
     | '/reset-password'
+    | '/unlock'
     | '/$itemId'
     | '/admin'
     | '/health'
     | '/sessions'
-    | '/settings'
     | '/trash'
     | '/$itemId/edit'
     | '/items/new'
+    | '/settings/appearance'
+    | '/settings/auto-lock'
+    | '/settings/delete-account'
+    | '/settings/density'
+    | '/settings/export'
+    | '/settings/import'
+    | '/settings/install-app'
+    | '/settings/master-password'
+    | '/settings/verification-id'
+    | '/settings'
   id:
     | '__root__'
     | '/_auth'
     | '/_vault'
-    | '/unlock'
+    | '/_vault/settings'
     | '/_auth/authenticator'
     | '/_auth/login'
     | '/_auth/recover'
     | '/_auth/recovery-key'
     | '/_auth/register'
     | '/_auth/reset-password'
+    | '/_auth/unlock'
     | '/_vault/$itemId'
     | '/_vault/admin'
     | '/_vault/health'
     | '/_vault/sessions'
-    | '/_vault/settings'
     | '/_vault/trash'
     | '/_vault/'
     | '/_vault/$itemId_/edit'
     | '/_vault/items/new'
+    | '/_vault/settings/appearance'
+    | '/_vault/settings/auto-lock'
+    | '/_vault/settings/delete-account'
+    | '/_vault/settings/density'
+    | '/_vault/settings/export'
+    | '/_vault/settings/import'
+    | '/_vault/settings/install-app'
+    | '/_vault/settings/master-password'
+    | '/_vault/settings/verification-id'
+    | '/_vault/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   VaultRouteRoute: typeof VaultRouteRouteWithChildren
-  UnlockRoute: typeof UnlockRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/unlock': {
-      id: '/unlock'
-      path: '/unlock'
-      fullPath: '/unlock'
-      preLoaderRoute: typeof UnlockRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_vault': {
       id: '/_vault'
       path: ''
@@ -274,13 +387,6 @@ declare module '@tanstack/react-router' {
       path: '/trash'
       fullPath: '/trash'
       preLoaderRoute: typeof VaultTrashRouteImport
-      parentRoute: typeof VaultRouteRoute
-    }
-    '/_vault/settings': {
-      id: '/_vault/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof VaultSettingsRouteImport
       parentRoute: typeof VaultRouteRoute
     }
     '/_vault/sessions': {
@@ -310,6 +416,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$itemId'
       preLoaderRoute: typeof VaultItemIdRouteImport
       parentRoute: typeof VaultRouteRoute
+    }
+    '/_auth/unlock': {
+      id: '/_auth/unlock'
+      path: '/unlock'
+      fullPath: '/unlock'
+      preLoaderRoute: typeof AuthUnlockRouteImport
+      parentRoute: typeof AuthRouteRoute
     }
     '/_auth/reset-password': {
       id: '/_auth/reset-password'
@@ -353,6 +466,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAuthenticatorRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_vault/settings': {
+      id: '/_vault/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof VaultSettingsRouteRouteImport
+      parentRoute: typeof VaultRouteRoute
+    }
+    '/_vault/settings/': {
+      id: '/_vault/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof VaultSettingsIndexRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/verification-id': {
+      id: '/_vault/settings/verification-id'
+      path: '/verification-id'
+      fullPath: '/settings/verification-id'
+      preLoaderRoute: typeof VaultSettingsVerificationIdRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/master-password': {
+      id: '/_vault/settings/master-password'
+      path: '/master-password'
+      fullPath: '/settings/master-password'
+      preLoaderRoute: typeof VaultSettingsMasterPasswordRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/install-app': {
+      id: '/_vault/settings/install-app'
+      path: '/install-app'
+      fullPath: '/settings/install-app'
+      preLoaderRoute: typeof VaultSettingsInstallAppRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/import': {
+      id: '/_vault/settings/import'
+      path: '/import'
+      fullPath: '/settings/import'
+      preLoaderRoute: typeof VaultSettingsImportRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/export': {
+      id: '/_vault/settings/export'
+      path: '/export'
+      fullPath: '/settings/export'
+      preLoaderRoute: typeof VaultSettingsExportRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/density': {
+      id: '/_vault/settings/density'
+      path: '/density'
+      fullPath: '/settings/density'
+      preLoaderRoute: typeof VaultSettingsDensityRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/delete-account': {
+      id: '/_vault/settings/delete-account'
+      path: '/delete-account'
+      fullPath: '/settings/delete-account'
+      preLoaderRoute: typeof VaultSettingsDeleteAccountRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/auto-lock': {
+      id: '/_vault/settings/auto-lock'
+      path: '/auto-lock'
+      fullPath: '/settings/auto-lock'
+      preLoaderRoute: typeof VaultSettingsAutoLockRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/appearance': {
+      id: '/_vault/settings/appearance'
+      path: '/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof VaultSettingsAppearanceRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
     '/_vault/items/new': {
       id: '/_vault/items/new'
       path: '/items/new'
@@ -377,6 +567,7 @@ interface AuthRouteRouteChildren {
   AuthRecoveryKeyRoute: typeof AuthRecoveryKeyRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthUnlockRoute: typeof AuthUnlockRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
@@ -386,18 +577,48 @@ const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthRecoveryKeyRoute: AuthRecoveryKeyRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthUnlockRoute: AuthUnlockRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
   AuthRouteRouteChildren,
 )
 
+interface VaultSettingsRouteRouteChildren {
+  VaultSettingsAppearanceRoute: typeof VaultSettingsAppearanceRoute
+  VaultSettingsAutoLockRoute: typeof VaultSettingsAutoLockRoute
+  VaultSettingsDeleteAccountRoute: typeof VaultSettingsDeleteAccountRoute
+  VaultSettingsDensityRoute: typeof VaultSettingsDensityRoute
+  VaultSettingsExportRoute: typeof VaultSettingsExportRoute
+  VaultSettingsImportRoute: typeof VaultSettingsImportRoute
+  VaultSettingsInstallAppRoute: typeof VaultSettingsInstallAppRoute
+  VaultSettingsMasterPasswordRoute: typeof VaultSettingsMasterPasswordRoute
+  VaultSettingsVerificationIdRoute: typeof VaultSettingsVerificationIdRoute
+  VaultSettingsIndexRoute: typeof VaultSettingsIndexRoute
+}
+
+const VaultSettingsRouteRouteChildren: VaultSettingsRouteRouteChildren = {
+  VaultSettingsAppearanceRoute: VaultSettingsAppearanceRoute,
+  VaultSettingsAutoLockRoute: VaultSettingsAutoLockRoute,
+  VaultSettingsDeleteAccountRoute: VaultSettingsDeleteAccountRoute,
+  VaultSettingsDensityRoute: VaultSettingsDensityRoute,
+  VaultSettingsExportRoute: VaultSettingsExportRoute,
+  VaultSettingsImportRoute: VaultSettingsImportRoute,
+  VaultSettingsInstallAppRoute: VaultSettingsInstallAppRoute,
+  VaultSettingsMasterPasswordRoute: VaultSettingsMasterPasswordRoute,
+  VaultSettingsVerificationIdRoute: VaultSettingsVerificationIdRoute,
+  VaultSettingsIndexRoute: VaultSettingsIndexRoute,
+}
+
+const VaultSettingsRouteRouteWithChildren =
+  VaultSettingsRouteRoute._addFileChildren(VaultSettingsRouteRouteChildren)
+
 interface VaultRouteRouteChildren {
+  VaultSettingsRouteRoute: typeof VaultSettingsRouteRouteWithChildren
   VaultItemIdRoute: typeof VaultItemIdRoute
   VaultAdminRoute: typeof VaultAdminRoute
   VaultHealthRoute: typeof VaultHealthRoute
   VaultSessionsRoute: typeof VaultSessionsRoute
-  VaultSettingsRoute: typeof VaultSettingsRoute
   VaultTrashRoute: typeof VaultTrashRoute
   VaultIndexRoute: typeof VaultIndexRoute
   VaultItemIdEditRoute: typeof VaultItemIdEditRoute
@@ -405,11 +626,11 @@ interface VaultRouteRouteChildren {
 }
 
 const VaultRouteRouteChildren: VaultRouteRouteChildren = {
+  VaultSettingsRouteRoute: VaultSettingsRouteRouteWithChildren,
   VaultItemIdRoute: VaultItemIdRoute,
   VaultAdminRoute: VaultAdminRoute,
   VaultHealthRoute: VaultHealthRoute,
   VaultSessionsRoute: VaultSessionsRoute,
-  VaultSettingsRoute: VaultSettingsRoute,
   VaultTrashRoute: VaultTrashRoute,
   VaultIndexRoute: VaultIndexRoute,
   VaultItemIdEditRoute: VaultItemIdEditRoute,
@@ -423,7 +644,6 @@ const VaultRouteRouteWithChildren = VaultRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthRouteRoute: AuthRouteRouteWithChildren,
   VaultRouteRoute: VaultRouteRouteWithChildren,
-  UnlockRoute: UnlockRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-08T00:00:00Z",
+  "title": "Design System: BlindPass",
+  "extensions": {
+    "colorMeta": {
+      "iris-violet": {
+        "role": "primary",
+        "displayName": "Iris Violet",
+        "canonical": "oklch(0.38 0.16 295)",
+        "darkVariant": "oklch(0.58 0.21 295)",
+        "tonalRamp": [
+          "oklch(0.12 0.07 295)",
+          "oklch(0.20 0.11 295)",
+          "oklch(0.28 0.14 295)",
+          "oklch(0.38 0.16 295)",
+          "oklch(0.48 0.19 295)",
+          "oklch(0.58 0.21 295)",
+          "oklch(0.72 0.16 295)",
+          "oklch(0.92 0.06 295)"
+        ]
+      },
+      "signal-teal": {
+        "role": "secondary",
+        "displayName": "Signal Teal",
+        "canonical": "oklch(0.55 0.12 195)",
+        "darkVariant": "oklch(0.72 0.155 195)",
+        "tonalRamp": [
+          "oklch(0.15 0.05 195)",
+          "oklch(0.25 0.08 195)",
+          "oklch(0.35 0.10 195)",
+          "oklch(0.45 0.11 195)",
+          "oklch(0.55 0.12 195)",
+          "oklch(0.65 0.14 195)",
+          "oklch(0.72 0.155 195)",
+          "oklch(0.88 0.08 195)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Slate-White Background",
+        "canonical": "oklch(0.975 0.004 265)",
+        "darkVariant": "oklch(0.108 0.008 265)",
+        "tonalRamp": [
+          "oklch(0.108 0.008 265)",
+          "oklch(0.18 0.008 265)",
+          "oklch(0.30 0.006 265)",
+          "oklch(0.45 0.005 265)",
+          "oklch(0.62 0.005 265)",
+          "oklch(0.78 0.004 265)",
+          "oklch(0.90 0.004 265)",
+          "oklch(0.975 0.004 265)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Cool Card",
+        "canonical": "oklch(0.99 0.003 280)",
+        "darkVariant": "oklch(0.138 0.01 280)",
+        "tonalRamp": [
+          "oklch(0.138 0.01 280)",
+          "oklch(0.20 0.01 280)",
+          "oklch(0.32 0.008 280)",
+          "oklch(0.50 0.006 280)",
+          "oklch(0.68 0.005 280)",
+          "oklch(0.84 0.004 280)",
+          "oklch(0.94 0.003 280)",
+          "oklch(0.99 0.003 280)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar Panel",
+        "canonical": "oklch(0.952 0.013 285)",
+        "darkVariant": "oklch(0.122 0.01 270)",
+        "tonalRamp": [
+          "oklch(0.122 0.01 270)",
+          "oklch(0.20 0.012 280)",
+          "oklch(0.34 0.013 285)",
+          "oklch(0.52 0.013 285)",
+          "oklch(0.68 0.013 285)",
+          "oklch(0.82 0.013 285)",
+          "oklch(0.91 0.013 285)",
+          "oklch(0.952 0.013 285)"
+        ]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Destructive Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "darkVariant": "oklch(0.628 0.24 22)",
+        "tonalRamp": [
+          "oklch(0.20 0.10 25)",
+          "oklch(0.30 0.16 25)",
+          "oklch(0.42 0.21 25)",
+          "oklch(0.52 0.235 25)",
+          "oklch(0.577 0.245 27)",
+          "oklch(0.66 0.23 25)",
+          "oklch(0.78 0.18 25)",
+          "oklch(0.92 0.06 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles, modal titles, section heads. Bricolage Grotesque with -0.025em tracking — never default tracking."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default surface text. Cap line length at 65–75ch in long-form contexts."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels paired with the field-group accent dot. Always Geist 500."
+      },
+      "mono": {
+        "displayName": "Mono / Password",
+        "purpose": "Sensitive content only — passwords, recovery phrases, key fingerprints, command palette accelerators. The 0.06em tracking is the security cue."
+      }
+    },
+    "shadows": [
+      {
+        "name": "glass-card-light",
+        "value": "0 4px 6px -1px oklch(0 0 0 / 0.06), 0 2px 4px -2px oklch(0 0 0 / 0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
+        "purpose": "The signature glass card surface in light mode. Subtle outer shadow plus a strong inset top highlight that simulates a glass top edge."
+      },
+      {
+        "name": "glass-card-dark",
+        "value": "0 20px 25px -5px oklch(0 0 0 / 0.5), 0 8px 10px -6px oklch(0 0 0 / 0.5), inset 0 1px 0 rgba(255,255,255,0.06)",
+        "purpose": "Glass card in dark mode. Heavier outer shadow because there is no border, plus a faint inset highlight."
+      },
+      {
+        "name": "input-focus-light",
+        "value": "0 0 0 2px oklch(0.38 0.16 295 / 0.12)",
+        "purpose": "2px violet halo on focused inputs in light mode."
+      },
+      {
+        "name": "input-focus-dark",
+        "value": "0 0 0 1px oklch(0.58 0.21 295 / 0.15), 0 0 20px oklch(0.58 0.21 295 / 0.1), inset 0 0 12px oklch(0.58 0.21 295 / 0.04)",
+        "purpose": "Layered violet halo with inset glow in dark mode — input feels illuminated rather than outlined."
+      },
+      {
+        "name": "field-dot-glow",
+        "value": "0 0 6px oklch(0.55 0.12 195)",
+        "purpose": "Signal Teal glow under the field-group label dot when the field is focused. Same shadow with destructive color when invalid."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "ease",
+        "purpose": "Default easing — exponential ease-out is preferred for state transitions."
+      },
+      {
+        "name": "duration-snap",
+        "value": "100ms",
+        "purpose": "Button press scale(0.97) micro-press."
+      },
+      {
+        "name": "duration-state",
+        "value": "150ms",
+        "purpose": "Field label color change, form aria-busy dim, dot glow fade."
+      },
+      {
+        "name": "duration-feedback",
+        "value": "200ms",
+        "purpose": "Password strength bar fill and shadow transitions."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "coarse-pointer",
+        "value": "(pointer: coarse)",
+        "purpose": "Touch target floor of 2.75rem applied to button, [role='button'], and [data-slot='button']."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Iris Violet primary button with scale(0.97) active press — the universal tactile feedback in the system.",
+      "html": "<button class=\"ds-btn-primary\">Unlock vault</button>",
+      "css": ".ds-btn-primary { background: oklch(0.38 0.16 295); color: oklch(0.985 0 0); font-family: 'Geist Variable', system-ui, sans-serif; font-weight: 500; font-size: 0.875rem; padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; min-height: 2.25rem; } .ds-btn-primary:hover { background: oklch(0.42 0.17 295); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.38 0.16 295); outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Transparent at rest, accent surface on hover. Used in nav rows, command palette entries, account menu.",
+      "html": "<button class=\"ds-btn-ghost\">Settings</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: oklch(0.145 0.006 285); font-family: 'Geist Variable', system-ui, sans-serif; font-weight: 500; font-size: 0.875rem; padding: 0.5rem 0.75rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-ghost:hover { background: oklch(0.945 0.014 285); } .ds-btn-ghost:focus-visible { outline: 2px solid oklch(0.38 0.16 295); outline-offset: 2px; } .ds-btn-ghost:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Field Group with Label Dot",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "The signature input pattern: a label with a 4px accent dot that turns Signal Teal on focus and destructive on invalid. Wrap every form input this way.",
+      "html": "<div class=\"ds-field-group\"><label class=\"ds-label\">Master password<span class=\"ds-dot\" aria-hidden=\"true\"></span></label><input class=\"ds-input\" type=\"password\" placeholder=\"••••••••••••\" /></div>",
+      "css": ".ds-field-group { display: flex; flex-direction: column; gap: 0.5rem; } .ds-label { font-family: 'Geist Variable', system-ui, sans-serif; font-weight: 500; font-size: 0.875rem; color: oklch(0.145 0.006 285); display: inline-flex; align-items: center; transition: color 0.15s ease; } .ds-dot { display: inline-block; width: 4px; height: 4px; border-radius: 9999px; background: oklch(0.908 0.007 285); margin-left: 6px; transition: background 0.15s ease, box-shadow 0.15s ease; } .ds-input { background: oklch(0.975 0.004 265); color: oklch(0.145 0.006 285); border: 1px solid oklch(0.908 0.007 285); border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-family: ui-monospace, 'Cascadia Code', 'SFMono-Regular', monospace; letter-spacing: 0.06em; font-size: 0.9375rem; transition: border-color 0.15s ease, box-shadow 0.15s ease; outline: none; } .ds-input:focus { border-color: oklch(0.38 0.16 295 / 0.6); box-shadow: 0 0 0 2px oklch(0.38 0.16 295 / 0.12); } .ds-field-group:focus-within .ds-label { color: oklch(0.55 0.12 195); } .ds-field-group:focus-within .ds-dot { background: oklch(0.55 0.12 195); box-shadow: 0 0 6px oklch(0.55 0.12 195); }"
+    },
+    {
+      "name": "Glass Card",
+      "kind": "card",
+      "refersTo": "card-glass",
+      "description": "The signature card surface. CSS-mask trick paints a 1px violet→teal→neutral gradient border without an extra element. Card title gets a 3px violet→teal vertical pill before it.",
+      "html": "<div class=\"ds-glass-card\"><div class=\"ds-card-header\"><h3 class=\"ds-card-title\">Sign in</h3></div><p class=\"ds-card-body\">Enter your username, master password, and authenticator code.</p></div>",
+      "css": ".ds-glass-card { position: relative; background: oklch(0.99 0.003 280); border: 1px solid oklch(0.908 0.007 285); border-radius: 0.625rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px oklch(0 0 0 / 0.06), 0 2px 4px -2px oklch(0 0 0 / 0.06), inset 0 1px 0 rgba(255,255,255,0.8); color: oklch(0.145 0.006 285); font-family: 'Geist Variable', system-ui, sans-serif; max-width: 28rem; } .ds-glass-card::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, oklch(0.38 0.16 295 / 0.3) 0%, oklch(0.55 0.12 195 / 0.15) 50%, oklch(0.6 0.008 265 / 0.2) 100%); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; opacity: 0.6; } .ds-card-header { padding-bottom: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid oklch(0.908 0.007 285); } .ds-card-title { display: flex; align-items: center; gap: 0.5rem; font-family: 'Bricolage Grotesque Variable', 'Geist Variable', sans-serif; font-weight: 500; font-size: 1.25rem; line-height: 1.1; letter-spacing: -0.025em; margin: 0; } .ds-card-title::before { content: ''; display: block; width: 3px; height: 1em; flex-shrink: 0; border-radius: 9999px; background: linear-gradient(to bottom, oklch(0.38 0.16 295), oklch(0.55 0.12 195)); } .ds-card-body { font-size: 0.9375rem; line-height: 1.5; color: oklch(0.556 0.008 285); margin: 0; }"
+    },
+    {
+      "name": "Password Strength Bar",
+      "kind": "custom",
+      "refersTo": "password-strength",
+      "description": "Four-segment strength readout. Segments fill teal at scores 1–2, violet at 3–4; score 4 adds a violet drop-shadow glow on the full bar.",
+      "html": "<div class=\"ds-pw-strength\" data-score=\"3\" aria-label=\"Password strength: strong\"><span></span><span></span><span></span><span></span></div>",
+      "css": ".ds-pw-strength { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; height: 3px; width: 12rem; } .ds-pw-strength > span { border-radius: 9999px; background: oklch(0.908 0.007 285); transition: background 0.2s ease, box-shadow 0.2s ease; } .ds-pw-strength[data-score='1'] > span:nth-child(-n+1), .ds-pw-strength[data-score='2'] > span:nth-child(-n+2) { background: oklch(0.55 0.12 195); } .ds-pw-strength[data-score='3'] > span:nth-child(-n+3) { background: oklch(0.38 0.16 295); } .ds-pw-strength[data-score='4'] > span { background: oklch(0.38 0.16 295); box-shadow: 0 0 6px oklch(0.38 0.16 295 / 0.4); }"
+    },
+    {
+      "name": "Sidebar Panel",
+      "kind": "nav",
+      "refersTo": "panel-sidebar",
+      "description": "Glass-panel sidebar with violet-tinted background, hairline right border, and active route highlighted with Iris Violet text + accent-tinted surface.",
+      "html": "<nav class=\"ds-sidebar\"><a class=\"ds-nav-item ds-nav-active\" href=\"#\">Vault</a><a class=\"ds-nav-item\" href=\"#\">Keychain</a><a class=\"ds-nav-item\" href=\"#\">Sync</a><a class=\"ds-nav-item\" href=\"#\">Settings</a></nav>",
+      "css": ".ds-sidebar { background: oklch(0.952 0.013 285); border-right: 1px solid oklch(0.902 0.008 285); padding: 0.5rem; min-width: 14rem; min-height: 16rem; display: flex; flex-direction: column; gap: 0.125rem; backdrop-filter: blur(20px); font-family: 'Geist Variable', system-ui, sans-serif; } .ds-nav-item { display: block; font-size: 0.875rem; font-weight: 500; color: oklch(0.145 0.006 285); padding: 0.5rem 0.75rem; border-radius: 0.5rem; text-decoration: none; transition: background 0.15s ease, color 0.15s ease; } .ds-nav-item:hover { background: oklch(0.935 0.018 285); } .ds-nav-active { background: oklch(0.935 0.018 285); color: oklch(0.38 0.16 295); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Vault",
+    "overview": "BlindPass is a tool that holds the most sensitive material the user owns and refuses to perform. The interface is calm, slightly cool, and exact — slate-white in the light, blue-shifted obsidian in the dark, with a single violet accent (Iris Violet) that signals brand and a single teal (Signal Teal) that signals state. Cards are flat at rest. Type is structured, not loud. Motion is reserved for the few moments that genuinely matter: unlocking, locking, focus, sync resolution. The whole system is built so the math, not the marketing, is what reassures the user. Density is deliberate, with cozy and compact modes, and a 2.75rem touch-target floor on coarse pointers. A 3.5%-opacity fractal-noise overlay and a subtle radial violet glow live underneath every page; nothing about them ever lands in the foreground. The system explicitly rejects SaaS-cream consumer-PWM aesthetics, Bitwarden corporate-bootstrap, web3 neon-on-black, and — loudest forbidden — the untouched shadcn/v0 default look. shadcn is the substrate, not the design.",
+    "keyCharacteristics": [
+      "OKLCH everywhere; no #000, no #fff, every neutral tinted toward violet (chroma 0.004–0.014).",
+      "Iris Violet is the brand. Signal Teal is the state accent. Two roles, never blurred.",
+      "Flat surfaces with tonal layering: background → list-panel → card → sidebar.",
+      "Glass effects are reserved for the three signature surfaces (.glass-card, .glass-panel, .glass-list-panel).",
+      "Mono-spaced password fields with 0.06em tracking — the type itself is the security cue.",
+      "Quiet by default, expressive at the moments that matter."
+    ],
+    "rules": [
+      {
+        "name": "The Two-Accent Rule",
+        "section": "colors",
+        "body": "The interface has exactly two saturated colors: Iris Violet and Signal Teal. Iris is identity; Signal is state. Do not introduce a third saturated color for decoration, status, severity beyond destructive, or 'data viz variety.'"
+      },
+      {
+        "name": "The OKLCH-Only Rule",
+        "section": "colors",
+        "body": "Every color in this codebase is OKLCH. #000, #fff, hex literals in component CSS, and HSL fallbacks are forbidden in product code. Rare exception: rgba(255,255,255, X) inset highlights inside .glass-card."
+      },
+      {
+        "name": "The Tinted-Neutral Rule",
+        "section": "colors",
+        "body": "Every neutral has chroma between 0.003 and 0.018, biased toward violet/blue (hue 265–295). Pure greys (chroma 0) are forbidden in surface roles."
+      },
+      {
+        "name": "The Mono-as-Cue Rule",
+        "section": "typography",
+        "body": "Mono is not for 'code-y' decoration. It appears only where the content itself is sensitive or literal: passwords, recovery phrases, key fingerprints, raw timestamps. The 0.06em letter-spacing makes glyph differences (l vs 1, O vs 0) unambiguous."
+      },
+      {
+        "name": "The No-Gradient-Text Rule",
+        "section": "typography",
+        "body": "Headings are solid color, never background-clip: text over a gradient. Hierarchy is carried by family, weight, and tracking — not by chroma."
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "section": "elevation",
+        "body": "Most surfaces have zero shadow. Depth comes from tonal layering. Shadows ship only on .glass-card and as the focus glow on inputs/textarea/select."
+      },
+      {
+        "name": "The Glass-Is-Earned Rule",
+        "section": "elevation",
+        "body": ".glass-card, .glass-panel, and .glass-list-panel are the three sanctioned glass surfaces. Glassmorphism elsewhere is forbidden."
+      }
+    ],
+    "dos": [
+      "Do use Iris Violet for identity and Signal Teal for state — never blur the two roles.",
+      "Do keep neutrals tinted (chroma 0.003–0.018, hue 265–295). Pure grey is forbidden.",
+      "Do use OKLCH in every new color declaration. Never #000, never #fff.",
+      "Do apply the field-group label dot to every new form input. State color reads through the dot.",
+      "Do switch password / recovery-phrase fields to mono with 0.06em tracking. Glyph clarity is a security feature.",
+      "Do keep the active-button scale(0.97) micro-press as the primary tactile feedback.",
+      "Do use tonal layering (background → list-panel → card → sidebar) for depth. Reach for a shadow only on .glass-card and input focus glows.",
+      "Do respect prefers-reduced-motion. The global rule already neutralizes all animation/transition durations.",
+      "Do keep page text under 75ch line length. Settings prose, recovery instructions, and error explanations must wrap.",
+      "Do label state honestly. 'Vault locked.' 'Unsynced changes: 3.' 'Conflict on item github.com.' Cryptographic state is never softened."
+    ],
+    "donts": [
+      "Don't ship the untouched shadcn/v0 default look. Slate is the wrong neutral; identical card grids are a smell. shadcn is the substrate, never the design.",
+      "Don't reach for SaaS-cream. No marketing pastels, no friendly illustrations, no onboarding confetti. BlindPass is not 1Password.",
+      "Don't introduce neon-on-black or web3 gradients. No animated hero blobs, no 'trustless' aesthetics. We prove security with the codebase, not with chrome.",
+      "Don't use border-left or border-right greater than 1px as a colored stripe on cards, list rows, or alerts.",
+      "Don't apply background-clip: text to a gradient on headings. Hierarchy is carried by Bricolage's weight and tracking, not by chroma.",
+      "Don't add glassmorphism beyond the three sanctioned surfaces.",
+      "Don't introduce a third saturated color. Extend Signal Teal's role or use destructive — never invent 'warning yellow' or 'info blue.'",
+      "Don't add celebratory toasts, success confetti, or progress animations on routine actions. Save motion for unlock, lock, sync resolution, and destructive confirmation.",
+      "Don't add em dashes or '--' in product copy. Use commas, colons, semicolons, periods, or parentheses.",
+      "Don't soften timestamps to 'a moment ago.' Show ISO time or exact relative durations.",
+      "Don't add 'Are you sure?' confirmations to non-destructive actions. Trust the operator.",
+      "Don't introduce hero-metric templates (big number, small label, supporting stats)."
+    ]
+  }
+}
