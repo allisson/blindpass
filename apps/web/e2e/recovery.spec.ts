@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  fillAuthenticatorCode,
   lockVault,
   makeAuthenticatorCode,
   readSetupKey,
@@ -43,7 +44,7 @@ test('full recovery flow resets password; old password cannot unlock after', asy
 
   await page.waitForURL('/reset-password', { timeout: 30_000 });
   const setupKey = await readSetupKey(page);
-  await page.getByLabel('Authenticator code').fill(makeAuthenticatorCode(setupKey, 30_000));
+  await fillAuthenticatorCode(page, makeAuthenticatorCode(setupKey, 30_000));
   await page.getByLabel('New master password').fill(NEW_PASSWORD);
   await page.getByLabel('Confirm new password').fill(NEW_PASSWORD);
   await page.getByRole('button', { name: 'Complete recovery' }).click();

@@ -47,6 +47,54 @@ export async function lockVault(page: Page): Promise<void> {
   await page.getByTestId('account-menu-lock').click();
 }
 
+// Installs a virtual platform authenticator with PRF enabled and pre-verified
+// user presence so navigator.credentials.create / .get succeed without UI.
+// Requires Chromium 121+ for the `hasPrf` flag.
+export async function setupVirtualAuthenticator(
+  page: Page,
+): Promise<{ authenticatorId: string; cleanup: () => Promise<void> }> {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable', { enableUI: false });
+  const { authenticatorId } = (await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: {
+      protocol: 'ctap2',
+      transport: 'internal',
+      hasResidentKey: true,
+      hasUserVerification: true,
+      hasPrf: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  })) as { authenticatorId: string };
+  const cleanup = async () => {
+    try {
+      await cdp.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId });
+      await cdp.send('WebAuthn.disable');
+      await cdp.detach();
+    } catch {
+      /* best-effort */
+    }
+  };
+  return { authenticatorId, cleanup };
+}
+
+export async function readBiometricEnrollmentCount(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve, reject) => {
+        const req = indexedDB.open('bp:biometric-unlock', 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction('enrollment', 'readonly');
+          const countReq = tx.objectStore('enrollment').count();
+          countReq.onsuccess = () => resolve(countReq.result);
+          countReq.onerror = () => reject(countReq.error);
+        };
+        req.onerror = () => reject(req.error);
+      }),
+  );
+}
+
 export async function fillAuthenticatorCode(page: Page, code: string): Promise<void> {
   for (let i = 0; i < 6; i++) {
     await page.getByLabel(`Digit ${i + 1} of 6`).fill(code[i] ?? '');

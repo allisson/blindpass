@@ -1,7 +1,7 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { OtpInput } from '@/components/ui/otp-input';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { TotpQrSetup } from '@/components/ui/totp-qr-setup';
 import { authFlow } from '@/lib/authFlow';
@@ -56,6 +57,7 @@ function ResetPasswordPage() {
     register,
     handleSubmit,
     watch,
+    control,
     formState: { errors },
   } = useForm<FormData>({ resolver: standardSchemaResolver(schema) });
 
@@ -89,14 +91,21 @@ function ResetPasswordPage() {
           />
           <div className="field-group" data-invalid={!!errors.authenticatorCode}>
             <Label htmlFor="authenticatorCode">Authenticator code</Label>
-            <Input
-              id="authenticatorCode"
-              autoFocus
-              inputMode="numeric"
-              placeholder="123456"
-              aria-invalid={!!errors.authenticatorCode}
-              aria-describedby={errors.authenticatorCode ? 'authenticator-code-error' : undefined}
-              {...register('authenticatorCode')}
+            <Controller
+              name="authenticatorCode"
+              control={control}
+              render={({ field }) => (
+                <OtpInput
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  autoFocus
+                  disabled={isRunning}
+                  aria-describedby={
+                    errors.authenticatorCode ? 'authenticator-code-error' : undefined
+                  }
+                  aria-invalid={!!errors.authenticatorCode}
+                />
+              )}
             />
             <FieldError id="authenticator-code-error" message={errors.authenticatorCode?.message} />
           </div>

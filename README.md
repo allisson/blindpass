@@ -113,6 +113,7 @@ Sources: [1Password security model](https://support.1password.com/1password-secu
 - 🚫 **No email required** — accounts are identified by username only; no personal information is collected or stored
 - 🗝 **Recovery key** — BIP39 mnemonic to regain access if you forget your password
 - 🔢 **Authenticator-based sign-in** — username + TOTP for login and sensitive actions
+- 🫆 **Biometric unlock (PWA)** — opt-in per-device unlock via Touch ID, Face ID, Windows Hello, or Android biometric using WebAuthn PRF; wraps the master key locally and the server is uninvolved (see [ADR-0003](docs/adr/0003-biometric-unlock-via-webauthn-prf.md))
 - 🕐 **Version history** — view and restore previous versions of any item
 - 🗑 **Trash & restore** — deleted items go to trash; restore or permanently purge them
 - 🔄 **Password change** — re-encrypt all key material under a new master password
@@ -184,7 +185,7 @@ your password
                       └─ decrypt(encryptedBlob) → your plaintext secret
 ```
 
-All keys live **in memory only** and are zeroed out when you lock your vault or close the tab.
+All keys live **in memory only** and are zeroed out when you lock your vault or close the tab. The one exception is opt-in **Biometric unlock** (per device): when enabled, the master key is stored on the device's IndexedDB wrapped by a per-credential WebAuthn PRF secret that only the platform authenticator (Touch ID, Face ID, Windows Hello, Android biometric) can release. See "What lives in your browser" below.
 
 ### What the server actually stores
 
@@ -218,16 +219,17 @@ All crypto uses **[libsodium](https://libsodium.org)**, a battle-tested, audited
 
 ### Threat model
 
-| Threat                        | Status          | Notes                                                                                              |
-| ----------------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
-| Server compromise             | ✅ Protected    | Server stores only ciphertext — no keys, no plaintext                                              |
-| Network interception          | ✅ Protected    | All data encrypted client-side before transmission                                                 |
-| Brute-force via server        | ✅ Protected    | No server-side password verifier or password hash to attack                                        |
-| Weak master password          | ⚠️ Partial      | Argon2id hardens derivation; a weak password is still a weak password                              |
-| Forgotten password            | ✅ Mitigated    | BIP39 recovery key generated at registration                                                       |
-| Malware on your device        | ❌ Out of scope | Client-side malware can read in-memory keys                                                        |
-| Phishing / social engineering | ❌ Out of scope | No technical control can prevent this                                                              |
-| Browser extension surface     | ❌ Not shipped  | No autofill or capture extension by design — see [ADR-0002](docs/adr/0002-no-browser-extension.md) |
+| Threat                                | Status          | Notes                                                                                                                                                                                                                                                                 |
+| ------------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server compromise                     | ✅ Protected    | Server stores only ciphertext — no keys, no plaintext                                                                                                                                                                                                                 |
+| Network interception                  | ✅ Protected    | All data encrypted client-side before transmission                                                                                                                                                                                                                    |
+| Brute-force via server                | ✅ Protected    | No server-side password verifier or password hash to attack                                                                                                                                                                                                           |
+| Weak master password                  | ⚠️ Partial      | Argon2id hardens derivation; a weak password is still a weak password                                                                                                                                                                                                 |
+| Forgotten password                    | ✅ Mitigated    | BIP39 recovery key generated at registration                                                                                                                                                                                                                          |
+| Malware on your device                | ❌ Out of scope | Client-side malware can read in-memory keys                                                                                                                                                                                                                           |
+| Phishing / social engineering         | ❌ Out of scope | No technical control can prevent this                                                                                                                                                                                                                                 |
+| Browser extension surface             | ❌ Not shipped  | No autofill or capture extension by design — see [ADR-0002](docs/adr/0002-no-browser-extension.md)                                                                                                                                                                    |
+| Local device theft + biometric bypass | ⚠️ Partial      | When **Biometric unlock** is enabled, an attacker with physical device access who can defeat the platform authenticator (Touch ID / Face ID / Windows Hello) can decrypt the wrapped master key on disk. Disable biometric unlock in Settings to remove this surface. |
 
 ### Session security
 
@@ -242,11 +244,12 @@ All crypto uses **[libsodium](https://libsodium.org)**, a battle-tested, audited
 
 BlindPass follows a strict client storage policy — key material is never written to disk, encrypted or not:
 
-| Storage                      | What is stored                                   | When wiped                 |
-| ---------------------------- | ------------------------------------------------ | -------------------------- |
-| Memory only                  | `masterKey`, `vaultKey`, `itemKey`, `privateKey` | Lock, logout, or tab close |
-| IndexedDB (`bp:vault-cache`) | Encrypted vault items (ciphertext only, no keys) | Lock and logout            |
-| `localStorage`               | Username pre-fill, theme, density preference     | Never (non-sensitive)      |
+| Storage                           | What is stored                                                                                                    | When wiped                                                                         |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Memory only                       | `masterKey`, `vaultKey`, `itemKey`, `privateKey`                                                                  | Lock, logout, or tab close                                                         |
+| IndexedDB (`bp:vault-cache`)      | Encrypted vault items (ciphertext only, no keys)                                                                  | Lock and logout                                                                    |
+| IndexedDB (`bp:biometric-unlock`) | Wrapped master key + WebAuthn credential ID + PRF salt (only when **Biometric unlock** is enabled on this device) | Logout, session expiry, or explicit disenrollment in Settings (survives idle lock) |
+| `localStorage`                    | Username pre-fill, theme, density preference                                                                      | Never (non-sensitive)                                                              |
 
 An XSS attack that can run JavaScript in the page **cannot** read the session cookie, the master key, or any vault key. The worst it can do is read the IndexedDB cache — which is ciphertext.
 

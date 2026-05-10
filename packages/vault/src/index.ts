@@ -24,8 +24,10 @@ export { decryptVaultItem } from './item/decrypt.js';
 export {
   unlock,
   unlockWithRecovery,
+  unlockFromMasterKey,
   type ServerKeyData,
   type RecoveryKeyData,
+  type MasterKeyData,
 } from './keychain/unlock.js';
 export { lock } from './keychain/lock.js';
 export { encryptVaultMetadata, decryptVaultMetadata, type VaultMetadata } from './metadata.js';
