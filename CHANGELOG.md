@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-10
+
+### Fixed
+
+- Biometric unlock now shows a clear, actionable error card when the chosen passkey
+  provider doesn't support PRF (e.g. Bitwarden or 1Password on Android). Users are
+  told which providers work, how to delete the orphan credential, and that their
+  master password is unaffected.
+
 ## [0.4.0] - 2026-05-10
 
 ### Added
@@ -97,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reverse proxy guides for Caddy and nginx (TLS termination + HTTP→HTTPS redirect)
 - pnpm + Turborepo monorepo with isolated packages: `crypto`, `vault`, `api-schema`, `types`
 
+[0.4.1]: https://github.com/allisson/blindpass/releases/tag/v0.4.1
 [0.4.0]: https://github.com/allisson/blindpass/releases/tag/v0.4.0
 [0.3.0]: https://github.com/allisson/blindpass/releases/tag/v0.3.0
 [0.2.1]: https://github.com/allisson/blindpass/releases/tag/v0.2.1
