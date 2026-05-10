@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-10
+
+### Added
+
+- Biometric unlock — opt-in per-device unlock using Touch ID, Face ID, Windows Hello, or Android biometric via WebAuthn PRF. The master password still bootstraps each session; biometrics only unwrap a device-scoped key (see [ADR-0003](docs/adr/0003-biometric-unlock-via-webauthn-prf.md)).
+
 ## [0.3.0] - 2026-05-09
 
 ### Changed
@@ -91,6 +97,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reverse proxy guides for Caddy and nginx (TLS termination + HTTP→HTTPS redirect)
 - pnpm + Turborepo monorepo with isolated packages: `crypto`, `vault`, `api-schema`, `types`
 
+[0.4.0]: https://github.com/allisson/blindpass/releases/tag/v0.4.0
+[0.3.0]: https://github.com/allisson/blindpass/releases/tag/v0.3.0
 [0.2.1]: https://github.com/allisson/blindpass/releases/tag/v0.2.1
 [0.2.0]: https://github.com/allisson/blindpass/releases/tag/v0.2.0
 [0.1.0]: https://github.com/allisson/blindpass/releases/tag/v0.1.0
