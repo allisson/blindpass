@@ -10,6 +10,7 @@ export {
   assertBiometric,
   isUnrecoverableAssertionError,
   isUserCancelled,
+  PrfNotEnabledError,
   type PrfSupport,
   type PrfSupportReason,
   type RegisterParams,

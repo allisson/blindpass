@@ -17,6 +17,20 @@ export type PrfSupportReason = 'no_webauthn' | 'no_platform_authenticator' | 'pr
 
 export type PrfSupport = { supported: true } | { supported: false; reason: PrfSupportReason };
 
+/**
+ * Thrown when the chosen passkey provider stored a credential but did not
+ * honour the `prf` extension (`getClientExtensionResults().prf.enabled` is
+ * falsy). The credential exists in the user's password manager but cannot
+ * derive a BUK. See `docs/agents/biometric-compat.md`.
+ */
+export class PrfNotEnabledError extends Error {
+  readonly code = 'prf-not-enabled' as const;
+  constructor() {
+    super('PRF extension not enabled by the selected passkey provider');
+    this.name = 'PrfNotEnabledError';
+  }
+}
+
 interface ClientCapabilities {
   [key: string]: boolean | undefined;
   prf?: boolean;
@@ -115,7 +129,7 @@ export async function registerBiometric(params: RegisterParams): Promise<Registe
   };
 
   if (!ext.prf?.enabled) {
-    throw new Error('PRF extension not supported on this device');
+    throw new PrfNotEnabledError();
   }
 
   const credentialId = new Uint8Array(cred.rawId);

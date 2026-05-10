@@ -5,6 +5,7 @@ import {
   assertBiometric,
   isUserCancelled,
   isUnrecoverableAssertionError,
+  PrfNotEnabledError,
 } from './webauthn';
 
 interface PkcStub {
@@ -134,21 +135,21 @@ describe('registerBiometric / assertBiometric', () => {
     expect(Array.from(result.prfOutput)).toEqual([9, 9, 9]);
   });
 
-  it('registerBiometric throws when prf is not enabled', async () => {
+  it('registerBiometric throws PrfNotEnabledError when prf is not enabled', async () => {
     stubCredentials({
       rawId: new Uint8Array([1]).buffer,
       getClientExtensionResults: () => ({ prf: { enabled: false } }),
     });
 
-    await expect(
-      registerBiometric({
-        rpId: 'localhost',
-        rpName: 'BlindPass',
-        username: 'alice',
-        userId: new Uint8Array([10]),
-        prfSalt: new Uint8Array([20]),
-      }),
-    ).rejects.toThrow(/PRF/);
+    const promise = registerBiometric({
+      rpId: 'localhost',
+      rpName: 'BlindPass',
+      username: 'alice',
+      userId: new Uint8Array([10]),
+      prfSalt: new Uint8Array([20]),
+    });
+    await expect(promise).rejects.toBeInstanceOf(PrfNotEnabledError);
+    await expect(promise).rejects.toMatchObject({ code: 'prf-not-enabled' });
   });
 
   it('registerBiometric throws when no credential is returned', async () => {

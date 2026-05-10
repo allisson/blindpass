@@ -29,10 +29,13 @@ A user-displayed mnemonic that derives a key wrapping a second copy of the **Mas
 _Avoid_: backup phrase (in code).
 
 **BUK** (Biometric Unlock Key):
-A 32-byte secret derived per-device from a WebAuthn credential's `prf` extension. Computed as `prf(credentialId, prfSalt)` and gated by the platform authenticator's user verification (Touch ID / Face ID / Windows Hello / Android biometric). Wraps **MasterKey** at rest in the device's local IndexedDB. Never leaves the device, never sent to the server, regenerated on each unlock from the credential — not persisted itself.
+A 32-byte secret derived per-device from a WebAuthn credential's `prf` extension. Computed as `prf(credentialId, prfSalt)` by the chosen **Passkey provider**, gated by the platform authenticator's user verification (Touch ID / Face ID / Windows Hello / Android biometric). Wraps **MasterKey** at rest in the device's local IndexedDB. Never leaves the device, never sent to the server, regenerated on each unlock from the credential — not persisted itself. The trust root is the chosen **Passkey provider**'s key handling, not "the device biometric" abstractly.
 
 **BiometricEnrollment**:
 The IndexedDB record `{version, username, credentialId, prfSalt, encryptedMasterKey, rpId, createdAt, label?}` produced when a user opts into **Biometric unlock** on a device. Stored in `bp:biometric-unlock`. Created on settings opt-in while the vault is unlocked. Cleared on explicit disenrollment or `session.clear()` (logout / session_expired). Survives `session.lock()` and password rotation (because **MasterKey** survives both).
+
+**Passkey provider**:
+On Android, the app or service the user picks in Credential Manager to store and present passkeys (Google Password Manager, Bitwarden, 1Password, Samsung Pass, …). Each provider implements its own subset of WebAuthn extensions; BlindPass requires **PRF**, which currently only **Google Password Manager** exposes — third-party providers accept the create and store the passkey, but return `getClientExtensionResults().prf.enabled === false`. iOS / macOS funnel through iCloud Keychain (no equivalent fan-out); Windows uses Windows Hello directly. Provider selection happens during the WebAuthn ceremony, not before — `probePrfSupport()` cannot predict it. See `docs/agents/biometric-compat.md`.
 
 **EncryptedValue**:
 The pair `{ciphertext, nonce}` — the at-rest representation of any sealed bytes. Every encrypted-at-rest field on the server has both columns.
