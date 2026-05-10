@@ -242,7 +242,7 @@ All crypto uses **[libsodium](https://libsodium.org)**, a battle-tested, audited
 
 ### What lives in your browser
 
-BlindPass follows a strict client storage policy — key material is never written to disk, encrypted or not:
+BlindPass follows a strict client storage policy — key material is never written to disk unless **Biometric unlock** is explicitly enabled on this device:
 
 | Storage                           | What is stored                                                                                                    | When wiped                                                                         |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
