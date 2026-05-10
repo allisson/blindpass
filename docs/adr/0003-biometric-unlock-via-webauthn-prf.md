@@ -45,3 +45,19 @@ Concretely:
 - `session.clear()` propagates to biometric storage; `session.lock()` does not.
 - A new threat model row: an attacker with physical device access who can defeat the platform authenticator can decrypt the wrapped MasterKey on disk. Users who do not want this surface can leave biometric unlock disabled (the default).
 - `CONTEXT.md` gains **BUK**, **BiometricEnrollment**, and **Biometric unlock** glossary terms.
+
+## Amendment 2026-05-10 — passkey-provider indirection on Android
+
+A field report surfaced that on Android, biometric unlock fails with "PRF extension not supported" when the user picks Bitwarden (and likely 1Password / Samsung Pass) in the Credential Manager picker, while Google Password Manager works. WebAuthn's PRF extension is implemented per **passkey provider**, not per device — `navigator.credentials.create()` succeeds, the provider stores the passkey, but `getClientExtensionResults().prf.enabled` is `false`. The user is left with a working passkey in their password manager that BlindPass cannot use, and the original error copy ("not supported on this device") was misleading.
+
+Two refinements to the original record:
+
+1. **Threat-model row.** "Defeat the platform authenticator" was always a slight oversimplification; on Android the trust root is **the chosen passkey provider's key handling** (its biometric gate, its keystore, the Android Keystore where applicable). Today this is theoretical — only GPM exposes PRF — but if third-party providers ship PRF in future, the BUK trust root becomes provider-dependent and users on weaker providers carry more risk.
+
+2. **Pre-flight detection is impossible.** `probePrfSupport()` cannot enumerate which provider the user will pick from the system sheet. PRF support is only knowable post-`create()`. We accept this and ship a clear failure path: a typed `PrfNotEnabledError` from `lib/biometric/webauthn.ts` and a rich failure card in `BiometricUnlockSection` instructing the user to delete the orphan passkey from their password manager and retry with Google.
+
+Compatibility matrix lives in [`docs/agents/biometric-compat.md`](../agents/biometric-compat.md).
+
+`CONTEXT.md` gains a **Passkey provider** glossary term; **BUK** is refined to make the provider indirection explicit.
+
+No change to the wrap/unwrap design or the ADR's overall decision. Status remains Accepted.

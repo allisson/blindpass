@@ -35,6 +35,7 @@ packages/
 - [Server architecture](docs/agents/server-architecture.md) — entry point, plugins, routes, validation, error handler, env
 - [Auth & session model](docs/agents/auth-session.md) — TOTP, session cookie, CSRF, Bearer token
 - [Zero-knowledge crypto model](docs/agents/crypto-model.md) — key hierarchy, in-browser derivation
+- [Biometric unlock compatibility](docs/agents/biometric-compat.md) — passkey provider support matrix, troubleshooting `PrfNotEnabledError`
 - [Testing conventions](docs/agents/testing.md) — unit vs integration, coverage gate, single-file runs
 - [DB migrations](docs/agents/db-migrations.md) — schema location, migration workflow
 

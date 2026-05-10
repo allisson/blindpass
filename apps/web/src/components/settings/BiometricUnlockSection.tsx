@@ -1,4 +1,4 @@
-import { Check, Fingerprint } from 'lucide-react';
+import { AlertTriangle, Check, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBiometricEnrollment } from '@/hooks/useBiometricEnrollment';
 import { getBiometricLabel } from '@/lib/biometric';
@@ -13,7 +13,7 @@ const REASON_COPY: Record<string, string> = {
 };
 
 export function BiometricUnlockSection() {
-  const { phase, error, support, isEnrolled, enroll, disenroll } = useBiometricEnrollment();
+  const { phase, error, support, isEnrolled, enroll, disenroll, reset } = useBiometricEnrollment();
   const label = getBiometricLabel();
   const isUnlocked = !!session.get()?.keychain;
   const busy = phase === 'enrolling' || phase === 'disenrolling' || phase === 'probing';
@@ -43,7 +43,44 @@ export function BiometricUnlockSection() {
         <Button size="sm" variant="outline" onClick={() => void disenroll()} disabled={busy}>
           Remove biometric unlock
         </Button>
-        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {error?.kind === 'unknown' ? (
+          <p className="text-xs text-destructive">{error.message}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (error?.kind === 'prf-not-enabled') {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+            <AlertTriangle className="w-4 h-4" />
+            Biometric unlock needs Google Password Manager
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Your password manager saved the passkey, but doesn’t expose the cryptographic feature
+            (WebAuthn PRF) BlindPass needs to derive the unlock key. On Android only{' '}
+            <strong>Google Password Manager</strong> supports this today; on iOS you need Safari 18
+            or later.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <strong>What to do:</strong> delete the saved passkey from your password manager, then
+            try again and pick <strong>Google</strong> when Android asks where to save it.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Master password works as before — biometric unlock is optional.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => void enroll()} disabled={busy}>
+            <Fingerprint className="w-3.5 h-3.5 mr-1.5" />
+            Try again
+          </Button>
+          <Button size="sm" variant="ghost" onClick={reset} disabled={busy}>
+            Dismiss
+          </Button>
+        </div>
       </div>
     );
   }
@@ -64,7 +101,9 @@ export function BiometricUnlockSection() {
         <Fingerprint className="w-3.5 h-3.5 mr-1.5" />
         Enable {label}
       </Button>
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error?.kind === 'unknown' ? (
+        <p className="text-xs text-destructive">{error.message}</p>
+      ) : null}
     </div>
   );
 }

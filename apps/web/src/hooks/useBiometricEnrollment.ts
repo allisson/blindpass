@@ -4,6 +4,7 @@ import {
   enrollmentStore,
   ENROLLMENT_VERSION,
   getBiometricLabel,
+  PrfNotEnabledError,
   probePrfSupport,
   registerBiometric,
   type BiometricEnrollment,
@@ -14,9 +15,11 @@ import { getLastUsername, session } from '@/lib/session';
 
 export type EnrollmentPhase = 'idle' | 'probing' | 'enrolling' | 'disenrolling' | 'done' | 'error';
 
+export type EnrollmentError = { kind: 'prf-not-enabled' } | { kind: 'unknown'; message: string };
+
 export interface UseBiometricEnrollmentReturn {
   phase: EnrollmentPhase;
-  error: string | null;
+  error: EnrollmentError | null;
   support: PrfSupport | null;
   isEnrolled: boolean;
   enroll: () => Promise<void>;
@@ -33,7 +36,7 @@ function rpIdFromOrigin(): string {
 
 export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
   const [phase, setPhase] = useState<EnrollmentPhase>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<EnrollmentError | null>(null);
   const [support, setSupport] = useState<PrfSupport | null>(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
 
@@ -60,7 +63,10 @@ export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
         /* c8 ignore start */
         if (cancelled) return;
         setSupport({ supported: false, reason: 'no_webauthn' });
-        setError(err instanceof Error ? err.message : 'Capability probe failed.');
+        setError({
+          kind: 'unknown',
+          message: err instanceof Error ? err.message : 'Capability probe failed.',
+        });
         setPhase('error');
         /* c8 ignore stop */
       });
@@ -111,8 +117,12 @@ export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
       setIsEnrolled(true);
       setPhase('done');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Enrollment failed.';
-      setError(msg);
+      if (err instanceof PrfNotEnabledError) {
+        setError({ kind: 'prf-not-enabled' });
+      } else {
+        const msg = err instanceof Error ? err.message : 'Enrollment failed.';
+        setError({ kind: 'unknown', message: msg });
+      }
       setPhase('error');
     }
   }, [support]);
@@ -128,7 +138,7 @@ export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
     } catch (err: unknown) {
       /* c8 ignore start */
       const msg = err instanceof Error ? err.message : 'Disenrollment failed.';
-      setError(msg);
+      setError({ kind: 'unknown', message: msg });
       setPhase('error');
       /* c8 ignore stop */
     }
