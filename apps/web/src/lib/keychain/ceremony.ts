@@ -15,6 +15,8 @@ export type CeremonyErrorCode =
   | 'network'
   | 'no_vault'
   | 'kdf_failed'
+  | 'biometric_failed'
+  | 'biometric_cancelled'
   | 'unknown';
 
 export interface CeremonyError {
@@ -83,6 +85,18 @@ export function mapCeremonyError(err: unknown): CeremonyError {
     return { code: 'network', message: err.message, cause: err };
   }
   if (err instanceof Error) {
+    if (err.name === 'NotAllowedError')
+      return {
+        code: 'biometric_cancelled',
+        message: 'Biometric prompt cancelled.',
+        cause: err,
+      };
+    if (err.name === 'InvalidStateError')
+      return {
+        code: 'biometric_failed',
+        message: 'Biometric no longer recognised on this device.',
+        cause: err,
+      };
     const m = err.message.toLowerCase();
     if (m.includes('mac') || m.includes('ciphertext') || m.includes('wrong password'))
       return {
@@ -93,6 +107,12 @@ export function mapCeremonyError(err: unknown): CeremonyError {
     if (m.includes('no vault')) return { code: 'no_vault', message: 'No vault found.', cause: err };
     if (m.includes('kdf') || m.includes('argon'))
       return { code: 'kdf_failed', message: 'Key derivation failed.', cause: err };
+    if (m.includes('prf') || m.includes('biometric'))
+      return {
+        code: 'biometric_failed',
+        message: err.message,
+        cause: err,
+      };
     return { code: 'unknown', message: err.message, cause: err };
   }
   return { code: 'unknown', message: 'Unknown error', cause: err };

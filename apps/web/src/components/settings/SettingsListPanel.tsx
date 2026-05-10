@@ -30,6 +30,7 @@ interface RowProps {
     | '/settings/auto-lock'
     | '/settings/master-password'
     | '/settings/verification-id'
+    | '/settings/biometric-unlock'
     | '/settings/import'
     | '/settings/export'
     | '/settings/install-app'
@@ -155,6 +156,7 @@ export function SettingsListPanel() {
 
         <GroupHeader>Security</GroupHeader>
         <Row to="/settings/master-password" label="Master password" />
+        <Row to="/settings/biometric-unlock" label="Biometric unlock" />
         <Row to="/settings/verification-id" label="Verification ID" />
 
         <GroupHeader>Data</GroupHeader>

@@ -33,6 +33,7 @@ import { Route as VaultSettingsImportRouteImport } from './routes/_vault/setting
 import { Route as VaultSettingsExportRouteImport } from './routes/_vault/settings/export'
 import { Route as VaultSettingsDensityRouteImport } from './routes/_vault/settings/density'
 import { Route as VaultSettingsDeleteAccountRouteImport } from './routes/_vault/settings/delete-account'
+import { Route as VaultSettingsBiometricUnlockRouteImport } from './routes/_vault/settings/biometric-unlock'
 import { Route as VaultSettingsAutoLockRouteImport } from './routes/_vault/settings/auto-lock'
 import { Route as VaultSettingsAppearanceRouteImport } from './routes/_vault/settings/appearance'
 import { Route as VaultItemsNewRouteImport } from './routes/_vault/items/new'
@@ -159,6 +160,12 @@ const VaultSettingsDeleteAccountRoute =
     path: '/delete-account',
     getParentRoute: () => VaultSettingsRouteRoute,
   } as any)
+const VaultSettingsBiometricUnlockRoute =
+  VaultSettingsBiometricUnlockRouteImport.update({
+    id: '/biometric-unlock',
+    path: '/biometric-unlock',
+    getParentRoute: () => VaultSettingsRouteRoute,
+  } as any)
 const VaultSettingsAutoLockRoute = VaultSettingsAutoLockRouteImport.update({
   id: '/auto-lock',
   path: '/auto-lock',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/items/new': typeof VaultItemsNewRoute
   '/settings/appearance': typeof VaultSettingsAppearanceRoute
   '/settings/auto-lock': typeof VaultSettingsAutoLockRoute
+  '/settings/biometric-unlock': typeof VaultSettingsBiometricUnlockRoute
   '/settings/delete-account': typeof VaultSettingsDeleteAccountRoute
   '/settings/density': typeof VaultSettingsDensityRoute
   '/settings/export': typeof VaultSettingsExportRoute
@@ -226,6 +234,7 @@ export interface FileRoutesByTo {
   '/items/new': typeof VaultItemsNewRoute
   '/settings/appearance': typeof VaultSettingsAppearanceRoute
   '/settings/auto-lock': typeof VaultSettingsAutoLockRoute
+  '/settings/biometric-unlock': typeof VaultSettingsBiometricUnlockRoute
   '/settings/delete-account': typeof VaultSettingsDeleteAccountRoute
   '/settings/density': typeof VaultSettingsDensityRoute
   '/settings/export': typeof VaultSettingsExportRoute
@@ -257,6 +266,7 @@ export interface FileRoutesById {
   '/_vault/items/new': typeof VaultItemsNewRoute
   '/_vault/settings/appearance': typeof VaultSettingsAppearanceRoute
   '/_vault/settings/auto-lock': typeof VaultSettingsAutoLockRoute
+  '/_vault/settings/biometric-unlock': typeof VaultSettingsBiometricUnlockRoute
   '/_vault/settings/delete-account': typeof VaultSettingsDeleteAccountRoute
   '/_vault/settings/density': typeof VaultSettingsDensityRoute
   '/_vault/settings/export': typeof VaultSettingsExportRoute
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/items/new'
     | '/settings/appearance'
     | '/settings/auto-lock'
+    | '/settings/biometric-unlock'
     | '/settings/delete-account'
     | '/settings/density'
     | '/settings/export'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/items/new'
     | '/settings/appearance'
     | '/settings/auto-lock'
+    | '/settings/biometric-unlock'
     | '/settings/delete-account'
     | '/settings/density'
     | '/settings/export'
@@ -344,6 +356,7 @@ export interface FileRouteTypes {
     | '/_vault/items/new'
     | '/_vault/settings/appearance'
     | '/_vault/settings/auto-lock'
+    | '/_vault/settings/biometric-unlock'
     | '/_vault/settings/delete-account'
     | '/_vault/settings/density'
     | '/_vault/settings/export'
@@ -529,6 +542,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VaultSettingsDeleteAccountRouteImport
       parentRoute: typeof VaultSettingsRouteRoute
     }
+    '/_vault/settings/biometric-unlock': {
+      id: '/_vault/settings/biometric-unlock'
+      path: '/biometric-unlock'
+      fullPath: '/settings/biometric-unlock'
+      preLoaderRoute: typeof VaultSettingsBiometricUnlockRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
     '/_vault/settings/auto-lock': {
       id: '/_vault/settings/auto-lock'
       path: '/auto-lock'
@@ -587,6 +607,7 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 interface VaultSettingsRouteRouteChildren {
   VaultSettingsAppearanceRoute: typeof VaultSettingsAppearanceRoute
   VaultSettingsAutoLockRoute: typeof VaultSettingsAutoLockRoute
+  VaultSettingsBiometricUnlockRoute: typeof VaultSettingsBiometricUnlockRoute
   VaultSettingsDeleteAccountRoute: typeof VaultSettingsDeleteAccountRoute
   VaultSettingsDensityRoute: typeof VaultSettingsDensityRoute
   VaultSettingsExportRoute: typeof VaultSettingsExportRoute
@@ -600,6 +621,7 @@ interface VaultSettingsRouteRouteChildren {
 const VaultSettingsRouteRouteChildren: VaultSettingsRouteRouteChildren = {
   VaultSettingsAppearanceRoute: VaultSettingsAppearanceRoute,
   VaultSettingsAutoLockRoute: VaultSettingsAutoLockRoute,
+  VaultSettingsBiometricUnlockRoute: VaultSettingsBiometricUnlockRoute,
   VaultSettingsDeleteAccountRoute: VaultSettingsDeleteAccountRoute,
   VaultSettingsDensityRoute: VaultSettingsDensityRoute,
   VaultSettingsExportRoute: VaultSettingsExportRoute,

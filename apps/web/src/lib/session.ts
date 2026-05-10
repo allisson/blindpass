@@ -1,6 +1,7 @@
 import { lock as zeroKeys } from '@blindpass/vault';
 import type { Keychain, KeyPair } from '@blindpass/types';
 import { vaultCache } from './vaultCache';
+import { enrollmentStore } from './biometric';
 
 const LAST_USERNAME_KEY = 'bp:last-username';
 
@@ -87,5 +88,6 @@ export const session = {
       _session.vaults.clear();
     }
     _session = null;
+    void enrollmentStore.clearAll().catch(() => {});
   },
 };

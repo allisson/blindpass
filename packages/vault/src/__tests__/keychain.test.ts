@@ -12,6 +12,7 @@ import {
   unlock,
   lock,
   unlockWithRecovery,
+  unlockFromMasterKey,
   type ServerKeyData,
   type RecoveryKeyData,
 } from '../index.js';
@@ -91,6 +92,24 @@ describe('unlockWithRecovery', () => {
     };
 
     await expect(unlockWithRecovery(badData, mnemonic)).rejects.toThrow(CryptoError);
+  });
+});
+
+describe('unlockFromMasterKey', () => {
+  it('derives vaultKey when given a masterKey directly', async () => {
+    const keychain = await unlockFromMasterKey(
+      { encryptedVaultKey: sharedData.encryptedVaultKey },
+      expectedMasterKey,
+    );
+    expect(keychain.masterKey).toEqual(expectedMasterKey);
+    expect(keychain.vaultKey).toEqual(expectedVaultKey);
+  });
+
+  it('throws CryptoError when masterKey does not match the encryptedVaultKey', async () => {
+    const wrongMasterKey = await generateKey();
+    await expect(
+      unlockFromMasterKey({ encryptedVaultKey: sharedData.encryptedVaultKey }, wrongMasterKey),
+    ).rejects.toThrow(CryptoError);
   });
 });
 

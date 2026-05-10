@@ -28,6 +28,12 @@ The KEK→MasterKey→VaultKey→ItemKey hierarchy lives in the names of variabl
 A user-displayed mnemonic that derives a key wrapping a second copy of the **MasterKey** for emergency unlock. Validated server-side via the **RecoveryVerifier**.
 _Avoid_: backup phrase (in code).
 
+**BUK** (Biometric Unlock Key):
+A 32-byte secret derived per-device from a WebAuthn credential's `prf` extension. Computed as `prf(credentialId, prfSalt)` and gated by the platform authenticator's user verification (Touch ID / Face ID / Windows Hello / Android biometric). Wraps **MasterKey** at rest in the device's local IndexedDB. Never leaves the device, never sent to the server, regenerated on each unlock from the credential — not persisted itself.
+
+**BiometricEnrollment**:
+The IndexedDB record `{version, username, credentialId, prfSalt, encryptedMasterKey, rpId, createdAt, label?}` produced when a user opts into **Biometric unlock** on a device. Stored in `bp:biometric-unlock`. Created on settings opt-in while the vault is unlocked. Cleared on explicit disenrollment or `session.clear()` (logout / session_expired). Survives `session.lock()` and password rotation (because **MasterKey** survives both).
+
 **EncryptedValue**:
 The pair `{ciphertext, nonce}` — the at-rest representation of any sealed bytes. Every encrypted-at-rest field on the server has both columns.
 
@@ -73,6 +79,9 @@ The login/restore ceremony. Derives **KEK** from password + server salt, decrypt
 
 **UnlockWithRecovery**:
 The recovery ceremony. Decrypts **MasterKey** with the **RecoveryKey** mnemonic, then decrypts the private key. First half of password reset.
+
+**Biometric unlock**:
+The alternative to **UnlockWithPassword** that recovers **MasterKey** from a local **BiometricEnrollment** by deriving a **BUK** via WebAuthn PRF and decrypting `encryptedMasterKey`. Replaces only the vault-unlock step; the server `bp_session` cookie and TOTP login are unchanged. Available only when a **BiometricEnrollment** exists for `getLastUsername()` on this device and the platform supports the `prf` extension.
 
 **Rekey**:
 The re-wrap ceremony. Given a held **MasterKey** and a new password, derives a new **KEK**, generates a new **RecoveryKey**, and produces fresh `{encryptedMasterKey, encryptedMasterKeyForRecovery, encryptedRecoveryKey}` for `POST /auth/recovery/complete`. Zeros the new **KEK** before returning.
