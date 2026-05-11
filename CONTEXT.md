@@ -52,7 +52,10 @@ A named container of **VaultItems** owned by one user, optionally shared.
 One stored credential, fully decrypted. Type-discriminated payload: login, note, card, identity, TOTP, crypto wallet, dev credential. Lives in the browser only — the server never sees this shape. Defined in `packages/vault/src/item/schema.ts`.
 
 **EncryptedVaultItem**:
-The wire envelope for a **VaultItem** at rest and in transit: `{id, encryptedData, encryptedItemKey, folderId, createdAt, updatedAt}`. The server stores and returns this shape; it never sees the decrypted payload. Defined in `packages/api-schema/src/vault.ts`. Sibling envelopes: **EncryptedTrashedItem**, **EncryptedGlobalTrashedItem**.
+The wire envelope for a **VaultItem** at rest and in transit: `{id, encryptedData, encryptedItemKey, folderId, createdAt, updatedAt}`. The server stores and returns this shape; it never sees the decrypted payload. Defined in `packages/api-schema/src/vault.ts`. Sibling envelopes: **EncryptedTrashedItem**, **EncryptedGlobalTrashedItem**, **EncryptedGlobalVaultItem**.
+
+**EncryptedGlobalVaultItem**:
+`EncryptedVaultItem` extended with `vaultId`. Returned by `GET /user/items` — the user-scoped endpoint that loads active items from all owned and shared vaults in one request. The client needs `vaultId` to select the correct **VaultKey** for decryption. Analogous to **EncryptedGlobalTrashedItem**.
 
 ### Server-side auth domain
 
@@ -127,7 +130,7 @@ The IndexedDB-at-rest shape for an **EncryptedVaultItem**. Same fields as the wi
 ### Browser sync
 
 **SyncEngine**:
-The pluggable adapter that performs one round of vault synchronisation: pulls **EncryptedVaultItem** changes since the last cursor, pushes pending local mutations, updates `vaultCache`. Pure I/O; no React. Exposes `runOnce()`, `subscribe(listener)`, and emits typed `SyncEvent`s (`started`, `succeeded`, `failed`).
+The pluggable adapter that performs one round of user-scoped synchronisation: pulls **EncryptedGlobalVaultItem** changes across all owned and shared vaults since the last cursor, updates `vaultCache`. Pure I/O; no React. Exposes `runOnce()` (no `vaultId` — sync is always user-scoped), `subscribe(listener)`, and emits typed `SyncEvent`s (`started`, `succeeded`, `failed`, `offline`) — none carry `vaultId`.
 _Avoid_: syncer, sync service.
 
 **SyncBoundary**:
@@ -155,7 +158,7 @@ Narrow drizzle queries against the `users` table. Returns row shapes (`typeof us
 - **TotpRotationService** (`auth/totp-rotation/service.ts`) — `startRotation`, `completeRotation`
 
 **VaultItemsRepository** (`vaults/items/repository.ts`):
-Hides the **VaultItem ↔ VaultItemVersion** pairing invariant — every item write produces both a `vaultItems` row and a `vaultItemVersions` row atomically. Exposes `createWithVersion`, `batchCreateWithVersion`, `updateWithNewVersion`, `softDelete`, `moveToFolder`, plus query helpers `findActiveByCursor`, `findChangedSince`, `findDeletedSince`.
+Hides the **VaultItem ↔ VaultItemVersion** pairing invariant — every item write produces both a `vaultItems` row and a `vaultItemVersions` row atomically. Exposes `createWithVersion`, `batchCreateWithVersion`, `updateWithNewVersion`, `softDelete`, `moveToFolder`, plus per-vault query helpers `findActiveByCursor`, `findChangedSince`, `findDeletedSince` and user-scoped helpers `findActiveForUser`, `findChangedSinceForUser`, `findDeletedSinceForUser`.
 
 **VaultItemsService** (`vaults/items/service.ts`):
 Composes access check + quota + repo for each write ceremony: `createItem`, `batchCreateItems`, `updateItem`, `deleteItem`, `moveItem`. Read paths (list) skip the service and call repo + access helper directly.

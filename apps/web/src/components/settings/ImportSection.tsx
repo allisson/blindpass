@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useSyncBoundary } from '@/components/sync/SyncBoundary';
 import { Loader2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { decryptSymmetric } from '@blindpass/crypto';
@@ -13,7 +13,6 @@ import { fromBase64 } from '@/lib/b64';
 import { detectFormat, parseFile } from '@/lib/import';
 import type { ImportFormat, ImportResult } from '@/lib/import';
 import { useKeychain } from '@/components/keychain/KeychainRequired';
-import { VAULT_ITEMS_KEY } from '@/hooks/useVault';
 
 type ImportState =
   | { status: 'idle' }
@@ -33,7 +32,7 @@ const FORMAT_LABELS: Record<ImportFormat, string> = {
 
 export function ImportSection() {
   const k = useKeychain();
-  const qc = useQueryClient();
+  const sync = useSyncBoundary();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [format, setFormat] = useState<ImportFormat>('chrome');
@@ -165,7 +164,7 @@ export function ImportSection() {
       return;
     }
 
-    await qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY });
+    void sync.forceSync();
     setState({ status: 'done', imported: total, skipped: pending.skipped });
     setPending(null);
     if (fileRef.current) fileRef.current.value = '';

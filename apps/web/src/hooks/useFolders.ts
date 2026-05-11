@@ -4,7 +4,8 @@ import type { Folder } from '@blindpass/api-schema';
 import { api } from '@/lib/api';
 import { useKeychain } from '@/components/keychain/KeychainRequired';
 import { fromBase64EncryptedValue, toBase64EncryptedValue } from '@/lib/b64';
-import { VAULT_ITEMS_KEY, FOLDERS_KEY } from './queryKeys';
+import { useSyncBoundary } from '@/components/sync/SyncBoundary';
+import { FOLDERS_KEY } from './queryKeys';
 
 export { FOLDERS_KEY };
 
@@ -58,13 +59,14 @@ export function useRenameFolder() {
 export function useDeleteFolder() {
   const qc = useQueryClient();
   const k = useKeychain();
+  const sync = useSyncBoundary();
   return useMutation({
     mutationFn: async (folderId: string) => {
       await api.deleteFolder(k.activeVaultId, folderId);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: FOLDERS_KEY });
-      qc.invalidateQueries({ queryKey: VAULT_ITEMS_KEY });
+      void sync.forceSync();
     },
   });
 }

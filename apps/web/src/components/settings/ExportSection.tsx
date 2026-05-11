@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { api } from '@/lib/api';
 import { toBase64 } from '@/lib/b64';
+import { vaultCache } from '@/lib/vaultCache';
 import { useKeychain } from '@/components/keychain/KeychainRequired';
 
 function downloadFile(content: string, filename: string) {
@@ -31,8 +31,8 @@ type ExportState =
   | { status: 'error'; message: string };
 
 async function fetchAndDecryptAll(k: ReturnType<typeof useKeychain>): Promise<VaultItemData[]> {
-  const { items } = await api.getItems(k.activeVaultId);
-  const decrypted = await Promise.all(items.map((item) => k.decryptItem(item)));
+  const cached = await vaultCache.getItems(k.activeVaultId);
+  const decrypted = await Promise.all(cached.map((item) => k.decryptItem(item)));
   return decrypted.map((d) => {
     const {
       id: _id,

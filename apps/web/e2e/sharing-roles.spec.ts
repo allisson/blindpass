@@ -136,7 +136,9 @@ test.describe('Sharing Roles', () => {
         .locator('[data-slot="popover-content"]')
         .getByRole('button', { name: 'Shared Team Vault' })
         .click();
-      await expect(ownerPage.getByTestId('vault-list').getByText('Editor Note')).not.toBeVisible();
+      await expect(ownerPage.getByTestId('vault-list').getByText('Editor Note')).not.toBeVisible({
+        timeout: 15_000,
+      });
 
       // 9. Editor cannot rename vault — scope to shared vault row; unscoped selector would also
       // match rename buttons on the editor's own (non-shared) vaults

@@ -20,10 +20,10 @@ import type {
   FolderResponse,
   ItemResponse,
   KeysResponse,
-  ListDeltaResponse,
   ListFoldersResponse,
   ListGlobalTrashResponse,
-  ListItemsResponse,
+  ListUserItemsDeltaResponse,
+  ListUserItemsResponse,
   ListSessionsResponse,
   ListSharesResponse,
   ListTrashResponse,
@@ -169,15 +169,15 @@ export const api = {
   updateVault: (vaultId: string, body: UpdateVaultRequest) =>
     request<VaultResponse>('PUT', `/vaults/${vaultId}`, body),
 
-  getItems: (vaultId: string, cursor?: string) =>
-    request<ListItemsResponse>(
+  getUserItems: (cursor?: string) =>
+    request<ListUserItemsResponse>(
       'GET',
-      `/vaults/${vaultId}/items${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+      `/user/items${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
     ),
-  getItemsDelta: (vaultId: string, updatedAfter: string) =>
-    request<ListDeltaResponse>(
+  getUserItemsDelta: (updatedAfter: string) =>
+    request<ListUserItemsDeltaResponse>(
       'GET',
-      `/vaults/${vaultId}/items?updatedAfter=${encodeURIComponent(updatedAfter)}`,
+      `/user/items?updatedAfter=${encodeURIComponent(updatedAfter)}`,
     ),
   createItem: (vaultId: string, body: CreateItemRequest) =>
     request<ItemResponse>('POST', `/vaults/${vaultId}/items`, body),

@@ -303,8 +303,8 @@ describe('api auth routes', () => {
       encryptedVaultKey: { ciphertext: 'YQ==', nonce: 'YQ==' },
       encryptedVaultData: { ciphertext: 'YQ==', nonce: 'YQ==' },
     });
-    await api.getItems('vault-1', 'cursor value');
-    await api.getItemsDelta('vault-1', '2026-05-05T00:00:00.000Z');
+    await api.getUserItems('cursor value');
+    await api.getUserItemsDelta('2026-05-05T00:00:00.000Z');
     await api.createItem('vault-1', {
       encryptedData: { ciphertext: 'YQ==', nonce: 'YQ==' },
       encryptedItemKey: { ciphertext: 'YQ==', nonce: 'YQ==' },
@@ -385,7 +385,7 @@ describe('api auth routes', () => {
     );
 
     await api.getVault();
-    await api.getItems('vault-1');
+    await api.getUserItems();
     await api.getTrash('vault-1');
     await api.getGlobalTrash();
     await api.getVersions('vault-1', 'item-1');
@@ -405,7 +405,7 @@ describe('api auth routes', () => {
 
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
       '/vaults',
-      '/vaults/vault-1/items',
+      '/user/items',
       '/vaults/vault-1/trash',
       '/user/trash',
       '/vaults/vault-1/items/item-1/versions',

@@ -28,30 +28,8 @@ export function useVaultItems() {
   return useQuery({
     queryKey: VAULT_ITEMS_KEY,
     queryFn: async () => {
-      if (!navigator.onLine) {
-        const cached = await vaultCache.getItems(k.activeVaultId);
-        return Promise.all(cached.map((item) => k.decryptItem(item)));
-      }
-
-      const items = await fetchAllPages((cursor) =>
-        api
-          .getItems(k.activeVaultId, cursor)
-          .then((r) => ({ data: r.items, nextCursor: r.nextCursor })),
-      );
-
-      void vaultCache.upsertItems(
-        items.map((item) => ({
-          id: item.id,
-          vaultId: k.activeVaultId,
-          folderId: item.folderId,
-          encryptedData: item.encryptedData,
-          encryptedItemKey: item.encryptedItemKey,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        })),
-      );
-
-      return Promise.all(items.map((item) => k.decryptItem(item)));
+      const cached = await vaultCache.getItems(k.activeVaultId);
+      return Promise.all(cached.map((item) => k.decryptItem(item)));
     },
   });
 }
@@ -72,6 +50,17 @@ export function useCreateItem() {
         encryptedItemKey,
         folderId: folderId ?? undefined,
       });
+      await vaultCache.upsertItems([
+        {
+          id: item.id,
+          vaultId: k.activeVaultId,
+          folderId: item.folderId ?? null,
+          encryptedData: item.encryptedData,
+          encryptedItemKey: item.encryptedItemKey,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        },
+      ]);
       return { id: item.id };
     },
     patch: {

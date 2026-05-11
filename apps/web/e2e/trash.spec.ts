@@ -38,7 +38,7 @@ async function moveCurrentItemToTrash(page: Page, title: string) {
 }
 
 async function openTrash(page: Page) {
-  await page.getByRole('link', { name: 'Trash' }).click();
+  await page.getByRole('link', { name: 'Trash', exact: true }).click();
   await page.waitForURL('/trash', { timeout: 10_000 });
 }
 

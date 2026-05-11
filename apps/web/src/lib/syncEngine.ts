@@ -1,24 +1,25 @@
 import type { QueryClient } from '@tanstack/react-query';
-import type { EncryptedVaultItem } from '@blindpass/api-schema';
+import type { EncryptedGlobalVaultItem } from '@blindpass/api-schema';
 import { api } from './api';
 import { fetchAllPages } from './fetchAllPages';
 import { vaultCache, type CachedVaultItem } from './vaultCache';
 
 export type SyncEvent =
-  | { type: 'started'; vaultId: string }
-  | { type: 'succeeded'; vaultId: string; at: number }
-  | { type: 'offline'; vaultId: string }
-  | { type: 'failed'; vaultId: string; error: Error };
+  | { type: 'started' }
+  | { type: 'succeeded'; at: number }
+  | { type: 'offline' }
+  | { type: 'failed'; error: Error };
 
 export interface SyncEngine {
-  runOnce(vaultId: string, opts?: { force?: boolean }): Promise<void>;
+  runOnce(opts?: { force?: boolean }): Promise<void>;
   subscribe(fn: (e: SyncEvent) => void): () => void;
 }
 
-function toCache(item: EncryptedVaultItem, vaultId: string): CachedVaultItem {
+function toCache(item: EncryptedGlobalVaultItem): CachedVaultItem {
   return {
     id: item.id,
-    vaultId,
+    vaultId: item.vaultId,
+    folderId: item.folderId,
     encryptedData: item.encryptedData,
     encryptedItemKey: item.encryptedItemKey,
     createdAt: item.createdAt,
@@ -34,48 +35,48 @@ export function createDefaultSyncEngine(qc: QueryClient): SyncEngine {
     for (const fn of listeners) fn(e);
   }
 
-  async function runSync(vaultId: string, force: boolean): Promise<void> {
+  async function runSync(force: boolean): Promise<void> {
     if (!navigator.onLine) {
-      emit({ type: 'offline', vaultId });
+      emit({ type: 'offline' });
       return;
     }
 
-    emit({ type: 'started', vaultId });
+    emit({ type: 'started' });
 
     try {
-      const meta = force ? null : await vaultCache.getSyncMeta(vaultId);
+      const meta = force ? null : await vaultCache.getSyncMeta();
 
       if (meta) {
-        const delta = await api.getItemsDelta(vaultId, meta.lastSyncedAt);
-        if (delta.items.length)
-          await vaultCache.upsertItems(delta.items.map((i) => toCache(i, vaultId)));
+        const delta = await api.getUserItemsDelta(meta.lastSyncedAt);
+        if (delta.items.length) await vaultCache.upsertItems(delta.items.map(toCache));
         if (delta.deletedIds.length) await vaultCache.deleteItems(delta.deletedIds);
         await vaultCache.setSyncMeta({
-          vaultId,
           lastSyncedAt: delta.serverTime,
           syncedAt: Date.now(),
         });
       } else {
         const items = await fetchAllPages((cursor) =>
-          api.getItems(vaultId, cursor).then((r) => ({ data: r.items, nextCursor: r.nextCursor })),
+          api.getUserItems(cursor).then((r) => ({ data: r.items, nextCursor: r.nextCursor })),
         );
-        if (items.length) await vaultCache.upsertItems(items.map((i) => toCache(i, vaultId)));
+        const serverIds = new Set(items.map((i) => i.id));
+        const allCached = await vaultCache.getAllItems();
+        const staleIds = allCached.filter((c) => !serverIds.has(c.id)).map((c) => c.id);
+        if (items.length) await vaultCache.upsertItems(items.map(toCache));
+        if (staleIds.length) await vaultCache.deleteItems(staleIds);
         await vaultCache.setSyncMeta({
-          vaultId,
           lastSyncedAt: new Date(Date.now() - 60_000).toISOString(),
           syncedAt: Date.now(),
         });
       }
 
-      emit({ type: 'succeeded', vaultId, at: Date.now() });
+      emit({ type: 'succeeded', at: Date.now() });
       qc.invalidateQueries({ queryKey: ['vaultItems'] });
     } catch (err) {
       if (!navigator.onLine) {
-        emit({ type: 'offline', vaultId });
+        emit({ type: 'offline' });
       } else {
         emit({
           type: 'failed',
-          vaultId,
           error: err instanceof Error ? err : new Error(String(err)),
         });
       }
@@ -83,9 +84,9 @@ export function createDefaultSyncEngine(qc: QueryClient): SyncEngine {
   }
 
   return {
-    runOnce(vaultId, opts) {
+    runOnce(opts) {
       if (inflight) return inflight;
-      const p = runSync(vaultId, !!opts?.force).finally(() => {
+      const p = runSync(!!opts?.force).finally(() => {
         inflight = null;
       });
       inflight = p;

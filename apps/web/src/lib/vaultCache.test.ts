@@ -68,51 +68,50 @@ describe('vaultCache.deleteItems', () => {
 
 describe('vaultCache.getSyncMeta / setSyncMeta', () => {
   it('returns null when no meta exists', async () => {
-    const meta = await vaultCache.getSyncMeta('vault-1');
+    const meta = await vaultCache.getSyncMeta();
     expect(meta).toBeNull();
   });
 
   it('stores and retrieves sync meta', async () => {
     await vaultCache.setSyncMeta({
-      vaultId: 'vault-1',
       lastSyncedAt: '2025-01-01T00:00:00Z',
       syncedAt: 1000,
     });
-    const meta = await vaultCache.getSyncMeta('vault-1');
+    const meta = await vaultCache.getSyncMeta();
     expect(meta).toEqual({
-      vaultId: 'vault-1',
       lastSyncedAt: '2025-01-01T00:00:00Z',
       syncedAt: 1000,
     });
   });
 
   it('setSyncMeta overwrites existing', async () => {
-    await vaultCache.setSyncMeta({ vaultId: 'vault-1', lastSyncedAt: 'old', syncedAt: 0 });
-    await vaultCache.setSyncMeta({ vaultId: 'vault-1', lastSyncedAt: 'new', syncedAt: 1 });
-    const meta = await vaultCache.getSyncMeta('vault-1');
+    await vaultCache.setSyncMeta({ lastSyncedAt: 'old', syncedAt: 0 });
+    await vaultCache.setSyncMeta({ lastSyncedAt: 'new', syncedAt: 1 });
+    const meta = await vaultCache.getSyncMeta();
     expect(meta?.lastSyncedAt).toBe('new');
   });
 });
 
 describe('vaultCache.clearVault', () => {
-  it('removes all items and meta for a vault', async () => {
+  it('removes items for a vault without touching sync meta', async () => {
     await vaultCache.upsertItems([item('a'), item('b', 'vault-2')]);
-    await vaultCache.setSyncMeta({ vaultId: 'vault-1', lastSyncedAt: 'ts', syncedAt: 0 });
+    await vaultCache.setSyncMeta({ lastSyncedAt: 'ts', syncedAt: 0 });
     await vaultCache.clearVault('vault-1');
     expect(await vaultCache.getItems('vault-1')).toEqual([]);
-    expect(await vaultCache.getSyncMeta('vault-1')).toBeNull();
+    // sync meta preserved — clearing one vault does not reset the user-level cursor
+    expect(await vaultCache.getSyncMeta()).not.toBeNull();
     // vault-2 untouched
     expect(await vaultCache.getItems('vault-2')).toHaveLength(1);
   });
 });
 
 describe('vaultCache.clearAll', () => {
-  it('wipes all items and meta across vaults', async () => {
+  it('wipes all items and sync meta', async () => {
     await vaultCache.upsertItems([item('a', 'vault-1'), item('b', 'vault-2')]);
-    await vaultCache.setSyncMeta({ vaultId: 'vault-1', lastSyncedAt: 'ts', syncedAt: 0 });
+    await vaultCache.setSyncMeta({ lastSyncedAt: 'ts', syncedAt: 0 });
     await vaultCache.clearAll();
     expect(await vaultCache.getItems('vault-1')).toEqual([]);
     expect(await vaultCache.getItems('vault-2')).toEqual([]);
-    expect(await vaultCache.getSyncMeta('vault-1')).toBeNull();
+    expect(await vaultCache.getSyncMeta()).toBeNull();
   });
 });
