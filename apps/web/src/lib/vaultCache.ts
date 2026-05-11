@@ -9,13 +9,13 @@ export interface CachedVaultItem {
 }
 
 export interface SyncMeta {
-  vaultId: string;
   lastSyncedAt: string;
   syncedAt: number;
 }
 
 const DB_NAME = 'bp:vault-cache';
 const DB_VERSION = 1;
+const SYNC_META_KEY = 'user';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -50,6 +50,17 @@ export const vaultCache = {
     });
   },
 
+  async getAllItems(): Promise<CachedVaultItem[]> {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('items', 'readonly');
+      const req = tx.objectStore('items').getAll();
+      req.onsuccess = () => resolve(req.result as CachedVaultItem[]);
+      /* c8 ignore next */
+      req.onerror = () => reject(req.error);
+    });
+  },
+
   async upsertItems(items: CachedVaultItem[]): Promise<void> {
     if (!items.length) return;
     const db = await openDb();
@@ -76,12 +87,15 @@ export const vaultCache = {
     });
   },
 
-  async getSyncMeta(vaultId: string): Promise<SyncMeta | null> {
+  async getSyncMeta(): Promise<SyncMeta | null> {
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('syncMeta', 'readonly');
-      const req = tx.objectStore('syncMeta').get(vaultId);
-      req.onsuccess = () => resolve((req.result as SyncMeta) ?? null);
+      const req = tx.objectStore('syncMeta').get(SYNC_META_KEY);
+      req.onsuccess = () => {
+        const row = req.result as (SyncMeta & { vaultId: string }) | undefined;
+        resolve(row ? { lastSyncedAt: row.lastSyncedAt, syncedAt: row.syncedAt } : null);
+      };
       /* c8 ignore next */
       req.onerror = () => reject(req.error);
     });
@@ -91,7 +105,7 @@ export const vaultCache = {
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('syncMeta', 'readwrite');
-      tx.objectStore('syncMeta').put(meta);
+      tx.objectStore('syncMeta').put({ vaultId: SYNC_META_KEY, ...meta });
       tx.oncomplete = () => resolve();
       /* c8 ignore next */
       tx.onerror = () => reject(tx.error);
@@ -101,14 +115,6 @@ export const vaultCache = {
   async clearVault(vaultId: string): Promise<void> {
     const items = await vaultCache.getItems(vaultId);
     await vaultCache.deleteItems(items.map((i) => i.id));
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('syncMeta', 'readwrite');
-      tx.objectStore('syncMeta').delete(vaultId);
-      tx.oncomplete = () => resolve();
-      /* c8 ignore next */
-      tx.onerror = () => reject(tx.error);
-    });
   },
 
   async clearAll(): Promise<void> {

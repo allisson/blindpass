@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { registerListVaultsRoute } from './list-vaults.js';
 import { registerCreateVaultRoute } from './create-vault.js';
 import { registerUpdateVaultRoute } from './update-vault.js';
-import { registerListItemsRoute } from './items/list-items.js';
+import { registerListUserItemsRoute } from './items/list-user-items.js';
 import { registerCreateItemRoute } from './items/create-item.js';
 import { registerBatchCreateItemsRoute } from './items/batch-create-items.js';
 import { registerUpdateItemRoute } from './items/update-item.js';
@@ -28,7 +28,7 @@ export function registerVaultRoutes(app: FastifyInstance): void {
   registerListVaultsRoute(app);
   registerCreateVaultRoute(app);
   registerUpdateVaultRoute(app);
-  registerListItemsRoute(app);
+  registerListUserItemsRoute(app);
   registerCreateItemRoute(app);
   registerBatchCreateItemsRoute(app);
   registerUpdateItemRoute(app);

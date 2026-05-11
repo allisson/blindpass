@@ -1,8 +1,14 @@
-import { and, asc, desc, eq, gt, isNotNull, isNull, max } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNotNull, isNull, max, or } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { uuidv7 } from 'uuidv7';
 import * as schema from '../../db/schema.js';
-import { vaultFolders, vaultItems, vaultItemVersions } from '../../db/schema.js';
+import {
+  vaultFolders,
+  vaultItems,
+  vaultItemVersions,
+  vaults,
+  vaultShares,
+} from '../../db/schema.js';
 
 type Db = NodePgDatabase<typeof schema>;
 
@@ -90,6 +96,78 @@ export async function findDeletedSince(
     .where(
       and(
         eq(vaultItems.vaultId, vaultId),
+        isNotNull(vaultItems.deletedAt),
+        gt(vaultItems.updatedAt, since),
+      ),
+    )
+    .limit(1000);
+}
+
+export type GlobalVersionedItemRow = VersionedItemRow & { vaultId: string };
+
+const GLOBAL_VERSIONED_PROJECTION = {
+  ...VERSIONED_PROJECTION,
+  vaultId: vaultItems.vaultId,
+};
+
+export async function findActiveForUser(
+  db: Db,
+  userId: string,
+  cursor: string | undefined,
+  limit: number,
+): Promise<GlobalVersionedItemRow[]> {
+  return db
+    .selectDistinctOn([vaultItems.id], GLOBAL_VERSIONED_PROJECTION)
+    .from(vaultItems)
+    .innerJoin(vaults, eq(vaults.id, vaultItems.vaultId))
+    .leftJoin(vaultShares, eq(vaultShares.vaultId, vaults.id))
+    .innerJoin(vaultItemVersions, eq(vaultItemVersions.itemId, vaultItems.id))
+    .where(
+      and(
+        or(eq(vaults.userId, userId), eq(vaultShares.receiverUserId, userId)),
+        isNull(vaultItems.deletedAt),
+        cursor ? gt(vaultItems.id, cursor) : undefined,
+      ),
+    )
+    .orderBy(asc(vaultItems.id), desc(vaultItemVersions.versionNum))
+    .limit(limit + 1);
+}
+
+export async function findChangedSinceForUser(
+  db: Db,
+  userId: string,
+  since: Date,
+): Promise<GlobalVersionedItemRow[]> {
+  return db
+    .selectDistinctOn([vaultItems.id], GLOBAL_VERSIONED_PROJECTION)
+    .from(vaultItems)
+    .innerJoin(vaults, eq(vaults.id, vaultItems.vaultId))
+    .leftJoin(vaultShares, eq(vaultShares.vaultId, vaults.id))
+    .innerJoin(vaultItemVersions, eq(vaultItemVersions.itemId, vaultItems.id))
+    .where(
+      and(
+        or(eq(vaults.userId, userId), eq(vaultShares.receiverUserId, userId)),
+        isNull(vaultItems.deletedAt),
+        gt(vaultItems.updatedAt, since),
+      ),
+    )
+    .orderBy(asc(vaultItems.id), desc(vaultItemVersions.versionNum))
+    .limit(1000);
+}
+
+export async function findDeletedSinceForUser(
+  db: Db,
+  userId: string,
+  since: Date,
+): Promise<{ id: string }[]> {
+  return db
+    .selectDistinct({ id: vaultItems.id })
+    .from(vaultItems)
+    .innerJoin(vaults, eq(vaults.id, vaultItems.vaultId))
+    .leftJoin(vaultShares, eq(vaultShares.vaultId, vaults.id))
+    .where(
+      and(
+        or(eq(vaults.userId, userId), eq(vaultShares.receiverUserId, userId)),
         isNotNull(vaultItems.deletedAt),
         gt(vaultItems.updatedAt, since),
       ),

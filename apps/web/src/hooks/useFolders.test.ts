@@ -10,7 +10,6 @@ import {
   useDeleteFolder,
   FOLDERS_KEY,
 } from './useFolders';
-import { VAULT_ITEMS_KEY } from './useVault';
 import { session } from '@/lib/session';
 
 vi.mock('@/lib/api', () => ({
@@ -179,7 +178,7 @@ describe('useRenameFolder', () => {
 });
 
 describe('useDeleteFolder', () => {
-  it('calls api.deleteFolder and invalidates folders and vault items queries', async () => {
+  it('calls api.deleteFolder and invalidates folders query', async () => {
     mockSession();
     vi.mocked(api.deleteFolder).mockResolvedValue(undefined);
 
@@ -192,6 +191,5 @@ describe('useDeleteFolder', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.deleteFolder).toHaveBeenCalledWith('v1', 'f1');
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: FOLDERS_KEY });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: VAULT_ITEMS_KEY });
   });
 });

@@ -56,7 +56,6 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
   const qc = useQueryClient();
   const engine = useMemo(() => engineProp ?? createDefaultSyncEngine(qc), [engineProp, qc]);
 
-  const [vaultId, setVaultId] = useState<string | null>(() => session.get()?.activeVaultId ?? null);
   const [phase, setPhase] = useState<SyncPhase>('idle');
   const [lastError, setLastError] = useState<Error | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
@@ -65,8 +64,6 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
 
   const failuresRef = useRef(0);
   const backoffTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const vaultIdRef = useRef(vaultId);
-  vaultIdRef.current = vaultId;
 
   const clearBackoff = useCallback(() => {
     if (backoffTimerRef.current !== null) {
@@ -77,21 +74,12 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
 
   const trigger = useCallback(
     (force: boolean): Promise<void> => {
-      const vid = vaultIdRef.current;
-      if (!vid) return Promise.resolve();
+      if (!session.get()?.keychain) return Promise.resolve();
       clearBackoff();
-      return engine.runOnce(vid, { force });
+      return engine.runOnce({ force });
     },
     [engine, clearBackoff],
   );
-
-  useEffect(() => {
-    function onVaultSwitch() {
-      setVaultId(session.get()?.activeVaultId ?? null);
-    }
-    window.addEventListener('bp:vault-switch', onVaultSwitch);
-    return () => window.removeEventListener('bp:vault-switch', onVaultSwitch);
-  }, []);
 
   useEffect(() => {
     return engine.subscribe((e) => {
@@ -123,13 +111,12 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
       const delay = Math.min(BACKOFF_BASE_MS * 2 ** (count - 1), BACKOFF_CAP_MS);
       clearBackoff();
       backoffTimerRef.current = setTimeout(() => {
-        if (session.get()?.keychain) void engine.runOnce(e.vaultId, { force: false });
+        if (session.get()?.keychain) void engine.runOnce({ force: false });
       }, delay);
     });
   }, [engine, clearBackoff]);
 
   useEffect(() => {
-    if (!vaultId) return;
     if (!session.get()?.keychain) return;
 
     void trigger(false);
@@ -147,9 +134,14 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
       if (session.get()?.keychain) void trigger(false);
     }
 
+    function onVaultSwitch() {
+      if (session.get()?.keychain) void trigger(true);
+    }
+
     window.addEventListener('focus', onVisibility);
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('online', onOnline);
+    window.addEventListener('bp:vault-switch', onVaultSwitch);
 
     return () => {
       clearInterval(pollTimer);
@@ -157,8 +149,9 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
       window.removeEventListener('focus', onVisibility);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('bp:vault-switch', onVaultSwitch);
     };
-  }, [vaultId, trigger, clearBackoff]);
+  }, [trigger, clearBackoff]);
 
   const markPending = useCallback((id: string) => {
     setPendingItemIds((prev) => {

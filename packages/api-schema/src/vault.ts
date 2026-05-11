@@ -145,6 +145,19 @@ export const ListGlobalTrashResponseSchema = z.object({
   nextCursor: z.uuid().nullable(),
 });
 
+export const EncryptedGlobalVaultItemSchema = EncryptedVaultItemSchema.extend({
+  vaultId: z.uuid(),
+});
+export const ListUserItemsResponseSchema = z.object({
+  items: z.array(EncryptedGlobalVaultItemSchema),
+  nextCursor: z.uuid().nullable(),
+});
+export const ListUserItemsDeltaResponseSchema = z.object({
+  items: z.array(EncryptedGlobalVaultItemSchema),
+  deletedIds: z.array(z.uuid()),
+  serverTime: z.string(),
+});
+
 export const VaultIdParamSchema = z.object({
   vaultId: z.uuid(),
 });
@@ -223,6 +236,9 @@ export type EncryptedTrashedItem = z.infer<typeof EncryptedTrashedItemSchema>;
 export type ListTrashResponse = z.infer<typeof ListTrashResponseSchema>;
 export type EncryptedGlobalTrashedItem = z.infer<typeof EncryptedGlobalTrashedItemSchema>;
 export type ListGlobalTrashResponse = z.infer<typeof ListGlobalTrashResponseSchema>;
+export type EncryptedGlobalVaultItem = z.infer<typeof EncryptedGlobalVaultItemSchema>;
+export type ListUserItemsResponse = z.infer<typeof ListUserItemsResponseSchema>;
+export type ListUserItemsDeltaResponse = z.infer<typeof ListUserItemsDeltaResponseSchema>;
 export type BatchCreateItemsRequest = z.infer<typeof BatchCreateItemsRequestSchema>;
 export type BatchCreateItemsResponse = z.infer<typeof BatchCreateItemsResponseSchema>;
 export type QuotaErrorCode = z.infer<typeof QuotaErrorCodeSchema>;

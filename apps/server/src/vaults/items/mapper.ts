@@ -1,5 +1,5 @@
 import { toB64 } from '../../utils/base64.js';
-import type { VersionedItemRow } from './repository.js';
+import type { GlobalVersionedItemRow, VersionedItemRow } from './repository.js';
 
 export function toEncryptedVaultItem(i: VersionedItemRow) {
   return {
@@ -16,4 +16,8 @@ export function toEncryptedVaultItem(i: VersionedItemRow) {
     createdAt: i.createdAt.toISOString(),
     updatedAt: i.updatedAt.toISOString(),
   };
+}
+
+export function toEncryptedGlobalVaultItem(i: GlobalVersionedItemRow) {
+  return { ...toEncryptedVaultItem(i), vaultId: i.vaultId };
 }

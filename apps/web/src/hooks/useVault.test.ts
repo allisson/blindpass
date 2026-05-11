@@ -32,7 +32,6 @@ vi.mock('@/lib/api', async (importActual) => {
   return {
     ApiError: actual.ApiError,
     api: {
-      getItems: vi.fn(),
       createItem: vi.fn(),
       updateItem: vi.fn(),
       deleteItem: vi.fn(),
@@ -423,10 +422,21 @@ function setupCryptoMocksForWrite() {
 }
 
 describe('useCreateItem', () => {
+  const createdItemResponse = {
+    item: {
+      id: 'new-item',
+      folderId: null,
+      encryptedData: { ciphertext: 'enc-data', nonce: 'nonce-data' },
+      encryptedItemKey: { ciphertext: 'enc-key', nonce: 'nonce-key' },
+      createdAt: '2026-05-11T00:00:00.000Z',
+      updatedAt: '2026-05-11T00:00:00.000Z',
+    },
+  } as const;
+
   it('calls api.createItem and invalidates vault query on success', async () => {
     mockSessionWithVault();
     setupCryptoMocksForWrite();
-    vi.mocked(api.createItem).mockResolvedValue({ item: { id: 'new-item' } } as never);
+    vi.mocked(api.createItem).mockResolvedValue(createdItemResponse as never);
 
     const { wrapper, queryClient } = makeWrapper();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
@@ -444,7 +454,9 @@ describe('useCreateItem', () => {
   it('passes folderId to api.createItem', async () => {
     mockSessionWithVault();
     setupCryptoMocksForWrite();
-    vi.mocked(api.createItem).mockResolvedValue({ item: { id: 'new-item' } } as never);
+    vi.mocked(api.createItem).mockResolvedValue({
+      item: { ...createdItemResponse.item, folderId: 'folder-1' },
+    } as never);
 
     const { wrapper } = makeWrapper();
     const { result } = renderHook(() => useCreateItem(), { wrapper });
@@ -463,7 +475,7 @@ describe('useCreateItem', () => {
   it('optimistically adds item to cache', async () => {
     mockSessionWithVault();
     setupCryptoMocksForWrite();
-    vi.mocked(api.createItem).mockResolvedValue({ item: { id: 'new-item' } } as never);
+    vi.mocked(api.createItem).mockResolvedValue(createdItemResponse as never);
 
     const { wrapper, queryClient } = makeWrapper();
     queryClient.setQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY, []);
@@ -482,7 +494,7 @@ describe('useCreateItem', () => {
   it('optimistically adds item to empty cache', async () => {
     mockSessionWithVault();
     setupCryptoMocksForWrite();
-    vi.mocked(api.createItem).mockResolvedValue({ item: { id: 'new-item' } } as never);
+    vi.mocked(api.createItem).mockResolvedValue(createdItemResponse as never);
 
     const { wrapper, queryClient } = makeWrapper();
     const { result } = renderHook(() => useCreateItem(), { wrapper });
@@ -527,6 +539,32 @@ describe('useCreateItem', () => {
       vaultItem: { type: 'login', title: 'X', username: 'u', password: 'p' },
     });
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  it('persists created item into vaultCache for offline reads', async () => {
+    mockSessionWithVault();
+    setupCryptoMocksForWrite();
+    vi.mocked(api.createItem).mockResolvedValue(createdItemResponse as never);
+    const { vaultCache } = await import('@/lib/vaultCache');
+
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useCreateItem(), { wrapper });
+    result.current.mutate({
+      vaultItem: { type: 'login', title: 'New', username: 'u', password: 'p' },
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(vaultCache.upsertItems).toHaveBeenCalledWith([
+      {
+        id: 'new-item',
+        vaultId: 'v1',
+        folderId: null,
+        encryptedData: { ciphertext: 'enc-data', nonce: 'nonce-data' },
+        encryptedItemKey: { ciphertext: 'enc-key', nonce: 'nonce-key' },
+        createdAt: '2026-05-11T00:00:00.000Z',
+        updatedAt: '2026-05-11T00:00:00.000Z',
+      },
+    ]);
   });
 });
 
@@ -698,21 +736,46 @@ describe('useTrashItems', () => {
     expect(result.current.data![0].title).toBe('Deleted');
   });
 
+  it('throws when trash item has unknown vaultId', async () => {
+    mockSessionWithVault();
+    vi.mocked(api.getGlobalTrash).mockResolvedValue({
+      items: [
+        {
+          id: 'trash1',
+          vaultId: 'unknown-vault',
+          deletedAt: '2024-06-01T00:00:00Z',
+          encryptedItemKey: { ciphertext: 'kc', nonce: 'kn' },
+          encryptedData: { ciphertext: 'dc', nonce: 'dn' },
+        },
+      ],
+    } as never);
+
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useTrashItems(), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toContain(
+      'Vault not found for trash item: unknown-vault',
+    );
+  });
+
   // No-session error path now handled by KeychainRequired boundary (redirects to /unlock).
 });
 
 describe('useVaultItems', () => {
   it('decrypts and returns items', async () => {
     mockSessionWithVault();
-    vi.mocked(api.getItems).mockResolvedValue({
-      items: [
-        {
-          id: 'item1',
-          encryptedItemKey: { ciphertext: 'abc', nonce: 'xyz' },
-          encryptedData: { ciphertext: 'def', nonce: 'uvw' },
-        },
-      ],
-    } as never);
+    const { vaultCache } = await import('@/lib/vaultCache');
+    vi.mocked(vaultCache.getItems).mockResolvedValue([
+      {
+        id: 'item1',
+        vaultId: 'v1',
+        encryptedItemKey: { ciphertext: 'abc', nonce: 'xyz' },
+        encryptedData: { ciphertext: 'def', nonce: 'uvw' },
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ] as never);
     vi.mocked(decryptSymmetric).mockResolvedValue(new Uint8Array(32));
     vi.mocked(decryptVaultItem).mockResolvedValue({
       type: 'login',

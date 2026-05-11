@@ -25,7 +25,7 @@ import type { SyncEngine, SyncEvent } from '@/lib/syncEngine';
 
 function makeFakeEngine() {
   const listeners = new Set<(e: SyncEvent) => void>();
-  const calls: Array<{ vaultId: string; force: boolean }> = [];
+  const calls: Array<{ force: boolean }> = [];
   let nextResult: 'success' | 'fail' | 'offline' = 'success';
 
   const engine: SyncEngine = {
@@ -33,16 +33,16 @@ function makeFakeEngine() {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
-    async runOnce(vaultId, opts) {
-      calls.push({ vaultId, force: !!opts?.force });
-      for (const l of listeners) l({ type: 'started', vaultId });
+    async runOnce(opts) {
+      calls.push({ force: !!opts?.force });
+      for (const l of listeners) l({ type: 'started' });
       await Promise.resolve();
       if (nextResult === 'success') {
-        for (const l of listeners) l({ type: 'succeeded', vaultId, at: 1234 });
+        for (const l of listeners) l({ type: 'succeeded', at: 1234 });
       } else if (nextResult === 'offline') {
-        for (const l of listeners) l({ type: 'offline', vaultId });
+        for (const l of listeners) l({ type: 'offline' });
       } else {
-        for (const l of listeners) l({ type: 'failed', vaultId, error: new Error('boom') });
+        for (const l of listeners) l({ type: 'failed', error: new Error('boom') });
       }
     },
   };
@@ -85,7 +85,7 @@ describe('SyncBoundary', () => {
     await waitFor(() => expect(result.current.phase).toBe('idle'));
     expect(result.current.lastSyncedAt).toBe(1234);
     expect(fake.calls).toHaveLength(1);
-    expect(fake.calls[0]).toEqual({ vaultId: 'v1', force: false });
+    expect(fake.calls[0]).toEqual({ force: false });
   });
 
   it('transitions to error and shows toast on first failure', async () => {
@@ -225,21 +225,6 @@ describe('SyncBoundary', () => {
     await waitFor(() => expect(result.current.phase).toBe('offline'));
   });
 
-  it('updates vaultId on bp:vault-switch event', async () => {
-    const fake = makeFakeEngine();
-    const { result } = renderHook(() => useSyncBoundary(), {
-      wrapper: makeWrapper(fake.engine),
-    });
-    await waitFor(() => expect(result.current.phase).toBe('idle'));
-
-    sessionGetMock.mockReturnValue({ activeVaultId: 'v2', keychain: {} });
-    await act(async () => {
-      window.dispatchEvent(new Event('bp:vault-switch'));
-    });
-
-    await waitFor(() => expect(fake.calls.some((c) => c.vaultId === 'v2')).toBe(true));
-  });
-
   it('skips poll-timer sync when keychain is absent', async () => {
     vi.useFakeTimers();
     const fake = makeFakeEngine();
@@ -284,7 +269,7 @@ describe('SyncBoundary', () => {
     expect(result.current.pendingItemIds).toBe(initial);
   });
 
-  it('skips polling when session is null on mount (vaultId=null)', async () => {
+  it('skips polling when session is null on mount', async () => {
     sessionGetMock.mockReturnValue(null);
     const fake = makeFakeEngine();
     const { result } = renderHook(() => useSyncBoundary(), {
@@ -297,7 +282,7 @@ describe('SyncBoundary', () => {
     expect(result.current.phase).toBe('idle');
   });
 
-  it('skips polling when vaultId exists but keychain is null', async () => {
+  it('skips polling when keychain is null', async () => {
     sessionGetMock.mockReturnValue({ activeVaultId: 'v1', keychain: null });
     const fake = makeFakeEngine();
     renderHook(() => useSyncBoundary(), { wrapper: makeWrapper(fake.engine) });
@@ -307,7 +292,7 @@ describe('SyncBoundary', () => {
     expect(fake.calls).toHaveLength(0);
   });
 
-  it('forceSync returns immediately when vaultId is null', async () => {
+  it('forceSync returns immediately when session is null', async () => {
     sessionGetMock.mockReturnValue(null);
     const fake = makeFakeEngine();
     const { result } = renderHook(() => useSyncBoundary(), {
@@ -317,24 +302,6 @@ describe('SyncBoundary', () => {
       await result.current.forceSync();
     });
     expect(fake.calls).toHaveLength(0);
-  });
-
-  it('sets vaultId to null on bp:vault-switch when session returns null', async () => {
-    const fake = makeFakeEngine();
-    const { result } = renderHook(() => useSyncBoundary(), {
-      wrapper: makeWrapper(fake.engine),
-    });
-    await waitFor(() => expect(result.current.phase).toBe('idle'));
-
-    sessionGetMock.mockReturnValue(null);
-    await act(async () => {
-      window.dispatchEvent(new Event('bp:vault-switch'));
-    });
-    const callsAfterSwitch = fake.calls.length;
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(fake.calls.length).toBe(callsAfterSwitch);
   });
 
   it('skips backoff retry when keychain is null', async () => {
