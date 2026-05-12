@@ -12,9 +12,9 @@ import { fromBase64EncryptedValue, toBase64EncryptedValue } from '@/lib/b64';
 import { vaultCache } from '@/lib/vaultCache';
 import { useKeychain } from '@/components/keychain/KeychainRequired';
 import { useOptimisticListMutation } from './useOptimisticListMutation';
-import { VAULT_ITEMS_KEY, TRASH_ITEMS_KEY, FOLDERS_KEY } from './queryKeys';
+import { VAULT_ITEMS_KEY, ALL_VAULT_ITEMS_KEY, TRASH_ITEMS_KEY, FOLDERS_KEY } from './queryKeys';
 
-export { VAULT_ITEMS_KEY, TRASH_ITEMS_KEY };
+export { VAULT_ITEMS_KEY, ALL_VAULT_ITEMS_KEY, TRASH_ITEMS_KEY };
 
 export type DecryptedItem = VaultItem & {
   id: string;
@@ -23,6 +23,8 @@ export type DecryptedItem = VaultItem & {
   createdAt?: string;
 };
 
+export type DecryptedGlobalVaultItem = DecryptedItem & { vaultId: string };
+
 export function useVaultItems() {
   const k = useKeychain();
   return useQuery({
@@ -30,6 +32,24 @@ export function useVaultItems() {
     queryFn: async () => {
       const cached = await vaultCache.getItems(k.activeVaultId);
       return Promise.all(cached.map((item) => k.decryptItem(item)));
+    },
+  });
+}
+
+export function useAllVaultItems() {
+  const k = useKeychain();
+  return useQuery({
+    queryKey: ALL_VAULT_ITEMS_KEY,
+    queryFn: async () => {
+      const cached = await vaultCache.getAllItems();
+      return Promise.all(
+        cached.map(async (item) => {
+          const vaultEntry = k.vaults.get(item.vaultId);
+          if (!vaultEntry) throw new Error(`Vault not found: ${item.vaultId}`);
+          const decrypted = await k.decryptItem(item, vaultEntry.vaultKey);
+          return { ...decrypted, vaultId: item.vaultId } as DecryptedGlobalVaultItem;
+        }),
+      );
     },
   });
 }

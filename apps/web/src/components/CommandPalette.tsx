@@ -26,7 +26,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { generateTotpCode } from '@blindpass/crypto';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { type DecryptedItem, useVaultItems } from '@/hooks/useVault';
+import { type DecryptedGlobalVaultItem, useAllVaultItems } from '@/hooks/useVault';
 import { useFolders } from '@/hooks/useFolders';
 import { getItemSubtitle } from '@/components/vault/ItemCard';
 import { session } from '@/lib/session';
@@ -75,7 +75,9 @@ function copyToClipboard(text: string, label: string) {
   );
 }
 
-function itemPasswordOrCode(item: DecryptedItem): { value: string; label: string } | null {
+function itemPasswordOrCode(
+  item: DecryptedGlobalVaultItem,
+): { value: string; label: string } | null {
   if (item.type === 'login') return { value: item.password, label: 'Password' };
   if (item.type === 'totp') {
     return {
@@ -104,7 +106,7 @@ export function CommandPalette({
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
-  const { data: items = [] } = useVaultItems();
+  const { data: items = [] } = useAllVaultItems();
   const { data: folders = [] } = useFolders();
 
   const s = session.get();
@@ -244,9 +246,14 @@ export function CommandPalette({
     }
 
     for (const item of items) {
-      const subtitle =
+      const baseSubtitle =
         getItemSubtitle(item as unknown as { type: string; [key: string]: unknown }) ||
         item.type.replace('_', ' ');
+      const vaultName =
+        vaults.length > 1
+          ? (vaults.find((v) => v.id === item.vaultId)?.name ?? undefined)
+          : undefined;
+      const subtitle = [baseSubtitle, vaultName].filter(Boolean).join(' · ');
       const cred = itemPasswordOrCode(item);
       list.push({
         id: `item:${item.id}`,
@@ -255,8 +262,16 @@ export function CommandPalette({
         subtitle,
         hint: cred ? `⌘C ${cred.label.toLowerCase()}` : undefined,
         icon: <ItemTypeIcon type={item.type} />,
-        haystack: `${item.title} ${subtitle} ${item.type}`,
-        run: () => navigateAndClose({ to: '/$itemId', params: { itemId: item.id } as never }),
+        haystack: `${item.title} ${baseSubtitle} ${item.type}${vaultName ? ` ${vaultName}` : ''}`,
+        run: () => {
+          if (item.vaultId !== activeVaultId && s) {
+            session.switchVault(item.vaultId);
+            qc.removeQueries();
+            window.dispatchEvent(new CustomEvent('bp:vault-switch'));
+            void router.invalidate();
+          }
+          navigateAndClose({ to: '/$itemId', params: { itemId: item.id } as never });
+        },
         copyValue: cred ? () => cred.value : undefined,
         copyLabel: cred?.label,
       });

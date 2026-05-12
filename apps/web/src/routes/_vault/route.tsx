@@ -156,6 +156,15 @@ function VaultPicker() {
   const leaveShare = useLeaveShare();
   const router = useRouter();
 
+  useEffect(() => {
+    function onVaultSwitch() {
+      const s = session.get();
+      if (s) setLocalActiveId(s.activeVaultId);
+    }
+    window.addEventListener('bp:vault-switch', onVaultSwitch);
+    return () => window.removeEventListener('bp:vault-switch', onVaultSwitch);
+  }, []);
+
   const activeVault = localVaults.find((v) => v.id === localActiveId);
 
   function handleSwitch(id: string) {
@@ -207,6 +216,7 @@ function VaultPicker() {
         })),
       );
       setLocalActiveId(vault.id);
+      setOpen(false);
       void router.navigate({ to: '/', search: { vaultId: vault.id } });
       window.dispatchEvent(new CustomEvent('bp:vault-switch'));
     }
