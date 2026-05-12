@@ -5,6 +5,7 @@ import { createElement } from 'react';
 import type { ReactNode } from 'react';
 import {
   useVaultItems,
+  useAllVaultItems,
   useCreateItem,
   useUpdateItem,
   useDeleteItem,
@@ -76,8 +77,13 @@ vi.mock('@/lib/b64', () => ({
 vi.mock('@/lib/vaultCache', () => ({
   vaultCache: {
     getItems: vi.fn().mockResolvedValue([]),
+    getAllItems: vi.fn().mockResolvedValue([]),
     upsertItems: vi.fn().mockResolvedValue(undefined),
   },
+}));
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
 }));
 
 vi.mock('@/components/sync/SyncBoundary', () => ({
@@ -1025,5 +1031,98 @@ describe('usePurgeItem rollback', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     const items = queryClient.getQueryData(TRASH_ITEMS_KEY);
     expect(items).toEqual(trashItems);
+  });
+});
+
+describe('useAllVaultItems', () => {
+  it('decrypts and returns items from all vaults', async () => {
+    mockSessionWithVault();
+    const { vaultCache } = await import('@/lib/vaultCache');
+    vi.mocked(vaultCache.getAllItems).mockResolvedValue([
+      {
+        id: 'item1',
+        vaultId: 'v1',
+        encryptedItemKey: { ciphertext: 'kc', nonce: 'kn' },
+        encryptedData: { ciphertext: 'dc', nonce: 'dn' },
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ] as never);
+    vi.mocked(decryptVaultItem).mockResolvedValue({
+      type: 'login',
+      title: 'Cross Vault',
+      username: 'u',
+      password: 'p',
+    } as never);
+
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useAllVaultItems(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data![0].vaultId).toBe('v1');
+    expect(result.current.data![0].title).toBe('Cross Vault');
+  });
+
+  it('throws when item references unknown vaultId', async () => {
+    mockSessionWithVault();
+    const { vaultCache } = await import('@/lib/vaultCache');
+    vi.mocked(vaultCache.getAllItems).mockResolvedValue([
+      {
+        id: 'item1',
+        vaultId: 'unknown-vault',
+        encryptedItemKey: { ciphertext: 'kc', nonce: 'kn' },
+        encryptedData: { ciphertext: 'dc', nonce: 'dn' },
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+      },
+    ] as never);
+
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useAllVaultItems(), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toContain('Vault not found: unknown-vault');
+  });
+});
+
+describe('useMoveItem optimistic', () => {
+  it('optimistically updates folderId in cache', async () => {
+    mockSessionWithVault();
+    vi.mocked(api.moveItem).mockResolvedValue(undefined);
+
+    const { wrapper, queryClient } = makeWrapper();
+    const prev: DecryptedItem[] = [
+      {
+        id: 'item1',
+        type: 'login',
+        title: 'Item',
+        username: '',
+        password: '',
+        folderId: 'old-folder',
+      },
+    ];
+    queryClient.setQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY, prev);
+
+    const { result } = renderHook(() => useMoveItem(), { wrapper });
+    result.current.mutate({ id: 'item1', folderId: 'new-folder' });
+
+    await waitFor(() => {
+      const items = queryClient.getQueryData<DecryptedItem[]>(VAULT_ITEMS_KEY);
+      expect(items?.find((i) => i.id === 'item1')?.folderId).toBe('new-folder');
+    });
+  });
+});
+
+describe('useEmptyTrash error', () => {
+  it('shows toast error when emptyGlobalTrash fails', async () => {
+    mockSessionWithVault();
+    vi.mocked(api.emptyGlobalTrash).mockRejectedValue(new Error('server error'));
+
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useEmptyTrash(), { wrapper });
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
