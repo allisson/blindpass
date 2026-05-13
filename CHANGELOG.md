@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-13
+
+### Added
+
+- Vault-aware import/export — export items from any vault and import into a specific vault directly from Settings
+
 ## [0.5.0] - 2026-05-13
 
 ### Added
@@ -114,6 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reverse proxy guides for Caddy and nginx (TLS termination + HTTP→HTTPS redirect)
 - pnpm + Turborepo monorepo with isolated packages: `crypto`, `vault`, `api-schema`, `types`
 
+[0.6.0]: https://github.com/allisson/blindpass/releases/tag/v0.6.0
 [0.5.0]: https://github.com/allisson/blindpass/releases/tag/v0.5.0
 [0.4.1]: https://github.com/allisson/blindpass/releases/tag/v0.4.1
 [0.4.0]: https://github.com/allisson/blindpass/releases/tag/v0.4.0
