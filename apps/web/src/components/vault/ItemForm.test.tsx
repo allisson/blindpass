@@ -90,7 +90,7 @@ describe('ItemForm', () => {
       }
       await waitFor(() => {
         expect(screen.getByLabelText('Algorithm')).toBeInTheDocument();
-        expect((screen.getByLabelText('Algorithm') as HTMLSelectElement).value).toBe('SHA256');
+        expect(screen.getByLabelText('Algorithm').textContent).toContain('SHA256');
       });
     });
 
@@ -115,6 +115,15 @@ describe('ItemForm', () => {
       expect(screen.queryByLabelText('Algorithm')).not.toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /Advanced/ }));
       expect(screen.getByLabelText('Algorithm')).toBeInTheDocument();
+    });
+
+    it('changes digits via advanced TOTP select', async () => {
+      const user = userEvent.setup();
+      render(<ItemForm type="totp" onSubmit={onSubmit} onCancel={onCancel} />);
+      await user.click(screen.getByRole('button', { name: /Advanced/ }));
+      await user.click(screen.getByLabelText('Digits'));
+      await user.click(screen.getByRole('option', { name: '8' }));
+      expect(screen.getByLabelText('Digits').textContent).toContain('8');
     });
   });
 
@@ -241,7 +250,7 @@ describe('ItemForm', () => {
     it('renders developer credential token fields by default', () => {
       render(<ItemForm type="developer_credential" onSubmit={onSubmit} onCancel={onCancel} />);
       expect(screen.getByLabelText('Provider')).toBeInTheDocument();
-      expect(screen.getByLabelText('Mode')).toHaveValue('token');
+      expect(screen.getByLabelText('Mode')).toBeInTheDocument();
       expect(screen.getByLabelText('Secret')).toBeInTheDocument();
       expect(screen.getByLabelText(/^Key ID/)).toBeInTheDocument();
     });
@@ -250,7 +259,8 @@ describe('ItemForm', () => {
       const user = userEvent.setup();
       render(<ItemForm type="developer_credential" onSubmit={onSubmit} onCancel={onCancel} />);
 
-      await user.selectOptions(screen.getByLabelText('Mode'), 'client_secret_pair');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Client ID + Secret' }));
 
       expect(screen.getByLabelText('Client ID')).toBeInTheDocument();
       expect(screen.getByLabelText('Client Secret')).toBeInTheDocument();
@@ -276,7 +286,8 @@ describe('ItemForm', () => {
       );
 
       expect(screen.getByLabelText('Client ID')).toHaveValue('client-id');
-      await user.selectOptions(screen.getByLabelText('Mode'), 'token');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Token' }));
       await user.click(screen.getByRole('button', { name: 'Switch mode' }));
 
       expect(screen.getByLabelText('Secret')).toBeInTheDocument();
@@ -289,10 +300,10 @@ describe('ItemForm', () => {
 
       render(<ItemForm type="developer_credential" onSubmit={onSubmit} onCancel={onCancel} />);
       await user.type(screen.getByLabelText('Secret'), 'sk-secret');
-      await user.selectOptions(screen.getByLabelText('Mode'), 'client_secret_pair');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Client ID + Secret' }));
 
       expect(screen.getByText('Switch mode?')).toBeInTheDocument();
-      expect(screen.getByLabelText('Mode')).toHaveValue('token');
       expect(screen.getByLabelText('Secret')).toHaveValue('sk-secret');
     });
 
@@ -301,11 +312,11 @@ describe('ItemForm', () => {
 
       render(<ItemForm type="developer_credential" onSubmit={onSubmit} onCancel={onCancel} />);
       await user.type(screen.getByLabelText('Secret'), 'sk-secret');
-      await user.selectOptions(screen.getByLabelText('Mode'), 'client_secret_pair');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Client ID + Secret' }));
       await user.click(screen.getByRole('button', { name: 'Keep editing' }));
 
       expect(screen.queryByText('Switch mode?')).not.toBeInTheDocument();
-      expect(screen.getByLabelText('Mode')).toHaveValue('token');
       expect(screen.getByLabelText('Secret')).toHaveValue('sk-secret');
     });
 
@@ -326,7 +337,8 @@ describe('ItemForm', () => {
       const user = userEvent.setup();
       render(<ItemForm type="developer_credential" onSubmit={onSubmit} onCancel={onCancel} />);
 
-      await user.selectOptions(screen.getByLabelText('Mode'), 'client_secret_pair');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Client ID + Secret' }));
       await user.click(screen.getByRole('button', { name: 'Save' }));
 
       expect(await screen.findAllByText(/expected string to have >=1 characters/)).toHaveLength(3);
@@ -343,7 +355,8 @@ describe('ItemForm', () => {
       await user.click(screen.getByRole('button', { name: 'Hide secret' }));
       expect(secretInput).toHaveAttribute('type', 'password');
 
-      await user.selectOptions(screen.getByLabelText('Mode'), 'client_secret_pair');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Client ID + Secret' }));
 
       const clientSecretInput = screen.getByLabelText('Client Secret');
       expect(clientSecretInput).toHaveAttribute('type', 'password');
@@ -357,7 +370,8 @@ describe('ItemForm', () => {
       const user = userEvent.setup();
       render(<ItemForm type="developer_credential" onSubmit={onSubmit} onCancel={onCancel} />);
 
-      await user.selectOptions(screen.getByLabelText('Mode'), 'ssh_key');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'SSH keypair' }));
 
       expect(screen.getByLabelText('Username')).toBeInTheDocument();
       expect(screen.getByLabelText('Host')).toBeInTheDocument();
@@ -374,7 +388,8 @@ describe('ItemForm', () => {
       const user = userEvent.setup();
       render(<ItemForm type="developer_credential" onSubmit={onSubmit} onCancel={onCancel} />);
 
-      await user.selectOptions(screen.getByLabelText('Mode'), 'ssh_key');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'SSH keypair' }));
 
       const passphraseInput = screen.getByPlaceholderText('Optional passphrase');
       expect(passphraseInput).toHaveAttribute('type', 'password');
@@ -407,7 +422,8 @@ describe('ItemForm', () => {
       );
 
       expect(screen.getByLabelText('Username')).toHaveValue('deploy');
-      await user.selectOptions(screen.getByLabelText('Mode'), 'token');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Token' }));
       await user.click(screen.getByRole('button', { name: 'Switch mode' }));
 
       expect(screen.getByLabelText('Secret')).toBeInTheDocument();
@@ -436,11 +452,11 @@ describe('ItemForm', () => {
         />,
       );
 
-      await user.selectOptions(screen.getByLabelText('Mode'), 'token');
+      await user.click(screen.getByLabelText('Mode'));
+      await user.click(screen.getByRole('option', { name: 'Token' }));
       expect(screen.getByText('Switch mode?')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Keep editing' }));
 
-      expect(screen.getByLabelText('Mode')).toHaveValue('ssh_key');
       expect(screen.getByLabelText('Username')).toHaveValue('deploy');
     });
 

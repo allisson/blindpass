@@ -8,6 +8,13 @@ import { ItemForm } from '@/components/vault/ItemForm';
 import { ItemTypePicker } from '@/components/vault/ItemTypePicker';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useCreateItem } from '@/hooks/useVault';
 import { useFolders } from '@/hooks/useFolders';
 import { session } from '@/lib/session';
@@ -92,19 +99,22 @@ function NewItemPage() {
           <Label htmlFor="folder-picker" className="text-muted-foreground whitespace-nowrap">
             Folder
           </Label>
-          <select
-            id="folder-picker"
+          <Select
             value={selectedFolderId ?? ''}
-            onChange={(e) => setSelectedFolderId(e.target.value || undefined)}
-            className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            onValueChange={(v) => setSelectedFolderId(v || undefined)}
           >
-            <option value="">No folder</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="folder-picker">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No folder</SelectItem>
+              {folders.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
       <div className="rounded-lg border border-border bg-card p-4">

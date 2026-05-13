@@ -258,7 +258,9 @@ export function ImportSection() {
               disabled={busy}
             >
               <SelectTrigger id="import-vault" className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {writableVaults.find((v) => v.id === selectedVaultId)?.label}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {writableVaults.map(({ id, label }) => (

@@ -1,5 +1,12 @@
 import { useState } from 'react';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { session } from '@/lib/session';
 
 const AUTO_LOCK_OPTIONS = [
@@ -12,28 +19,29 @@ const AUTO_LOCK_OPTIONS = [
 export function AutoLockSection() {
   const [minutes, setMinutes] = useState(() => session.getIdleMinutes());
 
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const val = Number(e.target.value);
-    setMinutes(val);
-    session.setIdleMinutes(val);
-    window.dispatchEvent(new CustomEvent('bp:auto-lock-change', { detail: val }));
+  function handleChange(val: string | null) {
+    if (val === null) return;
+    const n = Number(val);
+    setMinutes(n);
+    session.setIdleMinutes(n);
+    window.dispatchEvent(new CustomEvent('bp:auto-lock-change', { detail: n }));
   }
 
   return (
     <div className="field-group">
       <Label htmlFor="auto-lock">Lock after</Label>
-      <select
-        id="auto-lock"
-        value={minutes}
-        onChange={handleChange}
-        className="w-full max-w-xs h-9 rounded-md border border-input bg-background px-3 text-sm"
-      >
-        {AUTO_LOCK_OPTIONS.map(({ value, label }) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <Select value={String(minutes)} onValueChange={handleChange}>
+        <SelectTrigger id="auto-lock" className="w-full max-w-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {AUTO_LOCK_OPTIONS.map(({ value, label }) => (
+            <SelectItem key={value} value={String(value)}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

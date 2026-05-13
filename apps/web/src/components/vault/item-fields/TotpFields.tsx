@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { VaultItem } from '@blindpass/vault';
 import { parseOtpauthUri } from '@/lib/totp';
@@ -11,6 +18,7 @@ import { asErrorMap } from './types';
 
 export function TotpFields() {
   const {
+    control,
     register,
     setValue,
     watch,
@@ -122,26 +130,43 @@ export function TotpFields() {
         <div className="grid grid-cols-1 gap-3">
           <div className="field-group">
             <Label htmlFor="algorithm">Algorithm</Label>
-            <select
-              id="algorithm"
-              className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring dark:bg-input/20"
-              {...register('algorithm' as never)}
-            >
-              <option value="SHA1">SHA1</option>
-              <option value="SHA256">SHA256</option>
-              <option value="SHA512">SHA512</option>
-            </select>
+            <Controller
+              control={control}
+              name={'algorithm' as never}
+              render={({ field }) => (
+                <Select value={field.value as string} onValueChange={(v) => v && field.onChange(v)}>
+                  <SelectTrigger id="algorithm" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SHA1">SHA1</SelectItem>
+                    <SelectItem value="SHA256">SHA256</SelectItem>
+                    <SelectItem value="SHA512">SHA512</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
           <div className="field-group">
             <Label htmlFor="digits">Digits</Label>
-            <select
-              id="digits"
-              className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring dark:bg-input/20"
-              {...register('digits' as never, { valueAsNumber: true })}
-            >
-              <option value={6}>6</option>
-              <option value={8}>8</option>
-            </select>
+            <Controller
+              control={control}
+              name={'digits' as never}
+              render={({ field }) => (
+                <Select
+                  value={String(field.value)}
+                  onValueChange={(v) => v && field.onChange(Number(v))}
+                >
+                  <SelectTrigger id="digits" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="6">6</SelectItem>
+                    <SelectItem value="8">8</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
           <div className="field-group">
             <Label htmlFor="period">Period (s)</Label>
