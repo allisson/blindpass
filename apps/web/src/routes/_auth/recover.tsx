@@ -56,7 +56,7 @@ function RecoverPage() {
   }
 
   return (
-    <Card className="glass-card">
+    <Card className="auth-card">
       <CardHeader>
         <CardTitle>Recover account</CardTitle>
         <CardDescription>

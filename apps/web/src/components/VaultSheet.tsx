@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Lock, LogOut, Monitor, Moon, Pencil, Plus, Shield, Sun, Users } from 'lucide-react';
+import {
+  Check,
+  Lock,
+  LogOut,
+  Monitor,
+  Moon,
+  Pencil,
+  Plus,
+  Shield,
+  Sun,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { Drawer } from 'vaul';
 import { toast } from 'sonner';
 import { session } from '@/lib/session';
@@ -12,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
+import { ShareVaultModal } from '@/components/vault/ShareVaultModal';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -71,6 +84,8 @@ export function VaultSheet({
     shareId: string;
     name: string;
   } | null>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [shareVaultId, setShareVaultId] = useState<string | null>(null);
 
   const switchVault = useSwitchVault();
   const createVault = useCreateVault();
@@ -160,8 +175,7 @@ export function VaultSheet({
   async function handleLeave() {
     if (!leaveConfirm) return;
     const { vaultId, shareId, name: vaultName } = leaveConfirm;
-    setLeaveConfirm(null);
-    onOpenChange(false);
+    setLeaveError(null);
     try {
       await leaveShare.mutateAsync({ vaultId, shareId });
       const s = session.get();
@@ -181,16 +195,17 @@ export function VaultSheet({
       }
       setLocalVaults((prev) => prev.filter((v) => v.id !== vaultId));
       window.dispatchEvent(new CustomEvent('bp:vault-switch'));
+      setLeaveConfirm(null);
       toast.success(`Left vault "${vaultName}"`);
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to leave vault'));
+      setLeaveError(extractErrorMessage(err, 'Failed to leave vault'));
     }
   }
 
   return (
     <>
       <Drawer.Root open={open} onOpenChange={onOpenChange}>
-        <Drawer.Portal>
+        <Drawer.Portal container={document.getElementById('app-shell')}>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50" />
           <Drawer.Content
             className="fixed bottom-0 inset-x-0 z-50 flex flex-col rounded-t-2xl bg-popover border-t border-border outline-none max-h-[85dvh]"
@@ -221,12 +236,19 @@ export function VaultSheet({
                     ) : (
                       <button
                         onClick={() => handleSwitch(vault.id)}
-                        className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation"
+                        className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation min-w-0"
                       >
                         <Check
                           className={`w-4 h-4 shrink-0 ${vault.id === localActiveId ? 'text-primary' : 'invisible'}`}
                         />
-                        <span className="flex-1 text-sm font-medium truncate">{vault.name}</span>
+                        <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                          <span className="text-sm font-medium truncate">{vault.name}</span>
+                          {vault.isShared && vault.ownerUsername && (
+                            <span className="text-[11px] text-muted-foreground/70 truncate">
+                              Shared by {vault.ownerUsername}
+                            </span>
+                          )}
+                        </span>
                         {vault.isShared && (
                           <span
                             title={
@@ -241,27 +263,47 @@ export function VaultSheet({
                       </button>
                     )}
                     {renameId !== vault.id && !vault.isShared && (
-                      <button
-                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent active:bg-accent transition-colors touch-manipulation shrink-0"
-                        onClick={() => {
-                          setRenameId(vault.id);
-                          setRenameValue(vault.name);
-                        }}
-                        aria-label="Rename vault"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
+                      <>
+                        <button
+                          data-testid="rename-vault-button"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent active:bg-accent transition-colors touch-manipulation shrink-0"
+                          onClick={() => {
+                            setRenameId(vault.id);
+                            setRenameValue(vault.name);
+                          }}
+                          title="Rename vault"
+                          aria-label="Rename vault"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          data-testid="share-vault-button"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent active:bg-accent transition-colors touch-manipulation shrink-0"
+                          onClick={() => {
+                            setShareVaultId(vault.id);
+                            onOpenChange(false);
+                          }}
+                          title="Share vault"
+                          aria-label="Share vault"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                      </>
                     )}
                     {renameId !== vault.id && vault.isShared && vault.shareId && (
                       <button
+                        data-testid="leave-vault-button"
                         className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-destructive/60 hover:text-destructive hover:bg-destructive/10 active:bg-destructive/10 transition-colors touch-manipulation shrink-0"
-                        onClick={() =>
+                        onClick={() => {
+                          setLeaveError(null);
                           setLeaveConfirm({
                             vaultId: vault.id,
                             shareId: vault.shareId!,
                             name: vault.name,
-                          })
-                        }
+                          });
+                          onOpenChange(false);
+                        }}
+                        title="Leave vault"
                         aria-label="Leave vault"
                       >
                         <LogOut className="w-4 h-4" />
@@ -274,6 +316,7 @@ export function VaultSheet({
                 <div className="flex items-center gap-2 px-1 mt-2">
                   <Input
                     autoFocus
+                    data-testid="new-vault-name-input"
                     placeholder="Vault name…"
                     className="flex-1 h-10 text-sm"
                     value={createName}
@@ -292,6 +335,7 @@ export function VaultSheet({
                   <Button
                     size="icon"
                     variant="ghost"
+                    data-testid="confirm-create-vault-button"
                     className="h-10 w-10 shrink-0"
                     onClick={() => void commitCreate()}
                     disabled={createVault.isPending}
@@ -302,6 +346,7 @@ export function VaultSheet({
                 </div>
               ) : (
                 <button
+                  data-testid="new-vault-button"
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-muted-foreground hover:bg-accent transition-colors mt-1 touch-manipulation"
                   onClick={() => setCreating(true)}
                 >
@@ -373,6 +418,7 @@ export function VaultSheet({
               style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
             >
               <button
+                data-testid="account-menu-lock"
                 onClick={() => {
                   onOpenChange(false);
                   onLock();
@@ -396,29 +442,61 @@ export function VaultSheet({
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
-      <ResponsiveDialog
-        open={leaveConfirm !== null}
-        onOpenChange={(o) => {
-          if (!o) setLeaveConfirm(null);
-        }}
-        title="Leave vault"
-        description={
-          <>
-            Leave &ldquo;{leaveConfirm?.name}&rdquo;? You will lose access and the owner will be
-            notified.
-          </>
-        }
-        footer={
-          <>
-            <Button variant="destructive" onClick={() => void handleLeave()}>
-              Leave
-            </Button>
-            <Button variant="outline" onClick={() => setLeaveConfirm(null)}>
-              Cancel
-            </Button>
-          </>
-        }
-      />
+      {leaveConfirm && (
+        <ResponsiveDialog
+          open={leaveConfirm !== null}
+          onOpenChange={(o) => {
+            if (!o && !leaveShare.isPending) {
+              setLeaveConfirm(null);
+              setLeaveError(null);
+            }
+          }}
+          title="Leave vault"
+          description={
+            <>
+              Leave &ldquo;{leaveConfirm?.name}&rdquo;? You will lose access and the owner will be
+              notified.
+            </>
+          }
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setLeaveConfirm(null);
+                  setLeaveError(null);
+                }}
+                disabled={leaveShare.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-testid="confirm-leave-button"
+                variant="destructive"
+                onClick={() => void handleLeave()}
+                disabled={leaveShare.isPending}
+              >
+                {leaveShare.isPending ? 'Leaving…' : 'Leave'}
+              </Button>
+            </>
+          }
+        >
+          {leaveError && (
+            <p className="text-xs text-destructive" role="alert">
+              {leaveError}
+            </p>
+          )}
+        </ResponsiveDialog>
+      )}
+      {shareVaultId && (
+        <ShareVaultModal
+          vaultId={shareVaultId}
+          open={shareVaultId !== null}
+          onOpenChange={(o) => {
+            if (!o) setShareVaultId(null);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -126,12 +126,12 @@ test('admin dashboard edits settings and user access', async ({ page }) => {
     await route.fallback();
   });
 
-  await page.getByTestId('account-menu-trigger').click();
-  await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByTestId('vault-picker-trigger').click();
+  await page.getByRole('link', { name: 'Admin panel' }).click();
 
   await expect(page.getByRole('heading', { name: 'Administration' })).toBeVisible();
-  await expect(page.getByRole('table').getByText(MEMBER_USERNAME)).toBeVisible();
-  const memberRow = page.getByRole('row').filter({ hasText: MEMBER_USERNAME });
+  await expect(page.getByText(MEMBER_USERNAME)).toBeVisible({ timeout: 10_000 });
+  const memberRow = page.getByTestId('user-row').filter({ hasText: MEMBER_USERNAME });
   await expect(memberRow.getByRole('button', { name: 'Revoke' })).toBeVisible();
 
   await page.getByRole('checkbox', { name: 'New registrations' }).click();

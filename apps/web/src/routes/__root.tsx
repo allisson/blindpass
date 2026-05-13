@@ -9,9 +9,16 @@ function RootComponent() {
   return (
     <>
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Outlet />
+        <div className="min-h-dvh bg-[#e0dde8] dark:bg-[#111111] flex justify-center items-start">
+          <div
+            id="app-shell"
+            className="w-full max-w-[430px] min-h-dvh bg-background flex flex-col relative overflow-hidden [transform:translateZ(0)]"
+          >
+            <Outlet />
+          </div>
+        </div>
       </ErrorBoundary>
-      <Toaster richColors position="bottom-right" theme="system" />
+      <Toaster richColors position="bottom-center" theme="system" />
     </>
   );
 }

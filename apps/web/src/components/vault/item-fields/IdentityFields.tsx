@@ -15,7 +15,7 @@ export function IdentityFields() {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="field-group" data-invalid={!!errors.firstName}>
           <Label htmlFor="firstName">First Name</Label>
           <Input id="firstName" placeholder="Jane" {...register('firstName' as never)} />
@@ -57,7 +57,7 @@ export function IdentityFields() {
         </Label>
         <Input id="address" placeholder="123 Main St" {...register('address' as never)} />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="field-group">
           <Label htmlFor="city" optional>
             City

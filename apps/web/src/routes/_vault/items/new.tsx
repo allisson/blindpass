@@ -67,7 +67,7 @@ function NewItemPage() {
 
   if (!type) {
     return (
-      <div className="p-4 md:p-6 h-full overflow-auto">
+      <div className="p-4 h-full overflow-auto">
         {breadcrumb}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-lg font-semibold text-foreground">New item</h1>
@@ -83,7 +83,7 @@ function NewItemPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 h-full overflow-auto">
+    <div className="p-4 h-full overflow-auto">
       {breadcrumb}
       <h1 className="text-lg font-semibold text-foreground mb-6">New item</h1>
       {foldersError && <p className="text-sm text-destructive mb-4">Could not load folders</p>}
@@ -107,7 +107,7 @@ function NewItemPage() {
           </select>
         </div>
       )}
-      <div className="rounded-lg border border-border bg-card p-4 md:p-6">
+      <div className="rounded-lg border border-border bg-card p-4">
         <ItemForm
           type={type}
           onSubmit={handleSubmit}

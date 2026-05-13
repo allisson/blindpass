@@ -61,6 +61,7 @@ export function AccountMenu({
         sideOffset={8}
         className="w-60 p-1.5"
         data-testid="account-menu-content"
+        container={document.getElementById('app-shell')}
       >
         <div className="px-2 py-1.5">
           <p className="text-[11px] text-muted-foreground/70 leading-tight">Signed in as</p>

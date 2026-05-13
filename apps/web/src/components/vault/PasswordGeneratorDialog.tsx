@@ -187,7 +187,11 @@ export function PasswordGeneratorDialog({ onUse }: Props) {
       >
         <Wand2 className="w-4 h-4" />
       </DialogTrigger>
-      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md" showCloseButton>
+      <DialogContent
+        className="max-w-[calc(100%-2rem)] sm:max-w-md"
+        showCloseButton
+        container={document.getElementById('app-shell') ?? undefined}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="w-4 h-4 opacity-70" />

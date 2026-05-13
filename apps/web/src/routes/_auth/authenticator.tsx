@@ -138,7 +138,7 @@ function VerifyOtpPage() {
   const title = mode === 'register' ? 'Confirm authenticator setup' : 'Enter authenticator code';
 
   return (
-    <Card className="glass-card">
+    <Card className="auth-card">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>

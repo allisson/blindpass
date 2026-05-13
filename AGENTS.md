@@ -39,10 +39,6 @@ packages/
 - [Testing conventions](docs/agents/testing.md) — unit vs integration, coverage gate, single-file runs
 - [DB migrations](docs/agents/db-migrations.md) — schema location, migration workflow
 
-## Design Context
-
-UI/UX work is governed by [PRODUCT.md](PRODUCT.md) (register, users, voice, anti-references, principles) and, when present, `DESIGN.md` (visual tokens). Register is **product**; personality is _quiet, exact, sovereign_. Run `/impeccable` commands for design tasks — they load this context automatically.
-
 ## Releasing
 
 Versions are bumped in **lockstep**: root `package.json` plus every workspace `package.json` move to the same number on every release. Internal packages aren't published, so per-package semver buys nothing — one version is the product version.

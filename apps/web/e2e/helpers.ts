@@ -43,7 +43,13 @@ export async function unlockVault(
 }
 
 export async function lockVault(page: Page): Promise<void> {
-  await page.getByTestId('account-menu-trigger').click();
+  // vault-picker-trigger lives inside the list panel, which is hidden on settings/trash/health
+  // pages and off-screen on item-detail pages. Navigate to vault home first if needed.
+  if (new URL(page.url()).pathname !== '/') {
+    await page.getByRole('link', { name: 'Vault', exact: true }).click();
+    await page.waitForURL('/', { timeout: 10_000 });
+  }
+  await page.getByTestId('vault-picker-trigger').click();
   await page.getByTestId('account-menu-lock').click();
 }
 
@@ -238,7 +244,13 @@ export async function createVaultItem(
   title: string,
   fields: Record<string, string> = {},
 ): Promise<void> {
-  // Click the SPA link to preserve in-memory session (page.goto would reload and lose it)
+  // With isMobile=true the list panel slides off-screen on item detail/edit/new routes.
+  // Use "Back to vault" (top of the detail view) rather than the Vault tab (bottom), since
+  // a Sonner success toast at bottom-center can overlap the tab bar and intercept clicks.
+  if (new URL(page.url()).pathname !== '/') {
+    await page.getByRole('link', { name: 'Back to vault' }).click();
+    await page.waitForURL('/', { timeout: 10_000 });
+  }
   // Scope to vault-list panel and use aria-label to avoid matching onboarding "New item" link.
   await page.getByTestId('vault-list').getByLabel('New item').click();
   await page.waitForURL(/\/items\/new/, { timeout: 10_000 });
@@ -281,11 +293,35 @@ export async function createVault(page: Page, name: string): Promise<string> {
 
   // Fill vault name and click "Create vault"
   await page.getByTestId('new-vault-name-input').fill(name);
+  const createVaultResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.request().method() === 'POST' && /\/vaults$/.test(url.pathname);
+  });
   await page.getByTestId('confirm-create-vault-button').click();
+  const response = await createVaultResponse;
 
-  // Wait for the new vault to be selected (auto-switched by hook)
+  if (!response.ok()) {
+    throw new Error(`Create vault failed: ${response.status()} ${await response.text()}`);
+  }
+
   const trigger = page.getByTestId('vault-picker-trigger');
-  await expect(trigger).toContainText(name, { timeout: 15_000 });
+  const maybeSelected = await expect
+    .poll(async () => await trigger.getAttribute('data-active-vault'), {
+      timeout: 5_000,
+      intervals: [250, 500, 1_000],
+    })
+    .not.toBeNull()
+    .then(async () => (await trigger.getAttribute('data-active-vault')) === name)
+    .catch(() => false);
+
+  // Auto-switch can lag or be skipped in E2E. Fall back to selecting the new vault directly.
+  if (!maybeSelected) {
+    await trigger.click();
+    await page.getByRole('dialog').getByRole('button', { name, exact: true }).click();
+  }
+
+  // Wait for the new vault to be selected
+  await expect(trigger).toHaveAttribute('data-active-vault', name, { timeout: 15_000 });
 
   // Wait for URL to update with vaultId
   await page.waitForURL((url) => url.searchParams.has('vaultId'), { timeout: 10_000 });

@@ -3,7 +3,6 @@ import { Check, Copy, RefreshCw } from 'lucide-react';
 import { memo, useState } from 'react';
 import { toast } from 'sonner';
 import { generateTotpCode } from '@blindpass/crypto';
-import { getAvatarColor, withAlpha } from '@/lib/avatar';
 import type { DecryptedItem } from '@/hooks/useVault';
 import { useSyncBoundary } from '@/components/sync/SyncBoundary';
 import { ItemAvatar } from './ItemAvatar';
@@ -47,7 +46,6 @@ export function getItemSubtitle(item: { type: string; [key: string]: unknown }):
 
 export const ItemCard = memo(function ItemCard({ item, isWeak, isReused }: Props) {
   const [copied, setCopied] = useState(false);
-  const color = getAvatarColor(item.title);
   const { pendingItemIds } = useSyncBoundary();
   const isPending = pendingItemIds.has(item.id);
 
@@ -75,19 +73,17 @@ export const ItemCard = memo(function ItemCard({ item, isWeak, isReused }: Props
       to="/$itemId"
       params={{ itemId: item.id }}
       activeProps={{
-        className: 'text-foreground',
-        style: {
-          background: withAlpha(color, 0.1),
-          boxShadow: `inset 2px 0 0 ${color}`,
-        },
+        className: 'bg-accent text-foreground',
       }}
       style={{ paddingTop: 'var(--row-py)', paddingBottom: 'var(--row-py)' }}
-      className="flex items-center gap-3 px-3 rounded-lg hover:bg-accent/40 transition-colors group"
+      className="flex items-center gap-[14px] px-4 hover:bg-accent/60 transition-colors group border-b border-muted last:border-b-0"
     >
       <ItemAvatar item={item} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+          <p className="text-[15px] font-semibold tracking-[-0.01em] text-foreground truncate">
+            {item.title}
+          </p>
           {isPending && (
             <RefreshCw
               className="w-3 h-3 text-primary animate-spin shrink-0"
@@ -114,12 +110,14 @@ export const ItemCard = memo(function ItemCard({ item, isWeak, isReused }: Props
             </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground truncate">{getItemSubtitle(item)}</p>
+        <p className="text-[12px] font-medium tracking-[0.01em] text-muted-foreground truncate mt-0.5">
+          {getItemSubtitle(item)}
+        </p>
       </div>
       {(item.type === 'login' || item.type === 'totp') && (
         <button
           onClick={handleCopy}
-          className={`p-2 lg:p-1 rounded transition-all duration-150 shrink-0 flex items-center justify-center touch-manipulation ${
+          className={`p-2 rounded transition-all duration-150 shrink-0 flex items-center justify-center touch-manipulation ${
             copied
               ? 'text-primary bg-primary/10 scale-110'
               : 'text-muted-foreground/50 hover:text-foreground hover:bg-background/60 active:bg-background/60 [@media(hover:none)]:text-muted-foreground scale-100'

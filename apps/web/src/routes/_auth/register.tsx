@@ -88,7 +88,7 @@ function RegisterPage() {
   }
 
   return (
-    <Card className="glass-card">
+    <Card className="auth-card">
       <CardHeader>
         <CardTitle>Create account</CardTitle>
         <CardDescription>

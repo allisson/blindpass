@@ -18,8 +18,7 @@ const UNLOCK_BUTTON = /^Unlock with (Touch ID|Face ID|Windows Hello|biometric)$/
 async function gotoBiometricSettings(page: Page): Promise<void> {
   // SPA navigation only — page.goto would reload and lose the in-memory keychain,
   // which would redirect us to /unlock.
-  await page.getByTestId('account-menu-trigger').click();
-  await page.getByTestId('account-menu-content').getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: 'Settings' }).click();
   await page.waitForURL(/\/settings/, { timeout: 10_000 });
   await page
     .getByRole('navigation', { name: 'Settings' })

@@ -129,7 +129,7 @@ Sources: [1Password security model](https://support.1password.com/1password-secu
 
 ### Clients
 
-- 🌐 **Web app** — access your vault anywhere from the browser
+- 📱 **Web app (mobile-optimized PWA)** — renders as a 430 px mobile shell on all screen sizes, optimized for the phone you are actually logging into things from; see [ADR-0004](docs/adr/0004-mobile-only-layout.md)
 - 🚫 **No browser extension** — by design; see [ADR-0002](docs/adr/0002-no-browser-extension.md)
 
 ---

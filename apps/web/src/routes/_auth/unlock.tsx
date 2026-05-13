@@ -144,7 +144,7 @@ function UnlockPage() {
   const showPasswordForm = !showBiometric || showPassword;
 
   return (
-    <Card className="glass-card">
+    <Card className="auth-card">
       <CardHeader>
         <div
           className="unlock-icon-frame mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border"

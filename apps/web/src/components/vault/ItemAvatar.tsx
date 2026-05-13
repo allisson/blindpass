@@ -13,11 +13,11 @@ export function ItemAvatar({ item, size = 'sm' }: Props) {
   const isLg = size === 'lg';
 
   const wrapperCls = isLg
-    ? 'w-14 h-14 rounded-2xl text-xl font-bold'
-    : 'w-9 h-9 rounded-lg text-[12px] font-bold';
+    ? 'w-[72px] h-[72px] rounded-[6px] text-[28px] font-bold'
+    : 'w-10 h-10 rounded text-[15px] font-bold';
   const badgeCls = isLg
-    ? 'absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-md'
-    : 'absolute -bottom-1 -right-1 w-4 h-4 rounded-md';
+    ? 'absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded'
+    : 'absolute -bottom-1 -right-1 w-4 h-4 rounded';
   const iconCls = isLg ? 'w-3 h-3' : 'w-2.5 h-2.5';
 
   return (

@@ -193,8 +193,8 @@ function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-normal">Administration</h1>
@@ -220,7 +220,7 @@ function AdminPage() {
                 Project settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+            <CardContent className="grid gap-4">
               <label className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
                 <Checkbox
                   checked={settings.registrationsEnabled}
@@ -230,7 +230,7 @@ function AdminPage() {
                 />
                 <span className="text-sm font-medium">New registrations</span>
               </label>
-              <div className="grid gap-2 lg:grid-cols-2">
+              <div className="grid gap-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="default-owner-quota">Default owner quota</Label>
                   <Input
@@ -268,12 +268,12 @@ function AdminPage() {
             <CardTitle className="text-base">Users</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Mobile / tablet card list (below lg) */}
-            <div className="space-y-2 lg:hidden">
+            <div className="space-y-2">
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="rounded-xl ring-1 ring-foreground/10 p-4 space-y-3 text-sm"
+                  data-testid="user-row"
+                  className="rounded-xl border border-border/60 p-4 space-y-3 text-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -344,84 +344,6 @@ function AdminPage() {
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* Desktop table (lg and above) */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full min-w-[860px] border-separate border-spacing-0 text-sm">
-                <thead>
-                  <tr className="text-left text-xs uppercase text-muted-foreground">
-                    <th className="border-b border-border px-2 py-2 font-medium">Username</th>
-                    <th className="border-b border-border px-2 py-2 font-medium">Status</th>
-                    <th className="border-b border-border px-2 py-2 font-medium">Owner quota</th>
-                    <th className="border-b border-border px-2 py-2 font-medium">Item quota</th>
-                    <th className="border-b border-border px-2 py-2 text-right font-medium">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td className="border-b border-border px-2 py-3">
-                        <div className="font-medium">{user.username}</div>
-                        {user.isAdmin && <div className="text-xs text-primary">Admin User</div>}
-                      </td>
-                      <td className="border-b border-border px-2 py-3">
-                        {user.revokedAt ? 'Revoked' : user.verified ? 'Active' : 'Pending'}
-                      </td>
-                      <td className="border-b border-border px-2 py-3">
-                        <QuotaCell
-                          user={user}
-                          field="ownerQuotaOverride"
-                          activeQuota={activeQuota}
-                          setActiveQuota={setActiveQuota}
-                          onConfirm={() => void confirmQuota()}
-                          onCancel={cancelQuota}
-                          disabled={confirmingAction}
-                        />
-                      </td>
-                      <td className="border-b border-border px-2 py-3">
-                        <QuotaCell
-                          user={user}
-                          field="vaultItemQuotaOverride"
-                          activeQuota={activeQuota}
-                          setActiveQuota={setActiveQuota}
-                          onConfirm={() => void confirmQuota()}
-                          onCancel={cancelQuota}
-                          disabled={confirmingAction}
-                        />
-                      </td>
-                      <td className="border-b border-border px-2 py-3">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={user.isAdmin}
-                            onClick={() => setPendingRevoke(user)}
-                          >
-                            {user.revokedAt ? (
-                              <UserCheck className="mr-2 h-4 w-4" />
-                            ) : (
-                              <UserX className="mr-2 h-4 w-4" />
-                            )}
-                            {user.revokedAt ? 'Restore' : 'Revoke'}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={user.isAdmin}
-                            onClick={() => setPendingDelete(user)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
             {nextCursor && (
               <Button variant="outline" onClick={() => void load(nextCursor)} disabled={loading}>

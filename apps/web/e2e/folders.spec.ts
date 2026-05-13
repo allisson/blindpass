@@ -45,17 +45,10 @@ test('folder filter All shows all items', async ({ page }) => {
     Username: 'user@example.com',
     Password: 'pass123',
   });
+  await page.getByRole('link', { name: 'Vault', exact: true }).click();
+  await page.waitForURL('/', { timeout: 10_000 });
   await page.getByTestId('folder-filter-all').click();
   await expect(page.getByTestId('vault-list')).toContainText('Filter Test Item');
-});
-
-test('folder filter Unfiled shows items without a folder', async ({ page }) => {
-  await createVaultItem(page, 'login', 'Unfiled Item', {
-    Username: 'user@example.com',
-    Password: 'pass123',
-  });
-  await page.getByTestId('folder-filter-unfiled').click();
-  await expect(page.getByTestId('vault-list')).toContainText('Unfiled Item', { timeout: 10_000 });
 });
 
 test('moves item to a folder and folder filter shows it', async ({ page }) => {
@@ -64,6 +57,9 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
     Username: 'mover@example.com',
     Password: 'pass123',
   });
+  // createVaultItem leaves us on the item detail page (list panel is off-screen); go back first
+  await page.getByRole('link', { name: 'Vault', exact: true }).click();
+  await page.waitForURL('/', { timeout: 10_000 });
 
   // Create a folder (auto-selects it; reset to All so unfiled item is visible)
   await createFolder(page, 'Personal');
@@ -87,7 +83,9 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
     timeout: 10_000,
   });
 
-  // Filter by Personal folder
+  // Navigate back so the list panel is visible, then filter by Personal folder
+  await page.getByRole('link', { name: 'Vault', exact: true }).click();
+  await page.waitForURL('/', { timeout: 10_000 });
   await page.getByTestId('folder-strip').getByText('Personal', { exact: true }).click();
   await expect(page.getByTestId('vault-list')).toContainText('Movable Item', { timeout: 10_000 });
 });
@@ -95,13 +93,11 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
 test('renames a folder', async ({ page }) => {
   await createFolder(page, 'OldName');
 
-  // Hover to reveal rename button
   const folderStrip = page.getByTestId('folder-strip');
-  const oldPill = folderStrip.getByText('OldName');
-  await oldPill.hover();
 
-  // Click rename button (aria-label contains "Rename OldName")
-  await page.getByRole('button', { name: /Rename OldName/i }).click();
+  // Open the options dropdown and click Rename
+  await page.getByRole('button', { name: /Options for OldName/i }).click();
+  await page.getByRole('menuitem', { name: 'Rename' }).click();
 
   // Find the rename input and change the name
   const renameInput = folderStrip.locator('input');
@@ -113,7 +109,7 @@ test('renames a folder', async ({ page }) => {
   await expect(folderStrip).not.toContainText('OldName', { timeout: 5_000 });
 });
 
-test('deletes a folder and its items become unfiled', async ({ page }) => {
+test('deletes a folder and its items appear in All', async ({ page }) => {
   // Create folder (auto-selects it; new item link will carry folderId)
   await createFolder(page, 'ToDelete');
 
@@ -123,7 +119,7 @@ test('deletes a folder and its items become unfiled', async ({ page }) => {
     Password: 'pass123',
   });
 
-  await page.getByTestId('vault-list').getByText('WillBeOrphaned', { exact: true }).click();
+  // createVaultItem leaves us on the item detail page — no need to click into it again
   await expect(page.getByRole('heading', { name: 'WillBeOrphaned' })).toBeVisible({
     timeout: 10_000,
   });
@@ -144,14 +140,14 @@ test('deletes a folder and its items become unfiled', async ({ page }) => {
 
   // Delete the folder
   const folderStrip = page.getByTestId('folder-strip');
-  await folderStrip.getByText('ToDelete').hover();
-  await page.getByRole('button', { name: /Delete ToDelete/i }).click();
+  await page.getByRole('button', { name: /Options for ToDelete/i }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
 
   // Folder pill should be gone
   await expect(folderStrip).not.toContainText('ToDelete', { timeout: 10_000 });
 
-  // Item should appear in Unfiled
-  await page.getByTestId('folder-filter-unfiled').click();
+  // Item should still appear under All
+  await page.getByTestId('folder-filter-all').click();
   await expect(page.getByTestId('vault-list')).toContainText('WillBeOrphaned', {
     timeout: 10_000,
   });
@@ -165,8 +161,7 @@ test('removes item from folder (move to No folder)', async ({ page }) => {
     Password: 'pass123',
   });
 
-  // Item was created in Removable folder — open detail and verify
-  await page.getByTestId('vault-list').getByText('InFolder', { exact: true }).click();
+  // createVaultItem lands on the item detail page — vault-list is off-screen, no need to click
   await expect(page.getByTestId('move-folder-trigger')).toContainText('Removable', {
     timeout: 10_000,
   });

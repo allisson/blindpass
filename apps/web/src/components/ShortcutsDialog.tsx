@@ -52,7 +52,7 @@ interface Props {
 export function ShortcutsDialog({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" container={document.getElementById('app-shell')}>
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
           <DialogDescription>Speed up everything you do in BlindPass.</DialogDescription>

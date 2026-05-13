@@ -44,6 +44,8 @@ test.describe('Sharing Roles', () => {
         Username: 'team-user',
         Password: 'team-password',
       });
+      await ownerPage.getByRole('link', { name: 'Vault', exact: true }).click();
+      await ownerPage.waitForURL('/', { timeout: 10_000 });
 
       // 3. Owner shares with Viewer (viewer role)
       await ownerPage.getByTestId('vault-picker-trigger').click();
@@ -54,9 +56,9 @@ test.describe('Sharing Roles', () => {
         .click();
       await ownerPage.getByLabel('Share with (username)').fill(VIEWER_USERNAME);
       // Role 'viewer' is default
-      await ownerPage.getByRole('button', { name: 'Share' }).click();
+      await ownerPage.getByRole('button', { name: 'Continue' }).click();
       await expect(ownerPage.getByText('Verify recipient identity')).toBeVisible(); // verification dialog
-      await ownerPage.getByRole('button', { name: 'Share', exact: true }).click();
+      await ownerPage.getByRole('button', { name: 'Share' }).click();
       await expect(ownerPage.getByText(VIEWER_USERNAME)).toBeVisible();
       await ownerPage.getByRole('button', { name: 'Close' }).click();
 
@@ -68,10 +70,10 @@ test.describe('Sharing Roles', () => {
         .getByTestId('share-vault-button')
         .click();
       await ownerPage.getByLabel('Share with (username)').fill(EDITOR_USERNAME);
-      await ownerPage.getByRole('button', { name: 'editor' }).click();
-      await ownerPage.getByRole('button', { name: 'Share' }).click();
+      await ownerPage.getByRole('radio', { name: 'editor' }).click();
+      await ownerPage.getByRole('button', { name: 'Continue' }).click();
       await expect(ownerPage.getByText('Verify recipient identity')).toBeVisible();
-      await ownerPage.getByRole('button', { name: 'Share', exact: true }).click();
+      await ownerPage.getByRole('button', { name: 'Share' }).click();
       await expect(ownerPage.getByText(EDITOR_USERNAME)).toBeVisible();
       await ownerPage.getByRole('button', { name: 'Close' }).click();
 
@@ -99,56 +101,101 @@ test.describe('Sharing Roles', () => {
       await expect(editorPage.getByTestId('action-bar-edit')).toBeVisible();
 
       // Editor creates an item
-      await editorPage.getByRole('link', { name: 'Vault' }).click();
+      await editorPage.getByRole('link', { name: 'Vault', exact: true }).click();
       await createVaultItem(editorPage, 'secure_note', 'Editor Note', {
         Content: 'Created by editor',
       });
       await expect(editorPage.getByRole('heading', { name: 'Editor Note' })).toBeVisible();
 
       // 7. Owner sees item created by Editor — re-switch vault to trigger qc.removeQueries +
-      // immediate vaultSync (same pattern as step 9; goto('/') would lose in-memory vault key)
+      // immediate vaultSync. Re-selecting the already-active shared vault is a no-op, so switch
+      // to My Vault first, then switch back.
       await ownerPage.getByTestId('vault-picker-trigger').click();
       await ownerPage
-        .locator('[data-slot="popover-content"]')
+        .getByRole('dialog')
+        .getByRole('button', { name: 'My Vault', exact: true })
+        .click();
+      await expect(ownerPage.getByTestId('vault-picker-trigger')).toHaveAttribute(
+        'data-active-vault',
+        'My Vault',
+      );
+      await ownerPage.getByTestId('vault-picker-trigger').click();
+      await ownerPage
+        .getByRole('dialog')
         .getByRole('button', { name: 'Shared Team Vault' })
         .click();
-      await ownerPage
-        .getByTestId('vault-list')
-        .getByText('Editor Note')
-        .first()
-        .click({ timeout: 30_000 });
-      await expect(ownerPage.getByRole('main').getByText('Created by editor')).toBeVisible({
+      await expect(ownerPage.getByTestId('vault-list').getByText('Editor Note')).toBeVisible({
         timeout: 15_000,
       });
 
       // 8. Editor deletes an item
       await editorPage.getByTestId('action-bar-more').click();
       await editorPage.getByTestId('action-bar-delete').click();
-      await editorPage.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click();
+      await editorPage
+        .getByRole('dialog')
+        .filter({ hasText: 'Move to trash?' })
+        .getByRole('button', { name: 'Move to trash' })
+        .click();
       await expect(editorPage.getByTestId('vault-list').getByText('Editor Note')).not.toBeVisible({
         timeout: 15_000,
       });
 
-      // 9. Owner sees deletion — re-switch vault to trigger qc.removeQueries + immediate vaultSync,
-      // otherwise the 5-min poll interval would outlast the assertion timeout
+      // 9. Owner sees deletion — switch away and back to trigger qc.removeQueries + immediate
+      // vaultSync; re-selecting the active shared vault is a no-op and would leave the 5-min poll
+      // interval as the only refresh.
       await ownerPage.getByTestId('vault-picker-trigger').click();
       await ownerPage
-        .locator('[data-slot="popover-content"]')
+        .getByRole('dialog')
+        .getByRole('button', { name: 'My Vault', exact: true })
+        .click();
+      await expect(ownerPage.getByTestId('vault-picker-trigger')).toHaveAttribute(
+        'data-active-vault',
+        'My Vault',
+      );
+      await ownerPage.getByTestId('vault-picker-trigger').click();
+      await ownerPage
+        .getByRole('dialog')
         .getByRole('button', { name: 'Shared Team Vault' })
         .click();
       await expect(ownerPage.getByTestId('vault-list').getByText('Editor Note')).not.toBeVisible({
         timeout: 15_000,
       });
 
-      // 9. Editor cannot rename vault — scope to shared vault row; unscoped selector would also
-      // match rename buttons on the editor's own (non-shared) vaults
+      // 9. Editor sees the shared vault as a shared row, not an owned/renamable one.
       await editorPage.getByTestId('vault-picker-trigger').click();
-      await expect(
-        editorPage
-          .locator('div')
-          .filter({ hasText: /^Shared Team Vault$/ })
-          .getByTestId('rename-vault-button'),
-      ).not.toBeVisible();
+      await expect(editorPage.getByTestId('leave-vault-button')).toBeVisible();
+      await editorPage.keyboard.press('Escape');
+
+      // 10. Viewer leaves the shared vault — regression for the confirmation dialog being
+      // unreachable when opened from inside the vault picker drawer.
+      // Use the testid directly: the viewer has exactly one shared vault so only one leave button.
+      await viewerPage.getByRole('link', { name: 'Vault', exact: true }).click();
+      await viewerPage.waitForURL('/', { timeout: 10_000 });
+      await viewerPage.getByTestId('vault-picker-trigger').click();
+      await viewerPage.getByTestId('leave-vault-button').click();
+      const confirmLeave = viewerPage.getByTestId('confirm-leave-button');
+      await expect(confirmLeave).toBeEnabled();
+      await confirmLeave.click();
+
+      // 11. Vault disappears from viewer's list
+      await expect(viewerPage.getByTestId('confirm-leave-button')).not.toBeVisible({
+        timeout: 10_000,
+      });
+      await viewerPage.getByTestId('vault-picker-trigger').click();
+      await expect(viewerPage.locator('div').filter({ hasText: 'Shared Team Vault' })).toHaveCount(
+        0,
+      );
+      await viewerPage.keyboard.press('Escape');
+
+      // 12. Owner's share list no longer contains the viewer
+      await ownerPage.getByTestId('vault-picker-trigger').click();
+      await ownerPage
+        .locator('div')
+        .filter({ hasText: /^Shared Team Vault$/ })
+        .getByTestId('share-vault-button')
+        .click();
+      await expect(ownerPage.getByText(EDITOR_USERNAME)).toBeVisible();
+      await expect(ownerPage.getByText(VIEWER_USERNAME)).not.toBeVisible({ timeout: 15_000 });
     } finally {
       await ownerPage.close();
       await viewerPage.close();
