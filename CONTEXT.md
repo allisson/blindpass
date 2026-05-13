@@ -127,6 +127,19 @@ The hook exposed by **KeychainRequired**. Returns the held `{masterKey, vaultKey
 **CachedVaultItem**:
 The IndexedDB-at-rest shape for an **EncryptedVaultItem**. Same fields as the wire envelope; distinct name signals intent (cache vs network). Lives in `lib/vaultCache.ts`. Cleared on `session.lock()` and `session.clear()` — ciphertext never outlives the keychain that can read it.
 
+### Browser data portability
+
+**PlaintextExport**:
+The unencrypted `.json` export envelope: `{version: 1, type: 'blindpass-export', exportedAt, items: VaultItem[]}`. Defined in `packages/vault/src/export/index.ts`. The one place where decrypted **VaultItem** data intentionally leaves the browser as readable JSON — explicitly authorised by the user.
+_Avoid_: plaintext backup, JSON export.
+
+**EncryptedExport**:
+The passphrase-protected `.blindpass` export envelope: `{version: 1, type: 'blindpass-export-encrypted', kekSalt, nonce, ciphertext}`. Wraps a serialised **PlaintextExport** encrypted under a passphrase-derived key (independent of the account **Keychain**). Defined in `packages/vault/src/export/index.ts`.
+_Avoid_: encrypted backup, secure export.
+
+**ImportFormat**:
+The discriminated union `'chrome' | 'lastpass' | 'bitwarden' | 'blindpass'` that selects the parse path when importing items. Defined in `apps/web/src/lib/import/types.ts`.
+
 ### Browser sync
 
 **SyncEngine**:
