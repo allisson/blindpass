@@ -6,8 +6,15 @@ import { importVaultPlaintext } from '@blindpass/vault';
 import { BATCH_CREATE_MAX_ITEMS } from '@blindpass/api-schema';
 import { deriveKEK } from '@/lib/kdfWorker';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { fromBase64 } from '@/lib/b64';
 import { detectFormat, parseFile } from '@/lib/import';
@@ -42,6 +49,15 @@ export function ImportSection() {
   const [pending, setPending] = useState<ImportResult | null>(null);
   const [passphrase, setPassphrase] = useState('');
   const [decrypting, setDecrypting] = useState(false);
+  const [selectedVaultId, setSelectedVaultId] = useState(k.activeVaultId);
+
+  const writableVaults = Array.from(k.vaults.entries())
+    .filter(([, v]) => !v.isShared || v.role === 'editor')
+    .sort(([a], [b]) => (a === k.activeVaultId ? -1 : b === k.activeVaultId ? 1 : 0))
+    .map(([id, v]) => ({
+      id,
+      label: v.isShared && v.ownerUsername ? `${v.name} (shared by ${v.ownerUsername})` : v.name,
+    }));
 
   function applyFile(file: File) {
     setFileName(file.name);
@@ -142,6 +158,7 @@ export function ImportSection() {
 
     setState({ status: 'importing', done: 0, total });
 
+    const vaultKey = k.getVaultKey(selectedVaultId);
     const encrypted: {
       encryptedData: { ciphertext: string; nonce: string };
       encryptedItemKey: { ciphertext: string; nonce: string };
@@ -149,7 +166,7 @@ export function ImportSection() {
 
     try {
       for (const item of pending.items) {
-        const wire = await k.encryptItem(item);
+        const wire = await k.encryptItem(item, vaultKey);
         encrypted.push(wire);
         setState({ status: 'importing', done: encrypted.length, total });
       }
@@ -157,7 +174,7 @@ export function ImportSection() {
       setState({ status: 'uploading' });
 
       for (let i = 0; i < encrypted.length; i += CHUNK_SIZE) {
-        await api.batchCreateItems(k.activeVaultId, { items: encrypted.slice(i, i + CHUNK_SIZE) });
+        await api.batchCreateItems(selectedVaultId, { items: encrypted.slice(i, i + CHUNK_SIZE) });
       }
     } catch (err) {
       setState({ status: 'error', message: err instanceof Error ? err.message : 'Import failed.' });
@@ -176,12 +193,25 @@ export function ImportSection() {
     setState({ status: 'idle' });
     setPending(null);
     setPassphrase('');
+    setSelectedVaultId(k.activeVaultId);
     if (fileRef.current) fileRef.current.value = '';
     setFileName(null);
     setAutoDetected(false);
   }
 
-  const busy = state.status === 'importing' || state.status === 'uploading';
+  function resetError() {
+    if (pending) {
+      setState({ status: 'previewing', result: pending });
+    } else {
+      setState({ status: 'idle' });
+      setPassphrase('');
+    }
+  }
+
+  const busy =
+    state.status === 'importing' ||
+    state.status === 'uploading' ||
+    state.status === 'needs-passphrase';
 
   return (
     <div className="space-y-4 max-w-sm">
@@ -197,22 +227,49 @@ export function ImportSection() {
               </span>
             )}
           </div>
-          <select
-            id="import-format"
+          <Select
             value={format}
-            onChange={(e) => {
-              setFormat(e.target.value as ImportFormat);
+            onValueChange={(v) => {
+              setFormat(v as ImportFormat);
               setAutoDetected(false);
             }}
             disabled={busy}
-            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
           >
-            <option value="chrome">Chrome / Firefox</option>
-            <option value="lastpass">LastPass</option>
-            <option value="bitwarden">Bitwarden</option>
-            <option value="blindpass">BlindPass</option>
-          </select>
+            <SelectTrigger id="import-format" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="chrome">Chrome / Firefox</SelectItem>
+              <SelectItem value="lastpass">LastPass</SelectItem>
+              <SelectItem value="bitwarden">Bitwarden</SelectItem>
+              <SelectItem value="blindpass">BlindPass</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
+        {writableVaults.length > 1 && (
+          <div className="space-y-1.5">
+            <label htmlFor="import-vault" className="text-xs text-muted-foreground">
+              Destination vault
+            </label>
+            <Select
+              value={selectedVaultId}
+              onValueChange={(v) => v && setSelectedVaultId(v)}
+              disabled={busy}
+            >
+              <SelectTrigger id="import-vault" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {writableVaults.map(({ id, label }) => (
+                  <SelectItem key={id} value={id}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <label htmlFor="import-file" className="text-xs text-muted-foreground">
@@ -288,10 +345,9 @@ export function ImportSection() {
       {state.status === 'needs-passphrase' && !decrypting && (
         <form onSubmit={handleDecrypt} className="space-y-3">
           <div className="field-group">
-            <Label htmlFor="imp-pass">Export passphrase</Label>
-            <Input
+            <Label htmlFor="imp-pass">Decryption passphrase</Label>
+            <PasswordInput
               id="imp-pass"
-              type="password"
               autoFocus
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
@@ -326,7 +382,10 @@ export function ImportSection() {
           {state.result.items.length > 0 && (
             <div className="rounded border bg-muted/40 divide-y max-h-36 overflow-y-auto">
               {state.result.items.slice(0, 5).map((item, i) => (
-                <div key={i} className="px-3 py-1.5 text-xs truncate text-muted-foreground">
+                <div
+                  key={`${item.title}-${i}`}
+                  className="px-3 py-1.5 text-xs truncate text-muted-foreground"
+                >
                   {item.title || (item.type === 'login' ? item.url : undefined) || '(untitled)'}
                 </div>
               ))}
@@ -396,7 +455,7 @@ export function ImportSection() {
       {state.status === 'error' && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 space-y-2">
           <p className="text-sm text-destructive">{state.message}</p>
-          <Button size="sm" variant="ghost" onClick={handleReset}>
+          <Button size="sm" variant="ghost" onClick={resetError}>
             Try again
           </Button>
         </div>

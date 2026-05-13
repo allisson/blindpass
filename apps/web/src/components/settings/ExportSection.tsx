@@ -1,13 +1,21 @@
 import { AlertTriangle, Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { encryptSymmetric, generateSalt } from '@blindpass/crypto';
-import { exportVaultPlaintext } from '@blindpass/vault';
-import type { VaultItem as VaultItemData } from '@blindpass/vault';
+import { VaultItemSchema, exportVaultPlaintext } from '@blindpass/vault';
+import type { VaultItem } from '@blindpass/vault';
 import { deriveKEK } from '@/lib/kdfWorker';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field-error';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength } from '@/components/ui/password-strength';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toBase64 } from '@/lib/b64';
 import { vaultCache } from '@/lib/vaultCache';
 import { useKeychain } from '@/components/keychain/KeychainRequired';
@@ -18,8 +26,10 @@ function downloadFile(content: string, filename: string) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 type ExportState =
@@ -27,26 +37,17 @@ type ExportState =
   | { status: 'confirming-plain' }
   | { status: 'passphrase' }
   | { status: 'exporting'; msg: string }
-  | { status: 'done' }
+  | { status: 'done'; itemCount: number; vaultName: string }
   | { status: 'error'; message: string };
 
-async function fetchAndDecryptAll(k: ReturnType<typeof useKeychain>): Promise<VaultItemData[]> {
-  const cached = await vaultCache.getItems(k.activeVaultId);
-  const decrypted = await Promise.all(cached.map((item) => k.decryptItem(item)));
-  return decrypted.map((d) => {
-    const {
-      id: _id,
-      folderId: _folderId,
-      createdAt: _createdAt,
-      updatedAt: _updatedAt,
-      ...payload
-    } = d;
-    void _id;
-    void _folderId;
-    void _createdAt;
-    void _updatedAt;
-    return payload as unknown as VaultItemData;
-  });
+async function fetchAndDecryptAll(
+  k: ReturnType<typeof useKeychain>,
+  vaultId: string,
+): Promise<VaultItem[]> {
+  const cached = await vaultCache.getItems(vaultId);
+  const vaultKey = k.getVaultKey(vaultId);
+  const decrypted = await Promise.all(cached.map((item) => k.decryptItem(item, vaultKey)));
+  return decrypted.map((d) => VaultItemSchema.parse(d));
 }
 
 export function ExportSection() {
@@ -55,14 +56,29 @@ export function ExportSection() {
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [passphraseError, setPassphraseError] = useState('');
+  const [selectedVaultId, setSelectedVaultId] = useState(k.activeVaultId);
+
+  const allVaults = Array.from(k.vaults.entries())
+    .sort(([a], [b]) => (a === k.activeVaultId ? -1 : b === k.activeVaultId ? 1 : 0))
+    .map(([id, v]) => ({
+      id,
+      label: v.isShared && v.ownerUsername ? `${v.name} (shared by ${v.ownerUsername})` : v.name,
+    }));
+
+  const selectedVaultName = k.vaults.get(selectedVaultId)?.name ?? '';
+  const vaultSlug =
+    selectedVaultName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'vault';
 
   async function handleExportPlain() {
     setState({ status: 'exporting', msg: 'Decrypting vault…' });
     try {
-      const items = await fetchAndDecryptAll(k);
+      const items = await fetchAndDecryptAll(k, selectedVaultId);
       const json = await exportVaultPlaintext(items);
-      downloadFile(json, 'blindpass-export.json');
-      setState({ status: 'done' });
+      downloadFile(json, `blindpass-export-${vaultSlug}.json`);
+      setState({ status: 'done', itemCount: items.length, vaultName: selectedVaultName });
     } catch (err) {
       setState({ status: 'error', message: err instanceof Error ? err.message : 'Export failed' });
     }
@@ -81,7 +97,7 @@ export function ExportSection() {
     setPassphraseError('');
     setState({ status: 'exporting', msg: 'Decrypting vault…' });
     try {
-      const items = await fetchAndDecryptAll(k);
+      const items = await fetchAndDecryptAll(k, selectedVaultId);
       setState({ status: 'exporting', msg: 'Deriving encryption key…' });
       const plaintext = await exportVaultPlaintext(items);
       const kekSalt = await generateSalt();
@@ -95,8 +111,8 @@ export function ExportSection() {
         nonce: toBase64(encrypted.nonce),
         ciphertext: toBase64(encrypted.ciphertext),
       });
-      downloadFile(payload, 'blindpass-export.blindpass');
-      setState({ status: 'done' });
+      downloadFile(payload, `blindpass-export-${vaultSlug}.blindpass`);
+      setState({ status: 'done', itemCount: items.length, vaultName: selectedVaultName });
     } catch (err) {
       setState({ status: 'error', message: err instanceof Error ? err.message : 'Export failed' });
     }
@@ -109,10 +125,18 @@ export function ExportSection() {
     setPassphraseError('');
   }
 
+  function resetError() {
+    setState({ status: 'idle' });
+    setPassphraseError('');
+  }
+
   if (state.status === 'done') {
     return (
       <div className="rounded-md border border-primary/30 bg-primary/5 p-4 space-y-2">
-        <p className="text-sm font-medium">Export complete.</p>
+        <p className="text-sm font-medium">
+          {state.itemCount} item{state.itemCount !== 1 ? 's' : ''} exported from{' '}
+          <span className="font-semibold">{state.vaultName}</span>.
+        </p>
         <Button size="sm" variant="outline" onClick={reset}>
           Export again
         </Button>
@@ -124,7 +148,7 @@ export function ExportSection() {
     return (
       <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 space-y-2">
         <p className="text-sm text-destructive">{state.message}</p>
-        <Button size="sm" variant="ghost" onClick={reset}>
+        <Button size="sm" variant="ghost" onClick={resetError}>
           Try again
         </Button>
       </div>
@@ -155,7 +179,7 @@ export function ExportSection() {
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={handleExportPlain}>
-            Download anyway
+            Export plaintext
           </Button>
           <Button size="sm" variant="ghost" onClick={reset}>
             Cancel
@@ -170,9 +194,8 @@ export function ExportSection() {
       <form onSubmit={handleExportEncrypted} className="space-y-3 max-w-sm">
         <div className="field-group">
           <Label htmlFor="exp-pass">Export passphrase</Label>
-          <Input
+          <PasswordInput
             id="exp-pass"
-            type="password"
             autoFocus
             value={passphrase}
             onChange={(e) => setPassphrase(e.target.value)}
@@ -180,12 +203,12 @@ export function ExportSection() {
             aria-invalid={!!passphraseError}
             aria-describedby={passphraseError ? 'exp-passphrase-error' : undefined}
           />
+          <PasswordStrength password={passphrase} />
         </div>
         <div className="field-group">
           <Label htmlFor="exp-pass-confirm">Confirm passphrase</Label>
-          <Input
+          <PasswordInput
             id="exp-pass-confirm"
-            type="password"
             value={confirmPassphrase}
             onChange={(e) => setConfirmPassphrase(e.target.value)}
             placeholder="Repeat passphrase"
@@ -193,7 +216,7 @@ export function ExportSection() {
             aria-describedby={passphraseError ? 'exp-passphrase-error' : undefined}
           />
         </div>
-        <FieldError id="exp-passphrase-error" message={passphraseError ?? undefined} />
+        <FieldError id="exp-passphrase-error" message={passphraseError || undefined} />
         <div className="flex gap-2">
           <Button type="submit" size="sm">
             Download encrypted
@@ -207,15 +230,40 @@ export function ExportSection() {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="outline" onClick={() => setState({ status: 'confirming-plain' })}>
-        <Download className="w-3.5 h-3.5 mr-1.5" />
-        Export as JSON
-      </Button>
-      <Button size="sm" variant="outline" onClick={() => setState({ status: 'passphrase' })}>
-        <Download className="w-3.5 h-3.5 mr-1.5" />
-        Export encrypted (.blindpass)
-      </Button>
+    <div className="space-y-3 max-w-sm">
+      {allVaults.length > 1 && (
+        <div className="space-y-1.5">
+          <label htmlFor="export-vault" className="text-xs text-muted-foreground">
+            Vault
+          </label>
+          <Select value={selectedVaultId} onValueChange={(v) => v && setSelectedVaultId(v)}>
+            <SelectTrigger id="export-vault" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {allVaults.map(({ id, label }) => (
+                <SelectItem key={id} value={id}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setState({ status: 'confirming-plain' })}
+        >
+          <Download className="w-3.5 h-3.5 mr-1.5" />
+          Export as JSON
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setState({ status: 'passphrase' })}>
+          <Download className="w-3.5 h-3.5 mr-1.5" />
+          Export encrypted (.blindpass)
+        </Button>
+      </div>
     </div>
   );
 }
