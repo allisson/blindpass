@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import type { DeveloperCredentialItem, VaultItem } from '@blindpass/vault';
@@ -18,6 +25,7 @@ interface Props {
 
 export function DeveloperCredentialFields({ initialMode = 'token' }: Props) {
   const {
+    control,
     register,
     setValue,
     watch,
@@ -121,15 +129,22 @@ export function DeveloperCredentialFields({ initialMode = 'token' }: Props) {
     <>
       <div className="field-group" data-invalid={!!errors.credentialMode}>
         <Label htmlFor="credentialMode">Mode</Label>
-        <select
-          id="credentialMode"
-          className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring dark:bg-input/20"
-          {...register('credentialMode' as never)}
-        >
-          <option value="token">Token</option>
-          <option value="client_secret_pair">Client ID + Secret</option>
-          <option value="ssh_key">SSH keypair</option>
-        </select>
+        <Controller
+          control={control}
+          name={'credentialMode' as never}
+          render={({ field }) => (
+            <Select value={field.value as string} onValueChange={(v) => v && field.onChange(v)}>
+              <SelectTrigger id="credentialMode" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="token">Token</SelectItem>
+                <SelectItem value="client_secret_pair">Client ID + Secret</SelectItem>
+                <SelectItem value="ssh_key">SSH keypair</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
         <FieldError message={errors.credentialMode?.message} />
       </div>
       {credentialMode !== 'ssh_key' && (

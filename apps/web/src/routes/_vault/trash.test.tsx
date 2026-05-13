@@ -296,10 +296,12 @@ describe('TrashPage', () => {
     const rows = () => screen.getAllByTestId(/trash-row-/).map((row) => row.textContent);
     expect(rows()[0]).toContain('Alpha');
 
-    await user.selectOptions(screen.getByLabelText('Sort trash'), 'deleted-asc');
+    await user.click(screen.getByLabelText('Sort trash'));
+    await user.click(screen.getByRole('option', { name: 'Oldest deleted' }));
     expect(rows()[0]).toContain('Beta');
 
-    await user.selectOptions(screen.getByLabelText('Sort trash'), 'title-asc');
+    await user.click(screen.getByLabelText('Sort trash'));
+    await user.click(screen.getByRole('option', { name: 'Title A-Z' }));
     expect(rows()[0]).toContain('Alpha');
   });
 

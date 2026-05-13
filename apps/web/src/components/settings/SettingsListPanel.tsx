@@ -1,6 +1,19 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Search } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  Download,
+  Fingerprint,
+  KeyRound,
+  LayoutList,
+  Monitor,
+  Palette,
+  Search,
+  ShieldCheck,
+  Smartphone,
+  Timer,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useOpenCommandPalette } from '@/components/vault/shell/CommandPaletteContext';
 import { loadTheme, type Theme } from '@/lib/theme';
 import { loadDensity, type Density } from '@/lib/density';
@@ -41,26 +54,38 @@ interface RowProps {
   label: string;
   hint?: string;
   destructive?: boolean;
+  icon: ReactNode;
 }
 
-function Row({ to, label, hint, destructive }: RowProps) {
+function Row({ to, label, hint, destructive, icon }: RowProps) {
   return (
     <Link
       to={to}
       className={[
-        'group flex items-center justify-between gap-3 h-12 px-4 text-[14px] font-medium transition-colors border-b border-muted last:border-b-0',
+        'group flex items-center gap-3 h-12 px-4 text-[14px] font-medium transition-colors border-b border-muted last:border-b-0',
         destructive
           ? 'text-foreground hover:bg-destructive/10 hover:text-destructive [&.active]:bg-destructive/10 [&.active]:text-destructive'
           : 'text-foreground hover:bg-accent/60 [&.active]:bg-accent',
       ].join(' ')}
     >
-      <span className="truncate">{label}</span>
+      <span className="shrink-0">{icon}</span>
+      <span className="flex-1 truncate">{label}</span>
       {hint ? (
         <span className="text-[12px] font-medium text-muted-foreground group-[.active]:text-muted-foreground tabular-nums shrink-0">
           {hint}
         </span>
       ) : null}
     </Link>
+  );
+}
+
+function IconTile({ children, className }: { children: ReactNode; className: string }) {
+  return (
+    <span
+      className={`inline-flex items-center justify-center w-[22px] h-[22px] rounded-[5px] ${className}`}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -156,27 +181,116 @@ export function SettingsListPanel() {
       </div>
       <div className="pb-4">
         <GroupHeader>Preferences</GroupHeader>
-        <Row to="/settings/appearance" label="Appearance" hint={THEME_LABEL[theme]} />
-        <Row to="/settings/density" label="Density" hint={DENSITY_LABEL[density]} />
-        <Row to="/settings/auto-lock" label="Auto-lock" hint={formatLockMinutes(lockMinutes)} />
+        <Row
+          to="/settings/appearance"
+          label="Appearance"
+          hint={THEME_LABEL[theme]}
+          icon={
+            <IconTile className="bg-violet-500/15 text-violet-500">
+              <Palette className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
+        <Row
+          to="/settings/density"
+          label="Density"
+          hint={DENSITY_LABEL[density]}
+          icon={
+            <IconTile className="bg-sky-500/15 text-sky-500">
+              <LayoutList className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
+        <Row
+          to="/settings/auto-lock"
+          label="Auto-lock"
+          hint={formatLockMinutes(lockMinutes)}
+          icon={
+            <IconTile className="bg-amber-500/15 text-amber-500">
+              <Timer className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
 
         <GroupHeader>Security</GroupHeader>
-        <Row to="/settings/master-password" label="Master password" />
-        <Row to="/settings/biometric-unlock" label="Biometric unlock" />
-        <Row to="/settings/verification-id" label="Verification ID" />
+        <Row
+          to="/settings/master-password"
+          label="Master password"
+          icon={
+            <IconTile className="bg-blue-500/15 text-blue-500">
+              <KeyRound className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
+        <Row
+          to="/settings/biometric-unlock"
+          label="Biometric unlock"
+          icon={
+            <IconTile className="bg-green-500/15 text-green-500">
+              <Fingerprint className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
+        <Row
+          to="/settings/verification-id"
+          label="Verification ID"
+          icon={
+            <IconTile className="bg-emerald-500/15 text-emerald-500">
+              <ShieldCheck className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
 
         <GroupHeader>Data</GroupHeader>
-        <Row to="/settings/import" label="Import" />
-        <Row to="/settings/export" label="Export" />
+        <Row
+          to="/settings/import"
+          label="Import"
+          icon={
+            <IconTile className="bg-cyan-500/15 text-cyan-500">
+              <Download className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
+        <Row
+          to="/settings/export"
+          label="Export"
+          icon={
+            <IconTile className="bg-indigo-500/15 text-indigo-500">
+              <Upload className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
 
         <GroupHeader>Account</GroupHeader>
-        <Row to="/settings/sessions" label="Sessions" />
+        <Row
+          to="/settings/sessions"
+          label="Sessions"
+          icon={
+            <IconTile className="bg-slate-500/15 text-slate-500">
+              <Monitor className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
         <Row
           to="/settings/install-app"
           label="Install app"
           hint={installed ? 'Installed' : undefined}
+          icon={
+            <IconTile className="bg-pink-500/15 text-pink-500">
+              <Smartphone className="w-3.5 h-3.5" />
+            </IconTile>
+          }
         />
-        <Row to="/settings/delete-account" label="Delete account" destructive />
+        <Row
+          to="/settings/delete-account"
+          label="Delete account"
+          destructive
+          icon={
+            <IconTile className="bg-destructive/15 text-destructive">
+              <Trash2 className="w-3.5 h-3.5" />
+            </IconTile>
+          }
+        />
       </div>
     </nav>
   );

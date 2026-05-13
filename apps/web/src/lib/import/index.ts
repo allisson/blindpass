@@ -10,10 +10,11 @@ import { parse as parseBitwarden } from './parsers/bitwarden';
 
 export function detectFormat(filename: string): ImportFormat | null {
   const lower = filename.toLowerCase();
+  if (lower.endsWith('.blindpass')) return 'blindpass';
+  if (lower.includes('blindpass-export')) return 'blindpass';
   if (lower.endsWith('.json')) return 'bitwarden';
   if (lower.includes('lastpass')) return 'lastpass';
   if (lower.endsWith('.csv')) return 'chrome';
-  if (lower.endsWith('.blindpass')) return 'blindpass';
   return null;
 }
 

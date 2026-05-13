@@ -26,6 +26,13 @@ import {
   type DecryptedTrashedItem,
 } from '@/hooks/useVault';
 import { EmptyState } from '@/components/EmptyState';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export const Route = createFileRoute('/_vault/trash')({
   component: TrashPage,
@@ -383,20 +390,20 @@ export function TrashPage() {
                   </button>
                 )}
               </div>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {getSortIcon(sort)}
                 <span>Sort</span>
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as TrashSort)}
-                  aria-label="Sort trash"
-                  className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground transition-colors outline-none hover:border-ring/40"
-                >
-                  <option value="deleted-desc">Newest deleted</option>
-                  <option value="deleted-asc">Oldest deleted</option>
-                  <option value="title-asc">Title A-Z</option>
-                </select>
-              </label>
+                <Select value={sort} onValueChange={(v) => v && setSort(v as TrashSort)}>
+                  <SelectTrigger aria-label="Sort trash" size="sm" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="deleted-desc">Newest deleted</SelectItem>
+                    <SelectItem value="deleted-asc">Oldest deleted</SelectItem>
+                    <SelectItem value="title-asc">Title A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div

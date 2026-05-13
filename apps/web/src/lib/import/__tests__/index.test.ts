@@ -29,6 +29,11 @@ describe('detectFormat', () => {
   it('returns blindpass for .blindpass extension', () => {
     expect(detectFormat('vault.blindpass')).toBe('blindpass');
   });
+
+  it('returns blindpass for filename containing blindpass-export', () => {
+    expect(detectFormat('blindpass-export.json')).toBe('blindpass');
+    expect(detectFormat('my blindpass-export backup.blindpass')).toBe('blindpass');
+  });
 });
 
 describe('parseFile', () => {

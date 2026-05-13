@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { FormProvider, useForm } from 'react-hook-form';
 import type { VaultItem } from '@blindpass/vault';
 import { DeveloperCredentialFields } from './DeveloperCredentialFields';
@@ -30,21 +31,34 @@ describe('DeveloperCredentialFields', () => {
     expect(screen.getByLabelText('Secret')).toBeInTheDocument();
   });
 
-  it('switches to client_secret_pair mode (no data prompt)', () => {
+  it('switches to client_secret_pair mode (no data prompt)', async () => {
+    const user = userEvent.setup();
     render(<Wrapper />);
-    fireEvent.change(screen.getByLabelText('Mode'), {
-      target: { value: 'client_secret_pair' },
-    });
+    await user.click(screen.getByLabelText('Mode'));
+    await user.click(screen.getByRole('option', { name: 'Client ID + Secret' }));
     expect(screen.getByLabelText('Client ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Client Secret')).toBeInTheDocument();
   });
 
-  it('switches to ssh_key mode and hides provider field', () => {
+  it('switches to ssh_key mode and hides provider field', async () => {
+    const user = userEvent.setup();
     render(<Wrapper />);
-    fireEvent.change(screen.getByLabelText('Mode'), { target: { value: 'ssh_key' } });
+    await user.click(screen.getByLabelText('Mode'));
+    await user.click(screen.getByRole('option', { name: 'SSH keypair' }));
     expect(screen.getByLabelText('Username')).toBeInTheDocument();
     expect(screen.getByLabelText('Public Key')).toBeInTheDocument();
     expect(screen.queryByLabelText('Provider')).not.toBeInTheDocument();
+  });
+
+  it('closes mode switch dialog via Escape', async () => {
+    const user = userEvent.setup();
+    render(<Wrapper />);
+    await user.type(screen.getByLabelText('Secret'), 'sk-secret');
+    await user.click(screen.getByLabelText('Mode'));
+    await user.click(screen.getByRole('option', { name: 'Client ID + Secret' }));
+    expect(screen.getByText('Switch mode?')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByText('Switch mode?')).not.toBeInTheDocument();
   });
 
   it('toggles token secret reveal', () => {

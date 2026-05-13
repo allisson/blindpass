@@ -207,6 +207,20 @@ describe('SyncBoundary', () => {
     await waitFor(() => expect(fake.calls.length).toBeGreaterThan(before));
   });
 
+  it('runs with force=true on bp:vault-switch event', async () => {
+    const fake = makeFakeEngine();
+    renderHook(() => useSyncBoundary(), { wrapper: makeWrapper(fake.engine) });
+    await waitFor(() => expect(fake.calls.length).toBeGreaterThan(0));
+    const before = fake.calls.length;
+
+    await act(async () => {
+      window.dispatchEvent(new Event('bp:vault-switch'));
+    });
+
+    await waitFor(() => expect(fake.calls.length).toBeGreaterThan(before));
+    expect(fake.calls[fake.calls.length - 1].force).toBe(true);
+  });
+
   it('useSyncBoundary returns no-op default outside provider', () => {
     const { result } = renderHook(() => useSyncBoundary());
     expect(result.current.phase).toBe('idle');
