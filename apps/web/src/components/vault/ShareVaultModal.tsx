@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { verificationId } from '@blindpass/crypto';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { extractErrorMessage } from '@/lib/errors';
 import { fromBase64 } from '@/lib/b64';
+import { session } from '@/lib/session';
 import { useVaultShares, useShareVault, useRevokeShare } from '@/hooks/useVaultSharing';
 
 interface Props {
@@ -52,6 +53,8 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
   const { data, isLoading } = useVaultShares(vaultId);
   const shareVault = useShareVault(vaultId);
   const revokeShare = useRevokeShare(vaultId);
+
+  const vaultName = session.get()?.vaults.get(vaultId)?.name;
 
   async function resolveReceiver(target: string) {
     setShareError(null);
@@ -115,12 +118,13 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
           if (!o) setPendingShare(null);
         }}
       >
-        <DialogContent showCloseButton={false}>
+        <DialogContent showCloseButton={false} container={document.getElementById('app-shell')}>
           <DialogHeader>
             <DialogTitle>Verify recipient identity</DialogTitle>
             <DialogDescription>
               Confirm this is the right person before sharing your vault key with them. Compare the
-              24-word verification ID below to the one shown in their settings.
+              24-word verification ID below to the one shown in their app under{' '}
+              <span className="font-medium text-foreground">Settings → Verification ID</span>.
             </DialogDescription>
           </DialogHeader>
           {pendingShare && (
@@ -155,7 +159,7 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
           if (!o) setConfirmRevoke(null);
         }}
       >
-        <DialogContent showCloseButton={false}>
+        <DialogContent showCloseButton={false} container={document.getElementById('app-shell')}>
           <DialogHeader>
             <DialogTitle>Revoke access</DialogTitle>
             <DialogDescription>
@@ -175,9 +179,9 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
         </DialogContent>
       </Dialog>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" container={document.getElementById('app-shell')}>
           <DialogHeader>
-            <DialogTitle>Share vault</DialogTitle>
+            <DialogTitle>{vaultName ? `Share "${vaultName}"` : 'Share vault'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -188,7 +192,10 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
                   id="share-username"
                   placeholder="colleague_handle"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    if (shareError) setShareError(null);
+                  }}
                   onKeyDown={(e) =>
                     e.key === 'Enter' &&
                     isValidUsername(username) &&
@@ -199,12 +206,18 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Role</Label>
-                <div className="flex gap-1.5 rounded-lg bg-muted p-1">
+                <Label id="share-role-label">Role</Label>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="share-role-label"
+                  className="flex gap-1.5 rounded-lg bg-muted p-1"
+                >
                   {(['viewer', 'editor'] as const).map((r) => (
                     <button
                       key={r}
                       type="button"
+                      role="radio"
+                      aria-checked={role === r}
                       onClick={() => setRole(r)}
                       disabled={resolvingShare || shareVault.isPending}
                       className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
@@ -225,10 +238,14 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
                 disabled={!isValidUsername(username) || resolvingShare || shareVault.isPending}
                 size="sm"
               >
-                {resolvingShare ? 'Looking up…' : 'Share'}
+                {resolvingShare ? 'Looking up…' : 'Continue'}
               </Button>
 
-              {shareError && <p className="text-xs text-destructive">{shareError}</p>}
+              {shareError && (
+                <p className="text-xs text-destructive" role="alert">
+                  {shareError}
+                </p>
+              )}
             </div>
 
             {isLoading ? (
@@ -243,40 +260,52 @@ export function ShareVaultModal({ vaultId, open, onOpenChange }: Props) {
                   Shared with
                 </p>
                 <ul className="space-y-1">
-                  {data.shares.map((share) => (
-                    <li
-                      key={share.id}
-                      className="flex items-center justify-between text-sm py-1 px-2 rounded-md hover:bg-muted/50"
-                    >
-                      <div className="flex flex-col min-w-0">
-                        <span className="truncate">{share.receiverUsername}</span>
-                        <span className="text-[10px] text-muted-foreground capitalize">
-                          {share.role}
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() =>
-                          setConfirmRevoke({
-                            shareId: share.id,
-                            receiverUsername: share.receiverUsername,
-                          })
-                        }
-                        disabled={pendingRevokes.has(share.id)}
-                        aria-label={`Revoke access for ${share.receiverUsername}`}
+                  {data.shares.map((share) => {
+                    const isRevoking = pendingRevokes.has(share.id);
+                    return (
+                      <li
+                        key={share.id}
+                        className={`flex items-center justify-between text-sm py-1 px-2 rounded-md hover:bg-muted/50 transition-opacity ${
+                          isRevoking ? 'opacity-60' : ''
+                        }`}
                       >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </li>
-                  ))}
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate">{share.receiverUsername}</span>
+                          <span className="text-[10px] text-muted-foreground capitalize">
+                            {share.role}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            setConfirmRevoke({
+                              shareId: share.id,
+                              receiverUsername: share.receiverUsername,
+                            })
+                          }
+                          disabled={isRevoking}
+                          aria-label={`Revoke access for ${share.receiverUsername}`}
+                        >
+                          {isRevoking ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">
-                No shares yet. Enter a username above to give someone access to this vault.
-              </p>
+              <div className="rounded-md border border-dashed border-border/60 px-3 py-4 text-center">
+                <p className="text-xs font-medium text-foreground">Not shared yet</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Enter a username above to give someone access.
+                </p>
+              </div>
             )}
           </div>
         </DialogContent>

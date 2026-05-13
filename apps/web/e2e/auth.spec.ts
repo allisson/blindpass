@@ -49,8 +49,8 @@ test.describe('Vault guard', () => {
     await expect(page).toHaveURL('/login');
   });
 
-  test('redirects from /sessions to /login when unauthenticated', async ({ page }) => {
-    await page.goto('/sessions');
+  test('redirects from /settings/sessions to /login when unauthenticated', async ({ page }) => {
+    await page.goto('/settings/sessions');
     await expect(page).toHaveURL('/login');
   });
 });

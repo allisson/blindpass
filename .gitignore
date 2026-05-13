@@ -158,3 +158,5 @@ apps/web/test-results
 
 # Per-developer Claude permission state
 .claude/settings.local.json
+
+docs/prototypes

@@ -1,2 +1,0 @@
-export const NAV_LINK_CLASS =
-  'relative flex items-center justify-center gap-2 rounded-md px-2 lg:px-3 lg:justify-start py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors [&.active]:bg-primary/10 [&.active]:text-primary [&.active]:font-medium [&.active]:before:absolute [&.active]:before:left-0 [&.active]:before:top-1.5 [&.active]:before:bottom-1.5 [&.active]:before:w-0.5 [&.active]:before:rounded-full [&.active]:before:bg-primary';

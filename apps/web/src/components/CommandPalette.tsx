@@ -1,8 +1,6 @@
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Command as CommandIcon,
-  CornerDownLeft,
   CreditCard,
   FileText,
   Folder,
@@ -352,8 +350,9 @@ export function CommandPalette({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-[calc(100%-1rem)] sm:max-w-[calc(100%-1rem)] lg:max-w-lg w-full p-0 gap-0 overflow-hidden rounded-xl !top-[8%] !translate-y-0 lg:!top-1/2 lg:!-translate-y-1/2"
+        className="max-w-[calc(100%-1rem)] w-full p-0 gap-0 overflow-hidden rounded-xl !top-[8%] !translate-y-0"
         onKeyDown={onKeyDown}
+        container={document.getElementById('app-shell')}
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <DialogDescription className="sr-only">
@@ -382,23 +381,6 @@ export function CommandPalette({
           ) : (
             renderGrouped(filtered, selected, setSelected, (a) => void a.run())
           )}
-        </div>
-        <div className="hidden lg:flex items-center gap-3 px-3 h-8 border-t border-border text-[10px] text-muted-foreground/70 font-mono">
-          <span className="flex items-center gap-1">
-            <CornerDownLeft className="w-3 h-3" />
-            open
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="border border-border/60 rounded px-1">↑↓</kbd>
-            navigate
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="border border-border/60 rounded px-1">⌘C</kbd>
-            copy
-          </span>
-          <span className="ml-auto flex items-center gap-1">
-            <CommandIcon className="w-3 h-3" />K
-          </span>
         </div>
       </DialogContent>
     </Dialog>

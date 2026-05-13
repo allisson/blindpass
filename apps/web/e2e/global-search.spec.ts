@@ -26,9 +26,13 @@ test.beforeAll(async ({ browser }) => {
     // Switch back to My Vault via the picker — SPA update, no page reload.
     await page.getByTestId('vault-picker-trigger').click();
     await page.getByRole('button', { name: 'My Vault', exact: true }).click();
-    await expect(page.getByTestId('vault-picker-trigger')).toContainText('My Vault', {
-      timeout: 5_000,
-    });
+    await expect(page.getByTestId('vault-picker-trigger')).toHaveAttribute(
+      'data-active-vault',
+      'My Vault',
+      {
+        timeout: 5_000,
+      },
+    );
 
     // Create Alpha Login in My Vault.
     await createVaultItem(page, 'login', 'Alpha Login', {
@@ -36,12 +40,21 @@ test.beforeAll(async ({ browser }) => {
       Password: 'alpha123',
     });
 
-    // Switch to Work Vault — sidebar is always accessible, even from item detail page.
+    // createVaultItem leaves us on the item detail page where the list panel
+    // is off-screen (mobile layout). Navigate back to vault list before switching vaults.
+    await page.getByRole('link', { name: 'Vault', exact: true }).click();
+    await page.waitForURL('/', { timeout: 10_000 });
+
+    // Switch to Work Vault.
     await page.getByTestId('vault-picker-trigger').click();
     await page.getByRole('button', { name: 'Work Vault', exact: true }).click();
-    await expect(page.getByTestId('vault-picker-trigger')).toContainText('Work Vault', {
-      timeout: 5_000,
-    });
+    await expect(page.getByTestId('vault-picker-trigger')).toHaveAttribute(
+      'data-active-vault',
+      'Work Vault',
+      {
+        timeout: 5_000,
+      },
+    );
 
     // Create Beta Login in Work Vault.
     await createVaultItem(page, 'login', 'Beta Login', {
@@ -104,12 +117,19 @@ test('command palette switches vault and displays item when selecting from anoth
   page,
 }) => {
   // Unlock restores the owned vault as active, so switch to Work Vault first.
-  await expect(page.getByTestId('vault-picker-trigger')).toContainText('My Vault');
+  await expect(page.getByTestId('vault-picker-trigger')).toHaveAttribute(
+    'data-active-vault',
+    'My Vault',
+  );
   await page.getByTestId('vault-picker-trigger').click();
   await page.getByRole('button', { name: 'Work Vault', exact: true }).click();
-  await expect(page.getByTestId('vault-picker-trigger')).toContainText('Work Vault', {
-    timeout: 5_000,
-  });
+  await expect(page.getByTestId('vault-picker-trigger')).toHaveAttribute(
+    'data-active-vault',
+    'Work Vault',
+    {
+      timeout: 5_000,
+    },
+  );
 
   await page.getByTestId('open-command-palette').click();
   await expect(page.getByTestId('command-palette-input')).toBeVisible();
@@ -121,10 +141,24 @@ test('command palette switches vault and displays item when selecting from anoth
 
   await row.click();
 
-  // Vault picker trigger label should have switched to My Vault.
-  await expect(page.getByTestId('vault-picker-trigger')).toContainText('My Vault', {
+  // Item detail should be visible (still on item detail page at this point).
+  await expect(page.getByRole('heading', { name: 'Alpha Login' })).toBeVisible({
     timeout: 5_000,
   });
+
+  // Vault picker trigger label should have switched to My Vault.
+  await expect(page.getByTestId('vault-picker-trigger')).toHaveAttribute(
+    'data-active-vault',
+    'My Vault',
+    {
+      timeout: 5_000,
+    },
+  );
+
+  // Navigate to vault home first — vault-picker-trigger is in the list panel which is
+  // off-screen on item detail pages.
+  await page.getByRole('link', { name: 'Vault', exact: true }).click();
+  await page.waitForURL('/', { timeout: 10_000 });
 
   // Open the vault picker and verify My Vault is marked as active (check icon visible).
   await page.getByTestId('vault-picker-trigger').click();
@@ -134,9 +168,4 @@ test('command palette switches vault and displays item when selecting from anoth
   await expect(myVaultBtn).toBeVisible();
   await expect(myVaultBtn.locator('svg').first()).not.toHaveClass(/invisible/);
   await page.keyboard.press('Escape');
-
-  // Item detail should be visible.
-  await expect(page.getByRole('heading', { name: 'Alpha Login' })).toBeVisible({
-    timeout: 5_000,
-  });
 });

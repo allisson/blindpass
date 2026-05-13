@@ -1,15 +1,9 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
 import { Drawer } from 'vaul';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { useIsMobile } from '@/hooks/use-is-mobile';
+import { cn } from '@/lib/utils';
 
 interface ResponsiveDialogProps {
   open: boolean;
@@ -28,7 +22,7 @@ export function ResponsiveDialog({
   description,
   children,
   footer,
-  showCloseButton = false,
+  showCloseButton,
 }: ResponsiveDialogProps) {
   const descId = useId();
   const isMobile = useIsMobile();
@@ -36,7 +30,7 @@ export function ResponsiveDialog({
   if (isMobile) {
     return (
       <Drawer.Root open={open} onOpenChange={onOpenChange}>
-        <Drawer.Portal>
+        <Drawer.Portal container={document.getElementById('app-shell')}>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50" />
           <Drawer.Content
             className="fixed bottom-0 inset-x-0 z-50 flex flex-col rounded-t-2xl bg-popover border-t border-border outline-none"
@@ -69,18 +63,45 @@ export function ResponsiveDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={showCloseButton}
-        aria-describedby={description ? descId : undefined}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription id={descId}>{description}</DialogDescription>}
-        </DialogHeader>
-        {children}
-        {footer && <DialogFooter>{footer}</DialogFooter>}
-      </DialogContent>
-    </Dialog>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop className="fixed inset-0 isolate z-50 bg-black/10" />
+        <DialogPrimitive.Popup
+          className={cn(
+            'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 outline-none sm:max-w-sm',
+            'data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          )}
+          aria-describedby={description ? descId : undefined}
+        >
+          <DialogPrimitive.Title className="text-base font-semibold text-foreground font-heading">
+            {title}
+          </DialogPrimitive.Title>
+          {description && (
+            <p id={descId} className="text-sm text-muted-foreground">
+              {description}
+            </p>
+          )}
+          {children}
+          {footer && (
+            <div className="-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end">
+              {footer}
+            </div>
+          )}
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              render={
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  aria-label="Close"
+                />
+              }
+            >
+              <span aria-hidden="true">×</span>
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

@@ -59,7 +59,7 @@ export function CryptoWalletFields() {
           Lost passphrase = different wallet, lost funds.
         </p>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="field-group">
           <Label htmlFor="walletName" optional>
             Wallet Name
@@ -91,7 +91,7 @@ export function CryptoWalletFields() {
           </datalist>
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="field-group" data-invalid={!!errors.derivationPath}>
           <Label htmlFor="derivationPath" optional>
             Derivation Path

@@ -13,8 +13,10 @@ async function openOwnerSessionsPage(
   const ownerCtx = await browser.newContext();
   const ownerPage = await ownerCtx.newPage();
   await unlockVault(ownerPage, savedBundle, PASSWORD);
+  await ownerPage.getByRole('link', { name: 'Settings' }).click();
+  await ownerPage.waitForURL('/settings', { timeout: 10_000 });
   await ownerPage.getByRole('link', { name: 'Sessions' }).click();
-  await ownerPage.waitForURL('/sessions');
+  await ownerPage.waitForURL('/settings/sessions');
   return { ownerCtx, ownerPage };
 }
 
@@ -30,8 +32,10 @@ async function openSecondDevice(
 async function refetchSessions(ownerPage: Page): Promise<void> {
   await ownerPage.getByRole('link', { name: 'Vault' }).click();
   await ownerPage.waitForURL('/');
+  await ownerPage.getByRole('link', { name: 'Settings' }).click();
+  await ownerPage.waitForURL('/settings', { timeout: 10_000 });
   await ownerPage.getByRole('link', { name: 'Sessions' }).click();
-  await ownerPage.waitForURL('/sessions');
+  await ownerPage.waitForURL('/settings/sessions');
   await expect(ownerPage.getByRole('heading', { name: 'Active sessions' })).toBeVisible();
 }
 

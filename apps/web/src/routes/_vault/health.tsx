@@ -1,6 +1,14 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Calendar, Loader2, RefreshCw, ShieldCheck, Siren } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calendar,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Siren,
+} from 'lucide-react';
 import { type DecryptedItem, useVaultItems } from '@/hooks/useVault';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,6 +17,7 @@ import { getItemSubtitle } from '@/components/vault/ItemCard';
 import { passwordStrength } from '@/lib/passwordStrength';
 import { checkBreachesBatch, type BreachResult } from '@/lib/hibp';
 import { toast } from 'sonner';
+import { useOpenCommandPalette } from '@/components/vault/shell/CommandPaletteContext';
 
 export const Route = createFileRoute('/_vault/health')({
   component: HealthPage,
@@ -70,14 +79,20 @@ function FindingRow({ item, hint }: { item: DecryptedItem; hint: string }) {
     <Link
       to="/$itemId"
       params={{ itemId: item.id }}
-      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent/40 transition-colors"
+      className="flex items-center gap-[14px] px-4 py-3 hover:bg-accent/60 transition-colors border-b border-muted last:border-b-0"
     >
       <ItemAvatar item={item} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
-        <p className="text-xs text-muted-foreground truncate">{getItemSubtitle(item)}</p>
+        <p className="text-[15px] font-semibold tracking-[-0.01em] text-foreground truncate">
+          {item.title}
+        </p>
+        <p className="text-[12px] font-medium text-muted-foreground truncate mt-0.5">
+          {getItemSubtitle(item)}
+        </p>
       </div>
-      <span className="text-[11px] text-muted-foreground shrink-0 tabular-nums">{hint}</span>
+      <span className="text-[11px] font-medium text-muted-foreground shrink-0 tabular-nums">
+        {hint}
+      </span>
     </Link>
   );
 }
@@ -96,16 +111,35 @@ function Section({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="glass-card p-4">
-      <header className="flex items-center justify-between gap-2">
+    <section className="bg-card border border-border rounded overflow-hidden">
+      <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-muted">
         <div className="flex items-center gap-2 text-foreground">
           <Icon className="w-4 h-4 text-muted-foreground" aria-hidden />
-          <h2 className="text-sm font-medium">{title}</h2>
+          <h2 className="text-[13px] font-semibold">{title}</h2>
         </div>
         <span className={`text-xs font-mono tabular-nums ${TONE_TEXT[tone]}`}>{count}</span>
       </header>
-      {children ? <div className="mt-3">{children}</div> : null}
+      {children}
     </section>
+  );
+}
+
+function TopBar() {
+  const openCommandPalette = useOpenCommandPalette();
+  return (
+    <div className="h-14 bg-card border-b border-border shrink-0 flex items-center px-4 gap-3">
+      <ShieldCheck className="w-5 h-5 text-muted-foreground shrink-0" />
+      <span className="text-[16px] font-bold tracking-[-0.01em] text-foreground flex-1">
+        Password Health
+      </span>
+      <button
+        onClick={openCommandPalette}
+        className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+        aria-label="Search and commands"
+      >
+        <Search className="w-4 h-4" />
+      </button>
+    </div>
   );
 }
 
@@ -157,32 +191,19 @@ function HealthPage() {
 
   if (isLoading) {
     return (
-      <div
-        className="h-full overflow-y-auto px-4 py-6 lg:px-6 lg:py-8 max-w-3xl mx-auto w-full"
-        aria-busy="true"
-        aria-label="Loading vault health"
-      >
-        <header className="mb-6 space-y-2">
-          <Skeleton className="h-3 w-12 rounded" />
-          <Skeleton className="h-6 w-40 rounded" />
-          <Skeleton className="h-3 w-44 rounded" />
-        </header>
-        <Skeleton className="h-4 w-64 rounded mb-3" />
-        <div className="flex flex-wrap gap-1.5 mb-6">
+      <div className="flex flex-col h-full" aria-busy="true" aria-label="Loading vault health">
+        <TopBar />
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          <Skeleton className="h-4 w-48 rounded" />
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-5 w-20 rounded-full" />
-          ))}
-        </div>
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <section key={i} className="glass-card p-4">
-              <header className="flex items-center justify-between gap-2">
+            <section key={i} className="bg-card border border-border rounded overflow-hidden">
+              <div className="flex items-center justify-between gap-2 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <Skeleton className="w-4 h-4 rounded" />
                   <Skeleton className="h-3.5 w-32 rounded" />
                 </div>
                 <Skeleton className="h-3 w-6 rounded" />
-              </header>
+              </div>
             </section>
           ))}
         </div>
@@ -192,9 +213,12 @@ function HealthPage() {
 
   if (!findings || !items?.length) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
-        <ShieldCheck className="w-8 h-8 text-muted-foreground/50" />
-        <p className="text-sm text-muted-foreground">No items to audit yet.</p>
+      <div className="flex flex-col h-full">
+        <TopBar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-6">
+          <ShieldCheck className="w-8 h-8 text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">No items to audit yet.</p>
+        </div>
       </div>
     );
   }
@@ -223,150 +247,145 @@ function HealthPage() {
   ];
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-6 lg:px-6 lg:py-8 max-w-3xl mx-auto w-full">
-      <header className="mb-6">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70">Audit</p>
-        <h1 className="font-heading text-xl font-semibold text-foreground tracking-tight">
-          Vault health
-        </h1>
-        <p className="text-xs text-muted-foreground mt-1">All checks run locally.</p>
-      </header>
-
-      <div className="mb-6" data-testid="health-summary">
-        <p className="text-sm text-foreground tabular-nums">
-          {affected > 0 ? (
-            <>
-              <span className="text-destructive font-medium">{affected}</span> of {logins.length}{' '}
-              logins need attention.
-            </>
-          ) : (
-            <span className="text-muted-foreground">
-              {logins.length} login{logins.length === 1 ? '' : 's'}, no findings.
-            </span>
-          )}
-        </p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {chips.map((c) => (
-            <span
-              key={c.label}
-              className={`text-[11px] font-medium px-2 py-0.5 rounded-full border tabular-nums ${TONE_CHIP[c.tone]}`}
-            >
-              {c.label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <Section
-          Icon={AlertTriangle}
-          title="Weak passwords"
-          count={findings.weak.length}
-          tone={findings.weak.length > 0 ? 'danger' : 'muted'}
-        >
-          {findings.weak.length > 0 ? (
-            <ul className="space-y-0.5" data-testid="weak-list">
-              {findings.weak.map((item) => (
-                <li key={item.id}>
-                  <FindingRow item={item} hint="weak" />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Section>
-
-        <Section
-          Icon={RefreshCw}
-          title="Reused passwords"
-          count={reusedItemCount}
-          tone={reusedItemCount > 0 ? 'attention' : 'muted'}
-        >
-          {findings.reused.length > 0 ? (
-            <ul className="space-y-3" data-testid="reused-list">
-              {findings.reused.map((group, idx) => (
-                <li key={idx}>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 px-1 mb-1">
-                    Reused across {group.items.length}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {group.items.map((item) => (
-                      <li key={item.id}>
-                        <FindingRow item={item} hint="reused" />
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Section>
-
-        <Section
-          Icon={Calendar}
-          title="Old passwords (>1 year)"
-          count={findings.old.length}
-          tone={findings.old.length > 0 ? 'attention' : 'muted'}
-        >
-          {findings.old.length > 0 ? (
-            <ul className="space-y-0.5" data-testid="old-list">
-              {findings.old.map((item) => (
-                <li key={item.id}>
-                  <FindingRow
-                    item={item}
-                    hint={`updated ${
-                      item.updatedAt
-                        ? new Date(item.updatedAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : 'long ago'
-                    }`}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Section>
-
-        <Section
-          Icon={Siren}
-          title="Breached passwords"
-          count={breaches !== null ? (breachItems?.length ?? 0) : '—'}
-          tone={breaches !== null && breachItems && breachItems.length > 0 ? 'danger' : 'muted'}
-        >
-          {breaches === null ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">
-                Sends only a 5-character SHA-1 prefix to Have I Been Pwned (k-anonymity); never the
-                password.
-              </p>
-              <Button
-                size="sm"
-                onClick={() => void runBreachCheck()}
-                disabled={breachProgress !== null}
-                data-testid="run-breach-check"
-                className="self-end sm:self-auto sm:shrink-0"
+    <div className="flex flex-col h-full">
+      <TopBar />
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="mb-5" data-testid="health-summary">
+          <p className="text-[13px] text-foreground tabular-nums">
+            {affected > 0 ? (
+              <>
+                <span className="text-destructive font-semibold">{affected}</span> of{' '}
+                {logins.length} logins need attention.
+              </>
+            ) : (
+              <span className="text-muted-foreground">
+                {logins.length} login{logins.length === 1 ? '' : 's'}, no findings.
+              </span>
+            )}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {chips.map((c) => (
+              <span
+                key={c.label}
+                className={`text-[11px] font-bold tracking-[0.04em] px-2 py-0.5 rounded-[3px] border tabular-nums ${TONE_CHIP[c.tone]}`}
               >
-                {breachProgress ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    {breachProgress.done}/{breachProgress.total}
-                  </>
-                ) : (
-                  'Run check'
-                )}
-              </Button>
-            </div>
-          ) : breachItems && breachItems.length > 0 ? (
-            <ul className="space-y-0.5" data-testid="breach-list">
-              {breachItems.map(({ item, count }) => (
-                <li key={item.id}>
-                  <FindingRow item={item} hint={`seen ${count.toLocaleString()}× in breaches`} />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Section>
+                {c.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Section
+            Icon={AlertTriangle}
+            title="Weak passwords"
+            count={findings.weak.length}
+            tone={findings.weak.length > 0 ? 'danger' : 'muted'}
+          >
+            {findings.weak.length > 0 ? (
+              <ul data-testid="weak-list">
+                {findings.weak.map((item) => (
+                  <li key={item.id}>
+                    <FindingRow item={item} hint="weak" />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Section>
+
+          <Section
+            Icon={RefreshCw}
+            title="Reused passwords"
+            count={reusedItemCount}
+            tone={reusedItemCount > 0 ? 'attention' : 'muted'}
+          >
+            {findings.reused.length > 0 ? (
+              <ul data-testid="reused-list">
+                {findings.reused.map((group, idx) => (
+                  <li key={idx} className={idx > 0 ? 'border-t border-muted' : ''}>
+                    <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-muted-foreground px-4 py-2 bg-muted/40">
+                      Reused across {group.items.length} logins
+                    </p>
+                    <ul>
+                      {group.items.map((item) => (
+                        <li key={item.id}>
+                          <FindingRow item={item} hint="reused" />
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Section>
+
+          <Section
+            Icon={Calendar}
+            title="Old passwords (>1 year)"
+            count={findings.old.length}
+            tone={findings.old.length > 0 ? 'attention' : 'muted'}
+          >
+            {findings.old.length > 0 ? (
+              <ul data-testid="old-list">
+                {findings.old.map((item) => (
+                  <li key={item.id}>
+                    <FindingRow
+                      item={item}
+                      hint={`updated ${
+                        item.updatedAt
+                          ? new Date(item.updatedAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : 'long ago'
+                      }`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Section>
+
+          <Section
+            Icon={Siren}
+            title="Breached passwords"
+            count={breaches !== null ? (breachItems?.length ?? 0) : '—'}
+            tone={breaches !== null && breachItems && breachItems.length > 0 ? 'danger' : 'muted'}
+          >
+            {breaches === null ? (
+              <div className="px-4 py-3 flex flex-col gap-2">
+                <p className="text-[12px] text-muted-foreground">
+                  Sends only a 5-character SHA-1 prefix to Have I Been Pwned (k-anonymity); never
+                  the password.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => void runBreachCheck()}
+                  disabled={breachProgress !== null}
+                  data-testid="run-breach-check"
+                  className="self-end"
+                >
+                  {breachProgress ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {breachProgress.done}/{breachProgress.total}
+                    </>
+                  ) : (
+                    'Run check'
+                  )}
+                </Button>
+              </div>
+            ) : breachItems && breachItems.length > 0 ? (
+              <ul data-testid="breach-list">
+                {breachItems.map(({ item, count }) => (
+                  <li key={item.id}>
+                    <FindingRow item={item} hint={`seen ${count.toLocaleString()}× in breaches`} />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Section>
+        </div>
       </div>
     </div>
   );

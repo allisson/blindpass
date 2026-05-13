@@ -10,19 +10,16 @@ import { lazy, Suspense, type Dispatch, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
-  Check,
-  ChevronDown,
   CreditCard,
   FileText,
   Folder,
   FolderOpen,
   Key,
   KeyRound,
-  LogOut,
+  MoreHorizontal,
   Pencil,
   Plus,
   Search,
-  Share2,
   Shield,
   Trash2,
   User,
@@ -39,16 +36,13 @@ import { passwordStrength } from '@/lib/passwordStrength';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Separator } from '@/components/ui/separator';
 import {
-  useVaultItems,
-  useCreateVault,
-  useRenameVault,
-  useSwitchVault,
-  useTrashItems,
-  useDeleteItem,
-  useMoveItem,
-} from '@/hooks/useVault';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useVaultItems, useDeleteItem, useMoveItem } from '@/hooks/useVault';
 import {
   useFolders,
   useCreateFolder,
@@ -56,13 +50,9 @@ import {
   useDeleteFolder,
   type DecryptedFolder,
 } from '@/hooks/useFolders';
-const ShareVaultModal = lazy(() =>
-  import('@/components/vault/ShareVaultModal').then((m) => ({ default: m.ShareVaultModal })),
-);
 const CommandPalette = lazy(() =>
   import('@/components/CommandPalette').then((m) => ({ default: m.CommandPalette })),
 );
-import { AccountMenu } from '@/components/AccountMenu';
 import { VaultSheet } from '@/components/VaultSheet';
 import { ShortcutsDialog } from '@/components/ShortcutsDialog';
 import { applyTheme, loadTheme, type Theme } from '@/lib/theme';
@@ -70,22 +60,15 @@ import { session, clearLastUsername, getLastUsername } from '@/lib/session';
 import { api } from '@/lib/api';
 import { vaultCache } from '@/lib/vaultCache';
 import { SyncBoundary } from '@/components/sync/SyncBoundary';
+import { SyncStatusBar } from '@/components/SyncStatusBar';
 import { KeychainRequired } from '@/components/keychain/KeychainRequired';
-import { VaultSidebar } from '@/components/vault/shell/VaultSidebar';
 import { BottomTabBar } from '@/components/vault/shell/BottomTabBar';
 import { ListPanelAnimator, MainAnimator } from '@/components/vault/shell/ListPanelAnimator';
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { useLeaveShare } from '@/hooks/useVaultSharing';
+  CommandPaletteContext,
+  useOpenCommandPalette,
+} from '@/components/vault/shell/CommandPaletteContext';
 import { toast } from 'sonner';
-import { useIsMobile } from '@/hooks/use-is-mobile';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 
 export const Route = createFileRoute('/_vault')({
@@ -118,326 +101,7 @@ function loadStoredTypes(): string[] {
   }
 }
 
-function VaultPicker() {
-  const [open, setOpen] = useState(false);
-  const [localActiveId, setLocalActiveId] = useState(() => session.get()?.activeVaultId ?? '');
-  const [localVaults, setLocalVaults] = useState(() => {
-    const s = session.get();
-    if (!s)
-      return [] as {
-        id: string;
-        name: string;
-        isShared: boolean;
-        ownerUsername?: string;
-        shareId?: string;
-      }[];
-    return Array.from(s.vaults.entries()).map(([id, v]) => ({
-      id,
-      name: v.name,
-      isShared: v.isShared,
-      ownerUsername: v.ownerUsername,
-      shareId: v.shareId,
-    }));
-  });
-  const [shareVaultId, setShareVaultId] = useState<string | null>(null);
-  const [renameId, setRenameId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createName, setCreateName] = useState('');
-  const [leaveConfirm, setLeaveConfirm] = useState<{
-    vaultId: string;
-    shareId: string;
-    name: string;
-  } | null>(null);
-
-  const switchVault = useSwitchVault();
-  const createVault = useCreateVault();
-  const renameVault = useRenameVault();
-  const leaveShare = useLeaveShare();
-  const router = useRouter();
-
-  useEffect(() => {
-    function onVaultSwitch() {
-      const s = session.get();
-      if (s) setLocalActiveId(s.activeVaultId);
-    }
-    window.addEventListener('bp:vault-switch', onVaultSwitch);
-    return () => window.removeEventListener('bp:vault-switch', onVaultSwitch);
-  }, []);
-
-  const activeVault = localVaults.find((v) => v.id === localActiveId);
-
-  function handleSwitch(id: string) {
-    switchVault(id);
-    setLocalActiveId(id);
-    setOpen(false);
-    window.dispatchEvent(new CustomEvent('bp:vault-switch'));
-  }
-
-  function startRename(id: string, name: string) {
-    setRenameId(id);
-    setRenameValue(name);
-  }
-
-  async function commitRename(vaultId: string) {
-    const trimmed = renameValue.trim();
-    if (!trimmed) {
-      setRenameId(null);
-      return;
-    }
-    await renameVault.mutateAsync({ vaultId, name: trimmed });
-    setLocalVaults((prev) => prev.map((v) => (v.id === vaultId ? { ...v, name: trimmed } : v)));
-    setRenameId(null);
-  }
-
-  async function commitCreate() {
-    const trimmed = createName.trim();
-    if (!trimmed) {
-      setCreating(false);
-      return;
-    }
-    let vault: Awaited<ReturnType<typeof createVault.mutateAsync>>;
-    try {
-      vault = await createVault.mutateAsync(trimmed);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create vault');
-      setCreating(false);
-      return;
-    }
-    const s = session.get();
-    if (s) {
-      setLocalVaults(
-        Array.from(s.vaults.entries()).map(([id, v]) => ({
-          id,
-          name: v.name,
-          isShared: v.isShared,
-          ownerUsername: v.ownerUsername,
-          shareId: v.shareId,
-        })),
-      );
-      setLocalActiveId(vault.id);
-      setOpen(false);
-      void router.navigate({ to: '/', search: { vaultId: vault.id } });
-      window.dispatchEvent(new CustomEvent('bp:vault-switch'));
-    }
-    setCreateName('');
-    setCreating(false);
-  }
-
-  async function handleLeave() {
-    if (!leaveConfirm) return;
-    const { vaultId, shareId, name: vaultName } = leaveConfirm;
-    setLeaveConfirm(null);
-    setOpen(false);
-    try {
-      await leaveShare.mutateAsync({ vaultId, shareId });
-      const s = session.get();
-      if (s) {
-        const entry = s.vaults.get(vaultId);
-        if (entry) entry.vaultKey.fill(0);
-        s.vaults.delete(vaultId);
-        if (s.activeVaultId === vaultId) {
-          const firstId = [...s.vaults.keys()][0];
-          if (firstId) {
-            s.activeVaultId = firstId;
-            const first = s.vaults.get(firstId);
-            if (s.keychain && first) s.keychain.vaultKey = first.vaultKey;
-            setLocalActiveId(firstId);
-          }
-        }
-      }
-      setLocalVaults((prev) => prev.filter((v) => v.id !== vaultId));
-      toast.success(`Left vault "${vaultName}"`);
-    } catch {
-      toast.error('Failed to leave vault');
-    }
-  }
-
-  return (
-    <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          data-testid="vault-picker-trigger"
-          className="flex items-center gap-1.5 w-full px-4 py-2 text-left hover:bg-accent/40 transition-colors"
-        >
-          <span className="text-sm font-semibold text-foreground truncate flex-1 flex items-center gap-1.5">
-            {activeVault?.name ?? 'Vault'}
-            {activeVault?.isShared && (
-              <span
-                data-testid="active-vault-shared"
-                title={
-                  activeVault.ownerUsername
-                    ? `Shared by ${activeVault.ownerUsername}`
-                    : 'Shared with you'
-                }
-                className="inline-flex items-center gap-0.5 text-[10px] font-mono uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-1.5 py-px rounded-full"
-              >
-                <Users className="w-2.5 h-2.5" />
-                shared
-              </span>
-            )}
-          </span>
-          <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-56 p-1.5">
-          <div className="space-y-px">
-            {localVaults.map((vault) => (
-              <div key={vault.id} className="flex items-center gap-1 group/item">
-                {renameId === vault.id ? (
-                  <Input
-                    autoFocus
-                    className="flex-1 h-7 text-sm"
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitRename(vault.id);
-                      if (e.key === 'Escape') setRenameId(null);
-                    }}
-                    onBlur={() => commitRename(vault.id)}
-                  />
-                ) : (
-                  <button
-                    className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left"
-                    onClick={() => handleSwitch(vault.id)}
-                  >
-                    <Check
-                      className={`w-3.5 h-3.5 shrink-0 ${vault.id === localActiveId ? 'text-primary' : 'invisible'}`}
-                    />
-                    <span className="truncate">{vault.name}</span>
-                    {vault.isShared && (
-                      <span
-                        title={
-                          vault.ownerUsername
-                            ? `Shared by ${vault.ownerUsername}`
-                            : 'Shared with you'
-                        }
-                        aria-label={
-                          vault.ownerUsername
-                            ? `Shared by ${vault.ownerUsername}`
-                            : 'Shared with you'
-                        }
-                      >
-                        <Users className="w-3 h-3 shrink-0 text-muted-foreground" />
-                      </span>
-                    )}
-                  </button>
-                )}
-                {renameId !== vault.id && !vault.isShared && (
-                  <>
-                    <button
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      onClick={() => startRename(vault.id, vault.name)}
-                      aria-label="Rename vault"
-                      data-testid="rename-vault-button"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      onClick={() => setShareVaultId(vault.id)}
-                      aria-label="Share vault"
-                      data-testid="share-vault-button"
-                    >
-                      <Share2 className="w-3 h-3" />
-                    </button>
-                  </>
-                )}
-                {renameId !== vault.id && vault.isShared && vault.shareId && (
-                  <button
-                    className="p-1 rounded-md text-destructive/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    onClick={() =>
-                      setLeaveConfirm({
-                        vaultId: vault.id,
-                        shareId: vault.shareId!,
-                        name: vault.name,
-                      })
-                    }
-                    aria-label="Leave vault"
-                    title="Leave vault"
-                  >
-                    <LogOut className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          <Separator className="my-1.5" />
-          {creating ? (
-            <div className="flex items-center gap-1 px-1">
-              <Input
-                autoFocus
-                data-testid="new-vault-name-input"
-                placeholder="Vault name…"
-                className="flex-1 h-7 text-sm"
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitCreate();
-                  if (e.key === 'Escape') {
-                    setCreating(false);
-                    setCreateName('');
-                  }
-                }}
-              />
-              <button
-                data-testid="confirm-create-vault-button"
-                className="p-1 rounded-md text-primary hover:bg-primary/10 transition-colors"
-                onClick={commitCreate}
-                aria-label="Create vault"
-              >
-                <Check className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              data-testid="new-vault-button"
-              className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={() => setCreating(true)}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New vault
-            </button>
-          )}
-        </PopoverContent>
-      </Popover>
-      {shareVaultId !== null && (
-        <Suspense fallback={null}>
-          <ShareVaultModal
-            vaultId={shareVaultId}
-            open={true}
-            onOpenChange={(o) => {
-              if (!o) setShareVaultId(null);
-            }}
-          />
-        </Suspense>
-      )}
-      <Dialog
-        open={leaveConfirm !== null}
-        onOpenChange={(o) => {
-          if (!o) setLeaveConfirm(null);
-        }}
-      >
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Leave vault</DialogTitle>
-            <DialogDescription>
-              Leave &ldquo;{leaveConfirm?.name}&rdquo;? You will lose access and the owner will be
-              notified.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button variant="destructive" onClick={() => void handleLeave()}>
-              Leave
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-type FolderFilter = 'all' | 'unfiled' | string;
+type FolderFilter = 'all' | string;
 
 const DRAG_MIME = 'application/x-blindpass-items';
 
@@ -523,29 +187,21 @@ function FolderStrip({
   }
 
   const pillBase =
-    'shrink-0 text-xs px-2.5 py-1.5 rounded-full border transition-colors whitespace-nowrap';
-  const pillActive = 'bg-primary/15 border-primary/40 text-primary';
-  const pillInactive =
-    'border-border/60 text-muted-foreground hover:text-foreground hover:border-border';
+    'shrink-0 text-[12px] font-bold tracking-[0.04em] h-7 px-3 rounded-[3px] border transition-colors whitespace-nowrap flex items-center';
+  const pillActive = 'bg-primary border-primary text-white';
+  const pillInactive = 'bg-card border-border text-muted-foreground hover:text-foreground';
 
   return (
-    <div className="px-3 pb-2 flex gap-1 overflow-x-auto scrollbar-none" data-testid="folder-strip">
+    <div
+      className="px-[14px] flex gap-2 overflow-x-auto scrollbar-none h-11 items-center border-b border-muted shrink-0"
+      data-testid="folder-strip"
+    >
       <button
         data-testid="folder-filter-all"
         onClick={() => onSelect('all')}
         className={`${pillBase} ${selectedFolderId === 'all' ? pillActive : pillInactive}`}
       >
         All
-      </button>
-      <button
-        data-testid="folder-filter-unfiled"
-        onClick={() => onSelect('unfiled')}
-        {...dropProps('unfiled')}
-        className={`${pillBase} ${selectedFolderId === 'unfiled' ? pillActive : pillInactive} ${
-          dragOverId === 'unfiled' ? 'ring-2 ring-primary/40 scale-105' : ''
-        }`}
-      >
-        Unfiled
       </button>
       {folders.map((folder) => (
         <div key={folder.id} className="shrink-0 flex items-center gap-0.5 group/folder">
@@ -575,27 +231,35 @@ function FolderStrip({
             </button>
           )}
           {!isReadOnly && renamingId !== folder.id && (
-            <div className="flex lg:hidden lg:group-hover/folder:flex items-center gap-0.5 ml-0.5">
-              <button
-                data-testid={`rename-folder-button-${folder.id}`}
-                onClick={() => {
-                  setRenamingId(folder.id);
-                  setRenameValue(folder.name);
-                }}
-                className="p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={`Rename ${folder.name}`}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                data-testid={`folder-options-button-${folder.id}`}
+                className="flex p-1.5 rounded text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                aria-label={`Options for ${folder.name}`}
               >
-                <Pencil className="w-2.5 h-2.5" />
-              </button>
-              <button
-                data-testid={`delete-folder-button-${folder.id}`}
-                onClick={() => void handleDelete(folder.id)}
-                className="p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors"
-                aria-label={`Delete ${folder.name}`}
-              >
-                <Trash2 className="w-2.5 h-2.5" />
-              </button>
-            </div>
+                <MoreHorizontal className="w-3.5 h-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="bottom" className="w-32">
+                <DropdownMenuItem
+                  data-testid={`rename-folder-button-${folder.id}`}
+                  onClick={() => {
+                    setRenamingId(folder.id);
+                    setRenameValue(folder.name);
+                  }}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-2" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  data-testid={`delete-folder-button-${folder.id}`}
+                  onClick={() => void handleDelete(folder.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       ))}
@@ -633,15 +297,22 @@ function FolderStrip({
   );
 }
 
-function VaultListPanel({
-  onOpenVaultSheet,
-  onOpenCommandPalette,
-}: {
-  onOpenVaultSheet?: () => void;
-  onOpenCommandPalette?: () => void;
-}) {
+function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void }) {
+  const openCommandPalette = useOpenCommandPalette();
   const { data: items, isLoading, isError } = useVaultItems();
   const { data: folders = [] } = useFolders();
+  const [activeVaultName, setActiveVaultName] = useState(() => {
+    const s = session.get();
+    return s ? (s.vaults.get(s.activeVaultId)?.name ?? '') : '';
+  });
+  useEffect(() => {
+    function onSwitch() {
+      const s = session.get();
+      if (s) setActiveVaultName(s.vaults.get(s.activeVaultId)?.name ?? '');
+    }
+    window.addEventListener('bp:vault-switch', onSwitch);
+    return () => window.removeEventListener('bp:vault-switch', onSwitch);
+  }, []);
   const deleteItem = useDeleteItem();
   const moveItem = useMoveItem();
   const [search, setSearch] = useState('');
@@ -657,11 +328,6 @@ function VaultListPanel({
   const longPressStart = useRef<{ x: number; y: number } | null>(null);
   const s = session.get();
   const isReadOnly = s ? s.vaults.get(s.activeVaultId)?.role === 'viewer' : false;
-  const [activeVaultName, setActiveVaultName] = useState(() => {
-    const sess = session.get();
-    return sess?.vaults.get(sess.activeVaultId)?.name ?? 'Vault';
-  });
-
   useEffect(() => {
     function onVaultSwitch() {
       setSelectedTypes([]);
@@ -669,8 +335,6 @@ function VaultListPanel({
       setSelection(new Set());
       setLastClickedId(null);
       localStorage.removeItem(STORAGE_KEY);
-      const sess = session.get();
-      setActiveVaultName(sess?.vaults.get(sess.activeVaultId)?.name ?? 'Vault');
     }
     window.addEventListener('bp:vault-switch', onVaultSwitch);
     return () => window.removeEventListener('bp:vault-switch', onVaultSwitch);
@@ -708,7 +372,6 @@ function VaultListPanel({
   const folderFiltered = useMemo(() => {
     if (!items) return [];
     if (selectedFolderId === 'all') return items;
-    if (selectedFolderId === 'unfiled') return items.filter((i) => i.folderId == null);
     return items.filter((i) => i.folderId === selectedFolderId);
   }, [items, selectedFolderId]);
 
@@ -931,51 +594,48 @@ function VaultListPanel({
       data-testid="vault-list"
       onKeyDown={onPanelKeyDown}
     >
-      {onOpenVaultSheet && (
-        <div className="md:hidden px-3 pt-1 flex items-center justify-between">
+      {/* Top bar — 56px, bg-card */}
+      <div className="h-14 bg-card border-b border-border shrink-0 flex items-center px-4 gap-2">
+        {onOpenVaultSheet && (
           <button
             onClick={onOpenVaultSheet}
-            className="flex items-center gap-1 min-h-11 px-0 text-foreground hover:text-primary transition-colors"
-            aria-label="Switch vault"
+            data-testid="vault-picker-trigger"
+            data-active-vault={activeVaultName}
+            className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+            aria-label="Account and vaults"
           >
-            <span className="text-xs font-semibold truncate">{activeVaultName}</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+            <Users className="w-4 h-4" />
           </button>
-          {onOpenCommandPalette && (
-            <button
-              onClick={onOpenCommandPalette}
-              aria-label="Search"
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
-      <div className="px-3 pt-3 pb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          {selectedFolderId !== 'all' ? (
-            <FolderOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-          ) : (
-            <Folder className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          )}
-          <span
-            data-testid="vault-list-heading"
-            className="font-heading text-[13px] font-semibold text-foreground truncate tracking-tight"
-          >
-            {headingLabel}
+        )}
+        {selectedFolderId !== 'all' ? (
+          <FolderOpen className="w-4 h-4 text-primary shrink-0" />
+        ) : (
+          <Folder className="w-4 h-4 text-muted-foreground shrink-0" />
+        )}
+        <span
+          data-testid="vault-list-heading"
+          className="text-[16px] font-bold tracking-[-0.01em] text-foreground truncate flex-1"
+        >
+          {headingLabel}
+        </span>
+        {items && items.length > 0 && (
+          <span className="text-[11px] font-bold tracking-[0.06em] text-muted-foreground bg-muted px-[7px] py-[2px] rounded-sm shrink-0">
+            {selectedTypes.length > 0 || search.trim() ? filtered.length : folderFiltered.length}
           </span>
-          {items && items.length > 0 && (
-            <span className="text-[10px] font-mono font-medium text-muted-foreground bg-muted px-1.5 py-px rounded-full shrink-0">
-              {selectedTypes.length > 0 || search.trim() ? filtered.length : folderFiltered.length}
-            </span>
-          )}
-        </div>
+        )}
+        <button
+          onClick={openCommandPalette}
+          data-testid="open-command-palette"
+          className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+          aria-label="Search and commands"
+        >
+          <Search className="w-4 h-4" />
+        </button>
         {!isReadOnly && (
           <Link
             to="/items/new"
             search={newItemSearch}
-            className={buttonVariants({ size: 'icon', variant: 'ghost' }) + ' w-9 h-9 shrink-0'}
+            className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white shrink-0 touch-manipulation"
             aria-label="New item"
           >
             <Plus className="w-4 h-4" />
@@ -989,14 +649,14 @@ function VaultListPanel({
         isReadOnly={isReadOnly}
         onDropItems={(folderId, ids) => void handleFolderDrop(folderId, ids)}
       />
-      <div className="px-3 pb-2">
-        <div className="relative">
+      <div className="px-[14px] h-[50px] flex items-center border-b border-muted shrink-0">
+        <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           <Input
             ref={searchRef}
             placeholder="Search…"
             aria-label="Search vault items"
-            className="pl-8 pr-14 h-9 text-sm"
+            className="pl-8 pr-8 h-9 text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
@@ -1007,11 +667,6 @@ function VaultListPanel({
               }
             }}
           />
-          {!search && (
-            <kbd className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[10px] font-mono text-muted-foreground/50 border border-border/50 rounded px-1 leading-4">
-              /
-            </kbd>
-          )}
           {search && (
             <button
               onClick={() => setSearch('')}
@@ -1022,46 +677,47 @@ function VaultListPanel({
             </button>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-1 mt-2">
-          {TYPE_OPTIONS.map(({ value, label, Icon }) => {
-            const active = selectedTypes.includes(value);
-            return (
-              <button
-                key={value}
-                onClick={() => toggleType(value)}
-                title={label}
-                aria-label={`Filter by ${label}`}
-                aria-pressed={active}
-                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${
-                  active
-                    ? 'bg-primary/15 border-primary/40 text-primary'
-                    : 'border-border/60 text-muted-foreground hover:text-foreground hover:border-border'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-              </button>
-            );
-          })}
-          {selectedTypes.length > 0 && (
+      </div>
+      <div className="px-[14px] h-[46px] flex items-center gap-1 border-b border-muted shrink-0">
+        {TYPE_OPTIONS.map(({ value, label, Icon }) => {
+          const active = selectedTypes.includes(value);
+          return (
             <button
-              onClick={clearTypes}
-              className="text-[11px] font-medium px-2 h-7 rounded-full text-muted-foreground/70 hover:text-foreground transition-colors"
+              key={value}
+              onClick={() => toggleType(value)}
+              title={label}
+              aria-label={`Filter by ${label}`}
+              aria-pressed={active}
+              className={`inline-flex items-center justify-center w-9 h-8 rounded-[3px] transition-colors ${
+                active
+                  ? 'bg-accent text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+              }`}
             >
-              Clear
+              <Icon className="w-4 h-4" />
             </button>
-          )}
-        </div>
+          );
+        })}
+        {selectedTypes.length > 0 && (
+          <button
+            onClick={clearTypes}
+            className="text-[11px] font-bold tracking-[0.06em] uppercase ml-1 h-8 px-2 rounded-[3px] text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
+          >
+            Clear
+          </button>
+        )}
       </div>
       {isReadOnly && (
-        <div className="mx-3 mb-2 px-2.5 py-1.5 rounded-md bg-muted/60 border border-border/40 flex items-center gap-1.5">
+        <div className="px-4 py-2 flex items-center gap-1.5 bg-muted/40 border-b border-muted shrink-0">
           <Users className="w-3 h-3 text-muted-foreground shrink-0" />
-          <span className="text-[11px] text-muted-foreground">Read-only · shared vault</span>
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Read-only · shared vault
+          </span>
         </div>
       )}
-      <Separator />
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto py-1 px-1 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-1"
+        className="flex-1 overflow-y-auto"
         onClickCapture={onListClickCapture}
         onPointerDown={onListPointerDown}
         onKeyDown={(e) => {
@@ -1126,8 +782,8 @@ function VaultListPanel({
                   e.dataTransfer.setData(DRAG_MIME, JSON.stringify(ids));
                   e.dataTransfer.effectAllowed = 'move';
                 }}
-                className={`relative rounded-lg ${
-                  isSelected ? 'ring-1 ring-primary/60 bg-primary/5' : ''
+                className={`relative ${
+                  isSelected ? 'ring-1 ring-inset ring-primary/60 bg-primary/5' : ''
                 } ${!isReadOnly ? 'cursor-grab active:cursor-grabbing' : ''}`}
               >
                 <ItemCard
@@ -1142,7 +798,7 @@ function VaultListPanel({
       {selection.size > 0 && !isReadOnly && (
         <div
           data-testid="bulk-bar"
-          className="absolute left-0 right-0 px-3 py-2 border-t border-border bg-popover/95 backdrop-blur-sm flex items-center gap-2 shadow-lg bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0"
+          className="absolute left-0 right-0 px-3 py-2 border-t border-border bg-popover flex items-center gap-2 shadow-lg bottom-0"
         >
           <span className="text-xs font-medium text-foreground tabular-nums">{selection.size}</span>
           <span className="text-xs text-muted-foreground">selected</span>
@@ -1155,12 +811,17 @@ function VaultListPanel({
             >
               Move
             </PopoverTrigger>
-            <PopoverContent align="end" side="top" className="w-44 p-1">
+            <PopoverContent
+              align="end"
+              side="top"
+              className="w-44 p-1"
+              container={document.getElementById('app-shell')}
+            >
               <button
                 onClick={() => void bulkMoveTo(null)}
                 className="w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors"
               >
-                Unfiled
+                No folder
               </button>
               {folders.map((f) => (
                 <button
@@ -1214,12 +875,12 @@ function VaultListPanel({
 }
 
 function VaultLayout() {
-  const isMobile = useIsMobile();
+  const isMobile = true;
   const router = useRouter();
   const qc = useQueryClient();
   const isTrash = useMatch({ from: '/_vault/trash', shouldThrow: false });
   const isSettings = useMatch({ from: '/_vault/settings', shouldThrow: false });
-  const isSessions = useMatch({ from: '/_vault/sessions', shouldThrow: false });
+  const isSessions = useMatch({ from: '/_vault/settings/sessions', shouldThrow: false });
   const isHealth = useMatch({ from: '/_vault/health', shouldThrow: false });
   const isAdmin = useMatch({ from: '/_vault/admin', shouldThrow: false });
   const isItemDetail = useMatch({ from: '/_vault/$itemId', shouldThrow: false });
@@ -1378,44 +1039,17 @@ function VaultLayoutContent({
   theme,
   vaultSheetOpen,
 }: VaultLayoutContentProps) {
-  const { data: trashItems } = useTrashItems();
-  const trashCount = trashItems?.length ?? 0;
-
   return (
-    <>
+    <CommandPaletteContext.Provider value={() => setPaletteOpen(true)}>
       <SyncBoundary>
-        <div
-          className="h-dvh bg-background flex relative overflow-hidden"
-          style={{ backgroundImage: 'var(--glow-bg)' }}
-        >
-          <VaultSidebar
-            trashCount={trashCount}
-            vaultPicker={<VaultPicker />}
-            accountMenu={
-              session.get()?.username ? (
-                <AccountMenu
-                  username={session.get()!.username!}
-                  theme={theme}
-                  onThemeChange={handleThemeChange}
-                  onLock={handleLock}
-                  onSignOutRequested={() => setShowSignOutConfirm(true)}
-                  isAdmin={adminStatus?.isAdmin ?? false}
-                />
-              ) : null
-            }
-            onOpenCommandPalette={() => setPaletteOpen(true)}
-            onOpenVaultSheet={() => setVaultSheetOpen(true)}
-          />
-          <div className="flex-1 relative overflow-hidden flex">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 min-h-0 relative overflow-hidden flex">
             <ListPanelAnimator
               show={showListPanel}
               isMobile={isMobile}
               mobileHideList={mobileHideList}
             >
-              <VaultListPanel
-                onOpenVaultSheet={() => setVaultSheetOpen(true)}
-                onOpenCommandPalette={() => setPaletteOpen(true)}
-              />
+              <VaultListPanel onOpenVaultSheet={() => setVaultSheetOpen(true)} />
             </ListPanelAnimator>
             <MainAnimator
               isMobile={isMobile}
@@ -1425,11 +1059,8 @@ function VaultLayoutContent({
               <Outlet />
             </MainAnimator>
           </div>
-          <BottomTabBar
-            showListPanel={showListPanel}
-            trashCount={trashCount}
-            inert={vaultSheetOpen}
-          />
+          <SyncStatusBar />
+          <BottomTabBar showListPanel={showListPanel} inert={vaultSheetOpen} />
           <VaultSheet
             open={vaultSheetOpen}
             onOpenChange={setVaultSheetOpen}
@@ -1473,6 +1104,6 @@ function VaultLayoutContent({
           />
         </div>
       </SyncBoundary>
-    </>
+    </CommandPaletteContext.Provider>
   );
 }

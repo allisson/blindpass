@@ -320,7 +320,7 @@ describe('TrashPage', () => {
   it('loading state keeps recovery controls unavailable', () => {
     renderTrash({ items: [], isLoading: true });
 
-    expect(screen.getByText('Trash')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Trash' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Empty trash' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('trash-table')).not.toBeInTheDocument();
   });
@@ -328,7 +328,7 @@ describe('TrashPage', () => {
   it('handles missing trash data without rendering rows', () => {
     renderTrash({ items: undefined, isLoading: false, isError: false });
 
-    expect(screen.getByText('Trash')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Trash' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Empty trash' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('trash-table')).not.toBeInTheDocument();
   });

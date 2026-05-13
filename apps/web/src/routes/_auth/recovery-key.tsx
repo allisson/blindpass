@@ -31,7 +31,7 @@ function RecoveryKeyPage() {
   if (!recoveryKey) return null;
 
   return (
-    <Card className="glass-card">
+    <Card className="auth-card">
       <CardHeader>
         <div className="flex items-center gap-2 mb-1">
           <ShieldCheck className="w-5 h-5 text-primary" />

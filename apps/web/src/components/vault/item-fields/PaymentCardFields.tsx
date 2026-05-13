@@ -36,7 +36,7 @@ export function PaymentCardFields() {
         />
         <FieldError message={errors.number?.message} />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="field-group col-span-1" data-invalid={!!errors.expMonth}>
           <Label htmlFor="expMonth">Month</Label>
           <Input

@@ -13,7 +13,6 @@ import { Route as VaultRouteRouteImport } from './routes/_vault/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as VaultIndexRouteImport } from './routes/_vault/index'
 import { Route as VaultTrashRouteImport } from './routes/_vault/trash'
-import { Route as VaultSessionsRouteImport } from './routes/_vault/sessions'
 import { Route as VaultHealthRouteImport } from './routes/_vault/health'
 import { Route as VaultAdminRouteImport } from './routes/_vault/admin'
 import { Route as VaultItemIdRouteImport } from './routes/_vault/$itemId'
@@ -27,6 +26,7 @@ import { Route as AuthAuthenticatorRouteImport } from './routes/_auth/authentica
 import { Route as VaultSettingsRouteRouteImport } from './routes/_vault/settings/route'
 import { Route as VaultSettingsIndexRouteImport } from './routes/_vault/settings/index'
 import { Route as VaultSettingsVerificationIdRouteImport } from './routes/_vault/settings/verification-id'
+import { Route as VaultSettingsSessionsRouteImport } from './routes/_vault/settings/sessions'
 import { Route as VaultSettingsMasterPasswordRouteImport } from './routes/_vault/settings/master-password'
 import { Route as VaultSettingsInstallAppRouteImport } from './routes/_vault/settings/install-app'
 import { Route as VaultSettingsImportRouteImport } from './routes/_vault/settings/import'
@@ -55,11 +55,6 @@ const VaultIndexRoute = VaultIndexRouteImport.update({
 const VaultTrashRoute = VaultTrashRouteImport.update({
   id: '/trash',
   path: '/trash',
-  getParentRoute: () => VaultRouteRoute,
-} as any)
-const VaultSessionsRoute = VaultSessionsRouteImport.update({
-  id: '/sessions',
-  path: '/sessions',
   getParentRoute: () => VaultRouteRoute,
 } as any)
 const VaultHealthRoute = VaultHealthRouteImport.update({
@@ -128,6 +123,11 @@ const VaultSettingsVerificationIdRoute =
     path: '/verification-id',
     getParentRoute: () => VaultSettingsRouteRoute,
   } as any)
+const VaultSettingsSessionsRoute = VaultSettingsSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => VaultSettingsRouteRoute,
+} as any)
 const VaultSettingsMasterPasswordRoute =
   VaultSettingsMasterPasswordRouteImport.update({
     id: '/master-password',
@@ -200,7 +200,6 @@ export interface FileRoutesByFullPath {
   '/$itemId': typeof VaultItemIdRoute
   '/admin': typeof VaultAdminRoute
   '/health': typeof VaultHealthRoute
-  '/sessions': typeof VaultSessionsRoute
   '/trash': typeof VaultTrashRoute
   '/$itemId/edit': typeof VaultItemIdEditRoute
   '/items/new': typeof VaultItemsNewRoute
@@ -213,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/settings/import': typeof VaultSettingsImportRoute
   '/settings/install-app': typeof VaultSettingsInstallAppRoute
   '/settings/master-password': typeof VaultSettingsMasterPasswordRoute
+  '/settings/sessions': typeof VaultSettingsSessionsRoute
   '/settings/verification-id': typeof VaultSettingsVerificationIdRoute
   '/settings/': typeof VaultSettingsIndexRoute
 }
@@ -228,7 +228,6 @@ export interface FileRoutesByTo {
   '/$itemId': typeof VaultItemIdRoute
   '/admin': typeof VaultAdminRoute
   '/health': typeof VaultHealthRoute
-  '/sessions': typeof VaultSessionsRoute
   '/trash': typeof VaultTrashRoute
   '/$itemId/edit': typeof VaultItemIdEditRoute
   '/items/new': typeof VaultItemsNewRoute
@@ -241,6 +240,7 @@ export interface FileRoutesByTo {
   '/settings/import': typeof VaultSettingsImportRoute
   '/settings/install-app': typeof VaultSettingsInstallAppRoute
   '/settings/master-password': typeof VaultSettingsMasterPasswordRoute
+  '/settings/sessions': typeof VaultSettingsSessionsRoute
   '/settings/verification-id': typeof VaultSettingsVerificationIdRoute
   '/settings': typeof VaultSettingsIndexRoute
 }
@@ -259,7 +259,6 @@ export interface FileRoutesById {
   '/_vault/$itemId': typeof VaultItemIdRoute
   '/_vault/admin': typeof VaultAdminRoute
   '/_vault/health': typeof VaultHealthRoute
-  '/_vault/sessions': typeof VaultSessionsRoute
   '/_vault/trash': typeof VaultTrashRoute
   '/_vault/': typeof VaultIndexRoute
   '/_vault/$itemId_/edit': typeof VaultItemIdEditRoute
@@ -273,6 +272,7 @@ export interface FileRoutesById {
   '/_vault/settings/import': typeof VaultSettingsImportRoute
   '/_vault/settings/install-app': typeof VaultSettingsInstallAppRoute
   '/_vault/settings/master-password': typeof VaultSettingsMasterPasswordRoute
+  '/_vault/settings/sessions': typeof VaultSettingsSessionsRoute
   '/_vault/settings/verification-id': typeof VaultSettingsVerificationIdRoute
   '/_vault/settings/': typeof VaultSettingsIndexRoute
 }
@@ -291,7 +291,6 @@ export interface FileRouteTypes {
     | '/$itemId'
     | '/admin'
     | '/health'
-    | '/sessions'
     | '/trash'
     | '/$itemId/edit'
     | '/items/new'
@@ -304,6 +303,7 @@ export interface FileRouteTypes {
     | '/settings/import'
     | '/settings/install-app'
     | '/settings/master-password'
+    | '/settings/sessions'
     | '/settings/verification-id'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
@@ -319,7 +319,6 @@ export interface FileRouteTypes {
     | '/$itemId'
     | '/admin'
     | '/health'
-    | '/sessions'
     | '/trash'
     | '/$itemId/edit'
     | '/items/new'
@@ -332,6 +331,7 @@ export interface FileRouteTypes {
     | '/settings/import'
     | '/settings/install-app'
     | '/settings/master-password'
+    | '/settings/sessions'
     | '/settings/verification-id'
     | '/settings'
   id:
@@ -349,7 +349,6 @@ export interface FileRouteTypes {
     | '/_vault/$itemId'
     | '/_vault/admin'
     | '/_vault/health'
-    | '/_vault/sessions'
     | '/_vault/trash'
     | '/_vault/'
     | '/_vault/$itemId_/edit'
@@ -363,6 +362,7 @@ export interface FileRouteTypes {
     | '/_vault/settings/import'
     | '/_vault/settings/install-app'
     | '/_vault/settings/master-password'
+    | '/_vault/settings/sessions'
     | '/_vault/settings/verification-id'
     | '/_vault/settings/'
   fileRoutesById: FileRoutesById
@@ -400,13 +400,6 @@ declare module '@tanstack/react-router' {
       path: '/trash'
       fullPath: '/trash'
       preLoaderRoute: typeof VaultTrashRouteImport
-      parentRoute: typeof VaultRouteRoute
-    }
-    '/_vault/sessions': {
-      id: '/_vault/sessions'
-      path: '/sessions'
-      fullPath: '/sessions'
-      preLoaderRoute: typeof VaultSessionsRouteImport
       parentRoute: typeof VaultRouteRoute
     }
     '/_vault/health': {
@@ -498,6 +491,13 @@ declare module '@tanstack/react-router' {
       path: '/verification-id'
       fullPath: '/settings/verification-id'
       preLoaderRoute: typeof VaultSettingsVerificationIdRouteImport
+      parentRoute: typeof VaultSettingsRouteRoute
+    }
+    '/_vault/settings/sessions': {
+      id: '/_vault/settings/sessions'
+      path: '/sessions'
+      fullPath: '/settings/sessions'
+      preLoaderRoute: typeof VaultSettingsSessionsRouteImport
       parentRoute: typeof VaultSettingsRouteRoute
     }
     '/_vault/settings/master-password': {
@@ -614,6 +614,7 @@ interface VaultSettingsRouteRouteChildren {
   VaultSettingsImportRoute: typeof VaultSettingsImportRoute
   VaultSettingsInstallAppRoute: typeof VaultSettingsInstallAppRoute
   VaultSettingsMasterPasswordRoute: typeof VaultSettingsMasterPasswordRoute
+  VaultSettingsSessionsRoute: typeof VaultSettingsSessionsRoute
   VaultSettingsVerificationIdRoute: typeof VaultSettingsVerificationIdRoute
   VaultSettingsIndexRoute: typeof VaultSettingsIndexRoute
 }
@@ -628,6 +629,7 @@ const VaultSettingsRouteRouteChildren: VaultSettingsRouteRouteChildren = {
   VaultSettingsImportRoute: VaultSettingsImportRoute,
   VaultSettingsInstallAppRoute: VaultSettingsInstallAppRoute,
   VaultSettingsMasterPasswordRoute: VaultSettingsMasterPasswordRoute,
+  VaultSettingsSessionsRoute: VaultSettingsSessionsRoute,
   VaultSettingsVerificationIdRoute: VaultSettingsVerificationIdRoute,
   VaultSettingsIndexRoute: VaultSettingsIndexRoute,
 }
@@ -640,7 +642,6 @@ interface VaultRouteRouteChildren {
   VaultItemIdRoute: typeof VaultItemIdRoute
   VaultAdminRoute: typeof VaultAdminRoute
   VaultHealthRoute: typeof VaultHealthRoute
-  VaultSessionsRoute: typeof VaultSessionsRoute
   VaultTrashRoute: typeof VaultTrashRoute
   VaultIndexRoute: typeof VaultIndexRoute
   VaultItemIdEditRoute: typeof VaultItemIdEditRoute
@@ -652,7 +653,6 @@ const VaultRouteRouteChildren: VaultRouteRouteChildren = {
   VaultItemIdRoute: VaultItemIdRoute,
   VaultAdminRoute: VaultAdminRoute,
   VaultHealthRoute: VaultHealthRoute,
-  VaultSessionsRoute: VaultSessionsRoute,
   VaultTrashRoute: VaultTrashRoute,
   VaultIndexRoute: VaultIndexRoute,
   VaultItemIdEditRoute: VaultItemIdEditRoute,

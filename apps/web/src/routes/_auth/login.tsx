@@ -49,7 +49,7 @@ function LoginPage() {
   }
 
   return (
-    <Card className="glass-card">
+    <Card className="auth-card">
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
         <CardDescription>

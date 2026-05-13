@@ -144,7 +144,7 @@ export function DeveloperCredentialFields({ initialMode = 'token' }: Props) {
             />
             <FieldError message={errors.provider?.message} />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div className="field-group">
               <Label htmlFor="environment" optional>
                 Environment
@@ -253,7 +253,7 @@ export function DeveloperCredentialFields({ initialMode = 'token' }: Props) {
       )}
       {credentialMode === 'ssh_key' && (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div className="field-group" data-invalid={!!errors.username}>
               <Label htmlFor="username">Username</Label>
               <Input
@@ -275,7 +275,7 @@ export function DeveloperCredentialFields({ initialMode = 'token' }: Props) {
               <FieldError message={errors.host?.message} />
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div className="field-group" data-invalid={!!errors.algorithm}>
               <Label htmlFor="algorithm" optional>
                 Algorithm

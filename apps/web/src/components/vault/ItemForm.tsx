@@ -136,7 +136,7 @@ export function ItemForm({ type, defaultValues, onSubmit, onCancel, submitLabel 
         <CustomFieldsSection />
 
         <FieldError message={error ?? undefined} />
-        <div className="sticky bottom-0 bg-card pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:bg-transparent lg:pt-2 border-t border-border/50 lg:border-0 flex gap-2">
+        <div className="sticky bottom-0 bg-card pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-border/50 flex gap-2">
           <Button type="button" variant="outline" className="flex-1" onClick={handleCancel}>
             Cancel
           </Button>

@@ -75,7 +75,7 @@ function ResetPasswordPage() {
   if (!recovery || !recoveryPhrase) return null;
 
   return (
-    <Card className="glass-card">
+    <Card className="auth-card">
       <CardHeader>
         <CardTitle>Finish recovery</CardTitle>
         <CardDescription>

@@ -1,12 +1,12 @@
 const AVATAR_COLORS = [
   'oklch(0.62 0.18 295)', // violet
-  'oklch(0.65 0.16 195)', // teal
-  'oklch(0.64 0.19 230)', // cyan-blue
-  'oklch(0.66 0.17 155)', // emerald
-  'oklch(0.63 0.18 30)', // rose-orange
-  'oklch(0.66 0.16 260)', // indigo
-  'oklch(0.67 0.15 170)', // green-teal
-  'oklch(0.64 0.19 320)', // pink-violet
+  'oklch(0.60 0.14 260)', // indigo
+  'oklch(0.60 0.13 280)', // blue-violet
+  'oklch(0.60 0.17 310)', // pink-violet
+  'oklch(0.60 0.15 290)', // blue-purple
+  'oklch(0.58 0.10 270)', // slate-indigo
+  'oklch(0.64 0.16 305)', // lavender
+  'oklch(0.62 0.12 250)', // blue-slate
 ] as const;
 
 export function getAvatarColor(title: string): string {

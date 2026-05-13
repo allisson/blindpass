@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { ReactNode } from 'react';
 
 interface Props {
@@ -13,8 +13,10 @@ const TRANSITION = {
   duration: 0.22,
   ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
 };
+const INSTANT = { duration: 0 };
 
 export function ListPanelAnimator({ show, isMobile, mobileHideList, children }: Props) {
+  const reduceMotion = useReducedMotion();
   return (
     <AnimatePresence initial={false}>
       {show && (
@@ -32,8 +34,8 @@ export function ListPanelAnimator({ show, isMobile, mobileHideList, children }: 
             opacity: 0,
             x: isMobile ? '-100%' : -8,
           }}
-          transition={TRANSITION}
-          className="glass-list-panel border-r-0 md:border-r absolute inset-0 md:static md:inset-auto md:w-72 md:shrink-0 flex flex-col"
+          transition={reduceMotion ? INSTANT : TRANSITION}
+          className="solid-panel border-r absolute inset-0 flex flex-col"
         >
           {children}
         </motion.div>
@@ -55,13 +57,14 @@ export function MainAnimator({
   mobileHideList,
   children,
 }: MainAnimatorProps) {
+  const reduceMotion = useReducedMotion();
   const slideOut = isMobile && showListPanel && !mobileHideList;
   return (
     <motion.main
-      className="absolute inset-0 md:static md:inset-auto md:flex-1 overflow-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+      className="absolute inset-0 overflow-auto"
       initial={{ x: slideOut ? '100%' : 0 }}
       animate={{ x: slideOut ? '100%' : 0 }}
-      transition={TRANSITION}
+      transition={reduceMotion ? INSTANT : TRANSITION}
     >
       {children}
     </motion.main>

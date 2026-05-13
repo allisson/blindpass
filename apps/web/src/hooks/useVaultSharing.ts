@@ -8,6 +8,7 @@ import { fromBase64, toBase64 } from '@/lib/b64';
 export function useVaultShares(vaultId: string) {
   return useQuery({
     queryKey: ['vaultShares', vaultId],
+    staleTime: 0,
     queryFn: async () => ({
       shares: await fetchAllPages((cursor) =>
         api.listShares(vaultId, cursor).then((r) => ({ data: r.shares, nextCursor: r.nextCursor })),

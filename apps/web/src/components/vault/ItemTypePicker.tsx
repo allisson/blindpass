@@ -37,7 +37,7 @@ interface Props {
 
 export function ItemTypePicker({ onSelect }: Props) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-3">
       {TYPES.map(({ type, label, icon: Icon, description }) => (
         <button
           key={type}

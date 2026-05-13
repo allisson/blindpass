@@ -82,7 +82,7 @@ export function TotpFields() {
         />
         <FieldError message={errors.secret?.message} />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="field-group">
           <Label htmlFor="issuer" optional>
             Issuer
@@ -119,7 +119,7 @@ export function TotpFields() {
         Advanced
       </button>
       {showAdvanced && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div className="field-group">
             <Label htmlFor="algorithm">Algorithm</Label>
             <select

@@ -1,5 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router';
+import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useOpenCommandPalette } from '@/components/vault/shell/CommandPaletteContext';
 import { loadTheme, type Theme } from '@/lib/theme';
 import { loadDensity, type Density } from '@/lib/density';
 import { session } from '@/lib/session';
@@ -34,7 +36,8 @@ interface RowProps {
     | '/settings/import'
     | '/settings/export'
     | '/settings/install-app'
-    | '/settings/delete-account';
+    | '/settings/delete-account'
+    | '/settings/sessions';
   label: string;
   hint?: string;
   destructive?: boolean;
@@ -45,15 +48,15 @@ function Row({ to, label, hint, destructive }: RowProps) {
     <Link
       to={to}
       className={[
-        'group flex items-center justify-between gap-3 h-9 px-3 rounded-md text-sm transition-colors',
+        'group flex items-center justify-between gap-3 h-12 px-4 text-[14px] font-medium transition-colors border-b border-muted last:border-b-0',
         destructive
-          ? 'text-foreground/85 hover:bg-destructive/10 hover:text-destructive [&.active]:bg-destructive/10 [&.active]:text-destructive'
-          : 'text-foreground/85 hover:bg-accent/60 hover:text-foreground [&.active]:bg-accent [&.active]:text-foreground',
+          ? 'text-foreground hover:bg-destructive/10 hover:text-destructive [&.active]:bg-destructive/10 [&.active]:text-destructive'
+          : 'text-foreground hover:bg-accent/60 [&.active]:bg-accent',
       ].join(' ')}
     >
       <span className="truncate">{label}</span>
       {hint ? (
-        <span className="text-xs text-muted-foreground/80 group-[.active]:text-muted-foreground tabular-nums shrink-0">
+        <span className="text-[12px] font-medium text-muted-foreground group-[.active]:text-muted-foreground tabular-nums shrink-0">
           {hint}
         </span>
       ) : null}
@@ -63,13 +66,14 @@ function Row({ to, label, hint, destructive }: RowProps) {
 
 function GroupHeader({ children }: { children: string }) {
   return (
-    <div className="px-3 mt-5 mb-1.5 first:mt-2 text-caption font-medium text-muted-foreground">
+    <div className="px-4 pt-5 pb-1.5 first:pt-3 text-[10px] font-bold tracking-[0.1em] uppercase text-muted-foreground">
       {children}
     </div>
   );
 }
 
 export function SettingsListPanel() {
+  const openCommandPalette = useOpenCommandPalette();
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [density, setDensity] = useState<Density>(() => loadDensity());
   const [lockMinutes, setLockMinutes] = useState(() => session.getIdleMinutes());
@@ -137,18 +141,20 @@ export function SettingsListPanel() {
   }
 
   return (
-    <nav
-      ref={navRef}
-      onKeyDown={onKeyDown}
-      aria-label="Settings"
-      className="flex flex-col md:h-full"
-    >
-      <div className="px-4 pt-4 pb-2 md:pt-5">
-        <h2 className="font-heading text-base font-medium tracking-tight text-foreground">
+    <nav ref={navRef} onKeyDown={onKeyDown} aria-label="Settings" className="flex flex-col">
+      <div className="h-14 bg-card border-b border-border shrink-0 flex items-center px-4 gap-3">
+        <h1 className="text-[16px] font-bold tracking-[-0.01em] text-foreground flex-1">
           Settings
-        </h2>
+        </h1>
+        <button
+          onClick={openCommandPalette}
+          className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+          aria-label="Search and commands"
+        >
+          <Search className="w-4 h-4" />
+        </button>
       </div>
-      <div className="px-1 pb-4 md:flex-1 md:overflow-y-auto md:min-h-0">
+      <div className="pb-4">
         <GroupHeader>Preferences</GroupHeader>
         <Row to="/settings/appearance" label="Appearance" hint={THEME_LABEL[theme]} />
         <Row to="/settings/density" label="Density" hint={DENSITY_LABEL[density]} />
@@ -164,6 +170,7 @@ export function SettingsListPanel() {
         <Row to="/settings/export" label="Export" />
 
         <GroupHeader>Account</GroupHeader>
+        <Row to="/settings/sessions" label="Sessions" />
         <Row
           to="/settings/install-app"
           label="Install app"

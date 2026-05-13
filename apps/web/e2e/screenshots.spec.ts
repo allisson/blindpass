@@ -16,10 +16,6 @@ async function polishForScreenshot(page: Page, originalUsername: string): Promis
   await page.evaluate(
     ({ orig, name }) => {
       document.querySelectorAll('[data-sonner-toast]').forEach((el) => el.remove());
-      // Avatar initial in the account-menu trigger.
-      const trigger = document.querySelector('[data-testid="account-menu-trigger"]');
-      const initialEl = trigger?.querySelector('div span');
-      if (initialEl) initialEl.textContent = name.charAt(0).toUpperCase();
       // Replace any visible text containing the throwaway username.
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       const updates: Text[] = [];
@@ -135,8 +131,8 @@ test.describe('@screenshot screenshots', () => {
       // After the last createVaultItem we're on /$itemId. Use SPA navigation
       // for the rest of the captures — page.goto would full-reload and lock the vault.
 
-      // 03 — Vault home (populated). Click sidebar Vault link (SPA, no reload).
-      await page.locator('aside').getByLabel('Vault', { exact: true }).click();
+      // 03 — Vault home (populated). Click bottom tab Vault link (SPA, no reload).
+      await page.getByRole('link', { name: 'Vault', exact: true }).click();
       await page.waitForURL('/', { timeout: 10_000 });
       await expect(page.getByTestId('vault-list-heading')).toBeVisible();
       await expect(page.getByTestId('vault-list').getByText('Mailbox')).toBeVisible();
@@ -149,21 +145,23 @@ test.describe('@screenshot screenshots', () => {
       await polishForScreenshot(page, username);
       await page.screenshot({ path: file('04-item') });
 
-      // 05 — New item type picker — click the New item link inside the list panel.
+      // 05 — New item type picker. After step 04 we're on /$itemId where the list panel
+      // is off-screen (mobile layout). Navigate back to vault root first.
+      await page.getByRole('link', { name: 'Back to vault' }).click();
+      await page.waitForURL('/', { timeout: 10_000 });
       await page.getByTestId('vault-list').getByLabel('New item').click();
       await page.waitForURL(/\/items\/new$/, { timeout: 10_000 });
       await expect(page.getByRole('heading', { name: 'New item' })).toBeVisible();
       await polishForScreenshot(page, username);
       await page.screenshot({ path: file('05-new-item') });
 
-      // 06 — Settings — sidebar link, SPA navigation. The vault-list panel hides
-      // on /settings (showListPanel === false in VaultLayout), but the layout
-      // re-renders on the next React tick. Wait for the list to actually unmount
-      // so the screenshot doesn't catch a transition frame.
-      await page.locator('aside').getByLabel('Settings', { exact: true }).click();
+      // 06 — Settings — bottom tab link, SPA navigation. The vault-list panel is
+      // unmounted on /settings (showListPanel === false in VaultLayout). Wait for
+      // it to leave the DOM so the screenshot doesn't catch a transition frame.
+      await page.getByRole('link', { name: 'Settings', exact: true }).click();
       await page.waitForURL(/\/settings$/, { timeout: 10_000 });
       await expect(page.getByTestId('vault-list')).toBeHidden();
-      await expect(page.getByText('Current state')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
       await page.waitForLoadState('networkidle');
       await polishForScreenshot(page, username);
       await page.screenshot({ path: file('06-settings') });
