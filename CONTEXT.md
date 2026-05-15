@@ -67,7 +67,7 @@ _Invariant_: TOTP secret is never plaintext at rest.
 The AES-256-GCM ciphertext + IV + tag bundle that encrypts a TOTP secret on disk. Encrypted under the env-loaded `TOTP_SECRET_ENCRYPTION_KEY` (32 bytes).
 
 **SessionIssuance**:
-The atomic act of minting a session: random token in cookie, hashed token in DB row. Cookie and row must always be created together.
+The act of minting a session: random token in cookie, hashed token in DB row. Cookie and row are paired through a branded **ProofOfSession** value — `session.issue` produces a proof in the same call that inserts the row, and `session.attachCookie` is the only function that consumes one (after `issue` resolves). The cookie attach must stay after a successful `issue` so a thrown insert cannot leave an orphan cookie on the response. The opaque type carries the obligation, replacing the previous "by convention" pairing.
 
 **RecoveryVerifier**:
 The scrypt-hashed proof of a user's recovery answer, stored as `{hash, salt}`. Verified at recovery time without revealing the answer.

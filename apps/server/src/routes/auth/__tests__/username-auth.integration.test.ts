@@ -152,4 +152,66 @@ describe('username auth flow', () => {
     });
     expect(secondRegisterRes.statusCode).toBe(201);
   });
+
+  it('does not leak the session token into completion-route response bodies', async () => {
+    let now = Date.parse('2035-05-05T12:00:00.000Z');
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+
+    const app = await buildIntegrationApp();
+    apps.push(app);
+    const username = uniqueUsername();
+    const keyPair = await generateKeyPair();
+
+    const registerRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      body: makeRegisterBody(username, keyPair.publicKey),
+    });
+    const { enrollment } = registerRes.json() as {
+      enrollment: { enrollmentId: string; setupKey: string };
+    };
+
+    const completeRegistrationRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register/complete',
+      body: {
+        username,
+        enrollmentId: enrollment.enrollmentId,
+        authenticatorCode: generateTotpCode(enrollment.setupKey),
+      },
+    });
+    const registrationCookie = extractSessionToken(completeRegistrationRes.headers['set-cookie']);
+    expect(registrationCookie).toMatch(/^[0-9a-f]{64}$/);
+    expectBodyDoesNotLeak(completeRegistrationRes.body, registrationCookie);
+
+    now += 30_000;
+
+    const completeLoginRes = await app.inject({
+      method: 'POST',
+      url: '/auth/login/complete',
+      body: {
+        username,
+        authenticatorCode: generateTotpCode(enrollment.setupKey),
+      },
+    });
+    const loginCookie = extractSessionToken(completeLoginRes.headers['set-cookie']);
+    expect(loginCookie).toMatch(/^[0-9a-f]{64}$/);
+    expectBodyDoesNotLeak(completeLoginRes.body, loginCookie);
+  });
 });
+
+function extractSessionToken(setCookie: string | string[] | undefined): string {
+  const cookieStr = Array.isArray(setCookie) ? setCookie.join(', ') : (setCookie ?? '');
+  const match = cookieStr.match(/bp_session=([0-9a-f]+)/);
+  if (!match) throw new Error('bp_session cookie not present in Set-Cookie header');
+  return match[1];
+}
+
+function expectBodyDoesNotLeak(body: string, token: string): void {
+  expect(body).not.toContain(token);
+  expect(body).not.toContain(Buffer.from(token, 'hex').toString('base64'));
+  // Re-serialise the parsed JSON so encoded copies (e.g. nested under a key)
+  // would surface even if the raw body happens not to contain the substring.
+  const parsed: unknown = JSON.parse(body);
+  expect(JSON.stringify(parsed)).not.toContain(token);
+}

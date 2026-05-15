@@ -31,7 +31,7 @@ export function registerCompleteRegistrationRoute(app: FastifyInstance): void {
         return reply.status(status).send({ error });
       }
 
-      session.attachCookie(reply, result.authToken);
+      session.attachCookie(reply, result.proof);
       return reply.status(200).send(result.bundle);
     },
   );

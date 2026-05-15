@@ -129,7 +129,9 @@ describe('completeRegistration', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(enrollments.findPending).mockResolvedValue(enrollment as any);
     vi.mocked(totp.verify).mockReturnValue(7);
-    vi.mocked(session.issue).mockResolvedValue('tok');
+    vi.mocked(session.issue).mockResolvedValue({
+      token: 'tok',
+    } as unknown as session.ProofOfSession);
     vi.mocked(users.findFullById).mockResolvedValue({
       ...verifiedUser,
       publicKey: null,
@@ -148,14 +150,15 @@ describe('completeRegistration', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(enrollments.findPending).mockResolvedValue(enrollment as any);
     vi.mocked(totp.verify).mockReturnValue(7);
-    vi.mocked(session.issue).mockResolvedValue('tok-xyz');
+    const fakeProof = { token: 'tok-xyz' } as unknown as session.ProofOfSession;
+    vi.mocked(session.issue).mockResolvedValue(fakeProof);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(users.findFullById).mockResolvedValue(verifiedUser as any);
 
     const r = await completeRegistration(db, baseInput);
 
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.authToken).toBe('tok-xyz');
+    if (r.ok) expect(r.proof).toBe(fakeProof);
 
     expect(totpSecrets.replaceForUser).toHaveBeenCalledWith(db, 'u1', enrollment.encryptedSecret);
     expect(enrollments.deleteByUser).toHaveBeenCalledWith(db, 'u1');

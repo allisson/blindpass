@@ -48,7 +48,7 @@ export function registerCompleteRecoveryRoute(app: FastifyInstance): void {
         return reply.status(400).send({ error });
       }
 
-      session.attachCookie(reply, result.authToken);
+      session.attachCookie(reply, result.proof);
       return reply.status(200).send(result.bundle);
     },
   );

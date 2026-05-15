@@ -78,14 +78,15 @@ describe('completeLogin', () => {
     expect(session.issue).not.toHaveBeenCalled();
   });
 
-  it('updates the totp counter, issues a session, and returns the token on success', async () => {
+  it('updates the totp counter, issues a session, and returns the proof on success', async () => {
     vi.mocked(users.findCredentialsByUsername).mockResolvedValue({
       id: 'u1',
       verified: true,
       revokedAt: null,
     });
     vi.mocked(verifyAuthenticatorForUser).mockResolvedValue(42);
-    vi.mocked(session.issue).mockResolvedValue('tok-abc');
+    const fakeProof = { token: 'tok-abc' } as unknown as session.ProofOfSession;
+    vi.mocked(session.issue).mockResolvedValue(fakeProof);
 
     const r = await completeLogin(db, {
       username: 'a',
@@ -93,7 +94,7 @@ describe('completeLogin', () => {
       userAgent: 'curl/8',
     });
 
-    expect(r).toEqual({ ok: true, authToken: 'tok-abc' });
+    expect(r).toEqual({ ok: true, proof: fakeProof });
     expect(users.updateTotpCounter).toHaveBeenCalledWith(db, 'u1', 42);
     expect(session.issue).toHaveBeenCalledWith(db, 'u1', 'curl/8');
   });

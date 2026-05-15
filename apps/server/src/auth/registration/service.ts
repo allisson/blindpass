@@ -26,7 +26,7 @@ export type CompleteRegistrationInput = {
 };
 
 export type CompleteRegistrationResult =
-  | { ok: true; authToken: string; bundle: ReturnType<typeof fromUserRow> }
+  | { ok: true; proof: session.ProofOfSession; bundle: ReturnType<typeof fromUserRow> }
   | { ok: false; reason: 'invalid_enrollment' | 'not_provisioned' };
 
 export async function completeRegistration(
@@ -60,14 +60,14 @@ export async function completeRegistration(
   await totpSecrets.replaceForUser(db, user.id, enrollment.encryptedSecret);
   await enrollments.deleteByUser(db, user.id);
   await users.markVerifiedAndCounter(db, user.id, counter);
-  const authToken = await session.issue(db, user.id, input.userAgent);
   const fullUser = await users.findFullById(db, user.id);
 
   if (!fullUser?.publicKey || !fullUser.kekSalt) {
     return { ok: false, reason: 'not_provisioned' };
   }
 
-  return { ok: true, authToken, bundle: fromUserRow(fullUser) };
+  const proof = await session.issue(db, user.id, input.userAgent);
+  return { ok: true, proof, bundle: fromUserRow(fullUser) };
 }
 
 export type RegisterUserInput = {
