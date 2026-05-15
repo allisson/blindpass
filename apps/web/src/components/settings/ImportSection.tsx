@@ -1,10 +1,11 @@
 import { useSyncBoundary } from '@/components/sync/SyncBoundary';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Vault } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { decryptSymmetric } from '@blindpass/crypto';
 import { importVaultPlaintext } from '@blindpass/vault';
 import { BATCH_CREATE_MAX_ITEMS } from '@blindpass/api-schema';
 import { deriveKEK } from '@/lib/kdfWorker';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -56,8 +57,12 @@ export function ImportSection() {
     .sort(([a], [b]) => (a === k.activeVaultId ? -1 : b === k.activeVaultId ? 1 : 0))
     .map(([id, v]) => ({
       id,
-      label: v.isShared && v.ownerUsername ? `${v.name} (shared by ${v.ownerUsername})` : v.name,
+      name: v.name,
+      ownerSuffix: v.isShared && v.ownerUsername ? `shared by ${v.ownerUsername}` : null,
+      isActive: id === k.activeVaultId,
     }));
+
+  const selectedVaultName = k.vaults.get(selectedVaultId)?.name ?? '';
 
   function applyFile(file: File) {
     setFileName(file.name);
@@ -258,14 +263,23 @@ export function ImportSection() {
               disabled={busy}
             >
               <SelectTrigger id="import-vault" className="w-full">
+                <Vault className="size-3.5 text-muted-foreground" />
                 <SelectValue>
-                  {writableVaults.find((v) => v.id === selectedVaultId)?.label}
+                  <span title={selectedVaultName}>{selectedVaultName}</span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {writableVaults.map(({ id, label }) => (
+                {writableVaults.map(({ id, name, ownerSuffix, isActive }) => (
                   <SelectItem key={id} value={id}>
-                    {label}
+                    <span>{name}</span>
+                    {ownerSuffix && (
+                      <span className="text-muted-foreground text-xs">({ownerSuffix})</span>
+                    )}
+                    {isActive && (
+                      <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-[10px]">
+                        Active
+                      </Badge>
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
