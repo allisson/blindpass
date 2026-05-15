@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-05-15
 
 ### Added
 
@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bitwarden importer: items in unknown categories (including Bitwarden 2024.12+ SSH-key type 5 when fields are incomplete) coerce into a `secure_note` instead of being silently skipped; well-formed SSH keys map natively to `developer_credential` ssh_key mode
 - CSV parser now correctly handles multi-line quoted fields and strips UTF-8 BOM, fixing silent corruption of notes with embedded newlines
+
+### Fixed
+
+- Selected vault is now visually distinct in the import and export pickers
 
 ## [0.6.0] - 2026-05-13
 
