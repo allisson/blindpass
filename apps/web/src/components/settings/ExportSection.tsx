@@ -1,9 +1,10 @@
-import { AlertTriangle, Download, Loader2 } from 'lucide-react';
+import { AlertTriangle, Download, Loader2, Vault } from 'lucide-react';
 import { useState } from 'react';
 import { encryptSymmetric, generateSalt } from '@blindpass/crypto';
 import { VaultItemSchema, exportVaultPlaintext } from '@blindpass/vault';
 import type { VaultItem } from '@blindpass/vault';
 import { deriveKEK } from '@/lib/kdfWorker';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field-error';
 import { Label } from '@/components/ui/label';
@@ -62,10 +63,17 @@ export function ExportSection() {
     .sort(([a], [b]) => (a === k.activeVaultId ? -1 : b === k.activeVaultId ? 1 : 0))
     .map(([id, v]) => ({
       id,
-      label: v.isShared && v.ownerUsername ? `${v.name} (shared by ${v.ownerUsername})` : v.name,
+      name: v.name,
+      ownerSuffix: v.isShared && v.ownerUsername ? `shared by ${v.ownerUsername}` : null,
+      isActive: id === k.activeVaultId,
     }));
 
   const selectedVaultName = k.vaults.get(selectedVaultId)?.name ?? '';
+  const stepHeading = (
+    <p className="text-xs text-muted-foreground">
+      Exporting from <span className="font-medium text-foreground">“{selectedVaultName}”</span>
+    </p>
+  );
   const vaultSlug =
     selectedVaultName
       .toLowerCase()
@@ -166,24 +174,27 @@ export function ExportSection() {
 
   if (state.status === 'confirming-plain') {
     return (
-      <div
-        role="alert"
-        className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-4 space-y-3 max-w-sm"
-      >
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-yellow-700 dark:text-yellow-400">
-            This file will contain all your passwords in plaintext. Store it securely and delete it
-            when done.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleExportPlain}>
-            Export plaintext
-          </Button>
-          <Button size="sm" variant="ghost" onClick={reset}>
-            Cancel
-          </Button>
+      <div className="space-y-2 max-w-sm">
+        {stepHeading}
+        <div
+          role="alert"
+          className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-4 space-y-3"
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-700 dark:text-yellow-400">
+              This file will contain all your passwords in plaintext. Store it securely and delete
+              it when done.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleExportPlain}>
+              Export plaintext
+            </Button>
+            <Button size="sm" variant="ghost" onClick={reset}>
+              Cancel
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -192,6 +203,7 @@ export function ExportSection() {
   if (state.status === 'passphrase') {
     return (
       <form onSubmit={handleExportEncrypted} className="space-y-3 max-w-sm">
+        {stepHeading}
         <div className="field-group">
           <Label htmlFor="exp-pass">Export passphrase</Label>
           <PasswordInput
@@ -238,12 +250,23 @@ export function ExportSection() {
           </label>
           <Select value={selectedVaultId} onValueChange={(v) => v && setSelectedVaultId(v)}>
             <SelectTrigger id="export-vault" className="w-full">
-              <SelectValue />
+              <Vault className="size-3.5 text-muted-foreground" />
+              <SelectValue>
+                <span title={selectedVaultName}>{selectedVaultName}</span>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {allVaults.map(({ id, label }) => (
+              {allVaults.map(({ id, name, ownerSuffix, isActive }) => (
                 <SelectItem key={id} value={id}>
-                  {label}
+                  <span>{name}</span>
+                  {ownerSuffix && (
+                    <span className="text-muted-foreground text-xs">({ownerSuffix})</span>
+                  )}
+                  {isActive && (
+                    <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-[10px]">
+                      Active
+                    </Badge>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>
