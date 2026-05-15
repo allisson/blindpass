@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { BatchCreateItemsRequestSchema, VaultIdParamSchema } from '@blindpass/api-schema';
 import { b64 } from '../../../utils/base64.js';
 import { batchCreateItems } from '../../../vaults/items/service.js';
+import { asTx } from '../../../db/tx.js';
 
 export function registerBatchCreateItemsRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -17,7 +18,7 @@ export function registerBatchCreateItemsRoute(app: FastifyInstance): void {
 
       const result = await app.db.transaction(async (tx) =>
         batchCreateItems(
-          tx,
+          asTx(tx),
           request.userId,
           vaultId,
           items.map((it) => ({

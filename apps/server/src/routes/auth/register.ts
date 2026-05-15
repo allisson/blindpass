@@ -3,7 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { RegisterRequestSchema } from '@blindpass/api-schema';
 import { b64 } from '../../utils/base64.js';
-import { registerUser, type RegisterUserResult } from '../../auth/registration/service.js';
+import { registerUser } from '../../auth/registration/service.js';
+import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
 
 export function registerRegisterRoute(app: FastifyInstance): void {
@@ -26,10 +27,10 @@ export function registerRegisterRoute(app: FastifyInstance): void {
     },
     async (request, reply) => {
       const body = request.body;
-      let result: RegisterUserResult;
-      try {
-        result = await app.db.transaction(async (tx) =>
-          registerUser(tx, {
+      const result = await app.db.transaction(async (tx) =>
+        registerUser(
+          asTx(tx),
+          {
             username: body.username,
             recoveryVerifier: body.recoveryVerifier,
             newKeys: {
@@ -52,16 +53,10 @@ export function registerRegisterRoute(app: FastifyInstance): void {
               encryptedVaultDataCiphertext: b64(body.encryptedVaultData.ciphertext),
               encryptedVaultDataNonce: b64(body.encryptedVaultData.nonce),
             },
-          }),
-        );
-      } catch (err: unknown) {
-        const code =
-          (err as { code?: string }).code ?? (err as { cause?: { code?: string } }).cause?.code;
-        if (code === '23505') {
-          return reply.status(409).send({ error: 'Conflict' });
-        }
-        throw err;
-      }
+          },
+          app.clock,
+        ),
+      );
 
       if (!result.ok) {
         if (result.reason === 'registrations_disabled') {

@@ -1,12 +1,12 @@
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../../db/schema.js';
+import type { TxDb } from '../../db/tx.js';
+import type { Clock } from '../../plugins/clock.js';
 import { verifyAuthenticatorForUser } from '../totp/verify-for-user.js';
 import { hash as hashRecoveryVerifier } from '../recovery/verifier.js';
 import * as users from '../users/repository.js';
 import * as sessions from '../sessions/repository.js';
 import * as projectSettings from '../project-settings/repository.js';
 
-type Db = NodePgDatabase<typeof schema>;
+type Db = TxDb;
 
 export type ChangePasswordInput = {
   authenticatorCode: string;
@@ -21,8 +21,9 @@ export async function changePassword(
   db: Db,
   userId: string,
   input: ChangePasswordInput,
+  clock: Clock,
 ): Promise<ChangePasswordResult> {
-  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode);
+  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode, clock);
   if (counter == null) return { ok: false, reason: 'invalid_authenticator' };
 
   await users.applyPasswordChange(db, userId, {
@@ -55,8 +56,9 @@ export async function rotateRecoveryPhrase(
   db: Db,
   userId: string,
   input: RotateRecoveryPhraseInput,
+  clock: Clock,
 ): Promise<RotateRecoveryPhraseResult> {
-  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode);
+  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode, clock);
   if (counter == null) return { ok: false, reason: 'invalid_authenticator' };
 
   const verifier = hashRecoveryVerifier(input.recoveryVerifier);
@@ -87,8 +89,9 @@ export async function deleteAccount(
   db: Db,
   userId: string,
   input: DeleteAccountInput,
+  clock: Clock,
 ): Promise<DeleteAccountResult> {
-  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode);
+  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode, clock);
   if (counter == null) return { ok: false, reason: 'invalid_authenticator' };
 
   const settings = await projectSettings.findOne(db);

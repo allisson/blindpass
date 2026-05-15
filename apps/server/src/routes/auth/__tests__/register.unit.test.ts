@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { registerRegisterRoute } from '../register.js';
+import { errorHandler } from '../../../error-handler.js';
 
 function makeChain(result: unknown) {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -42,8 +43,10 @@ function buildApp(dbOverrides?: Partial<ReturnType<typeof createMockDb>>) {
   const app = Fastify();
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+  app.setErrorHandler(errorHandler);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   app.decorate('db', mockDb as any);
+  app.decorate('clock', { now: () => 1_700_000_000_000 });
   registerRegisterRoute(app);
   return { app, mockDb };
 }

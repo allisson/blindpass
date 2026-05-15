@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { VerifyRecoveryRequestSchema } from '@blindpass/api-schema';
 import { verifyRecovery } from '../../auth/recovery/service.js';
+import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
 
 export function registerVerifyRecoveryRoute(app: FastifyInstance): void {
@@ -13,10 +14,14 @@ export function registerVerifyRecoveryRoute(app: FastifyInstance): void {
     },
     async (request, reply) => {
       const result = await app.db.transaction(async (tx) =>
-        verifyRecovery(tx, {
-          username: request.body.username,
-          recoveryVerifier: request.body.recoveryVerifier,
-        }),
+        verifyRecovery(
+          asTx(tx),
+          {
+            username: request.body.username,
+            recoveryVerifier: request.body.recoveryVerifier,
+          },
+          app.clock,
+        ),
       );
 
       if (!result.ok) {

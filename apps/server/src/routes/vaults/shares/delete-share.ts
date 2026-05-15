@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { ShareParamSchema } from '@blindpass/api-schema';
 import { deleteShare } from '../../../vaults/shares/service.js';
+import { asTx } from '../../../db/tx.js';
 
 export function registerDeleteShareRoute(app: FastifyInstance): void {
   app
@@ -11,7 +12,9 @@ export function registerDeleteShareRoute(app: FastifyInstance): void {
       { schema: { params: ShareParamSchema } },
       async (request, reply) => {
         const { vaultId, shareId } = request.params;
-        const result = await deleteShare(app.db, request.userId, vaultId, shareId);
+        const result = await app.db.transaction(async (tx) =>
+          deleteShare(asTx(tx), request.userId, vaultId, shareId),
+        );
 
         if (!result.ok) {
           return reply.status(404).send({ error: 'Share not found' });

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { VaultIdParamSchema } from '@blindpass/api-schema';
 import { toB64 } from '../../../utils/base64.js';
-import { getVaultAccess } from '../../../vaults/access.js';
+import { requireReader } from '../../../vaults/access.js';
 import * as folders from '../../../vaults/folders/repository.js';
 
 export function registerListFoldersRoute(app: FastifyInstance): void {
@@ -14,8 +14,8 @@ export function registerListFoldersRoute(app: FastifyInstance): void {
       async (request, reply) => {
         const { vaultId } = request.params;
 
-        const access = await getVaultAccess(app.db, vaultId, request.userId);
-        if (!access) return reply.status(404).send({ error: 'Vault not found' });
+        const fail = await requireReader(app.db, vaultId, request.userId);
+        if (fail) return reply.status(404).send({ error: 'Vault not found' });
 
         const rows = await folders.listForVault(app.db, vaultId);
 

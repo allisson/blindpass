@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { RotateRecoveryPhraseRequestSchema } from '@blindpass/api-schema';
 import { b64 } from '../../utils/base64.js';
 import { rotateRecoveryPhrase } from '../../auth/account/service.js';
+import { asTx } from '../../db/tx.js';
 
 export function registerRotateRecoveryPhraseRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().put(
@@ -14,19 +15,24 @@ export function registerRotateRecoveryPhraseRoute(app: FastifyInstance): void {
     async (request, reply) => {
       const body = request.body;
       const result = await app.db.transaction(async (tx) =>
-        rotateRecoveryPhrase(tx, request.userId, {
-          authenticatorCode: body.authenticatorCode,
-          recoveryVerifier: body.recoveryVerifier,
-          publicKey: b64(body.publicKey),
-          encryptedMasterKeyForRecoveryCiphertext: b64(
-            body.encryptedMasterKeyForRecovery.ciphertext,
-          ),
-          encryptedMasterKeyForRecoveryNonce: b64(body.encryptedMasterKeyForRecovery.nonce),
-          encryptedPrivateKeyCiphertext: b64(body.encryptedPrivateKey.ciphertext),
-          encryptedPrivateKeyNonce: b64(body.encryptedPrivateKey.nonce),
-          encryptedRecoveryKeyCiphertext: b64(body.encryptedRecoveryKey.ciphertext),
-          encryptedRecoveryKeyNonce: b64(body.encryptedRecoveryKey.nonce),
-        }),
+        rotateRecoveryPhrase(
+          asTx(tx),
+          request.userId,
+          {
+            authenticatorCode: body.authenticatorCode,
+            recoveryVerifier: body.recoveryVerifier,
+            publicKey: b64(body.publicKey),
+            encryptedMasterKeyForRecoveryCiphertext: b64(
+              body.encryptedMasterKeyForRecovery.ciphertext,
+            ),
+            encryptedMasterKeyForRecoveryNonce: b64(body.encryptedMasterKeyForRecovery.nonce),
+            encryptedPrivateKeyCiphertext: b64(body.encryptedPrivateKey.ciphertext),
+            encryptedPrivateKeyNonce: b64(body.encryptedPrivateKey.nonce),
+            encryptedRecoveryKeyCiphertext: b64(body.encryptedRecoveryKey.ciphertext),
+            encryptedRecoveryKeyNonce: b64(body.encryptedRecoveryKey.nonce),
+          },
+          app.clock,
+        ),
       );
 
       if (!result.ok) {

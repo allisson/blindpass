@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import { authPlugin } from '../auth.js';
+import { advanceableClock } from '../../test/fake-clock.js';
+import type { Clock } from '../clock.js';
 
 vi.mock('../../env.js', () => ({
   env: {
@@ -13,15 +15,21 @@ vi.mock('../../env.js', () => ({
 
 const RAW_TOKEN = 'a'.repeat(64);
 
-function buildApp(sessionRow: { id: string; userId: string } | null) {
+type WhereCapture = { lastArg?: unknown };
+
+function buildApp(
+  sessionRow: { id: string; userId: string } | null,
+  options: { clock?: Clock; whereCapture?: WhereCapture } = {},
+) {
   const sessionResult = sessionRow ? [sessionRow] : [];
   const mockDb = {
     select: () => ({
       from: () => ({
         innerJoin: () => ({
-          where: () => ({
-            limit: vi.fn().mockResolvedValue(sessionResult),
-          }),
+          where: (arg: unknown) => {
+            if (options.whereCapture) options.whereCapture.lastArg = arg;
+            return { limit: vi.fn().mockResolvedValue(sessionResult) };
+          },
         }),
         where: () => ({
           limit: vi.fn().mockResolvedValue(sessionResult),
@@ -37,11 +45,15 @@ function buildApp(sessionRow: { id: string; userId: string } | null) {
   const app = Fastify();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   app.decorate('db', mockDb as any);
+  app.decorate('clock', options.clock ?? { now: () => 1_700_000_000_000 });
   return { app };
 }
 
-async function setupApp(sessionRow: { id: string; userId: string } | null) {
-  const { app } = buildApp(sessionRow);
+async function setupApp(
+  sessionRow: { id: string; userId: string } | null,
+  options: { clock?: Clock; whereCapture?: WhereCapture } = {},
+) {
+  const { app } = buildApp(sessionRow, options);
   await app.register(cookie);
   await app.register(authPlugin);
   app.get('/protected', async () => ({ ok: true }));
@@ -49,6 +61,30 @@ async function setupApp(sessionRow: { id: string; userId: string } | null) {
   app.delete('/protected', async () => ({ ok: true }));
   app.post('/auth/login/start', async () => ({ ok: true }));
   return { app };
+}
+
+// Drizzle's `gt(col, val)` stores `val` as a Param node deep inside the SQL
+// object. Walk the captured WHERE chunk and collect every Date encountered;
+// the auth plugin's `idleSince` and `expiresAt` ceilings should appear.
+function collectDates(captured: unknown, seen = new WeakSet<object>()): Date[] {
+  const out: Date[] = [];
+  function walk(node: unknown): void {
+    if (node instanceof Date) {
+      out.push(node);
+      return;
+    }
+    if (node === null || typeof node !== 'object') return;
+    if (seen.has(node)) return;
+    seen.add(node);
+    for (const value of Object.values(node)) walk(value);
+  }
+  walk(captured);
+  return out;
+}
+
+function whereContainsDate(captured: unknown, date: Date): boolean {
+  const ms = date.getTime();
+  return collectDates(captured).some((d) => d.getTime() === ms);
 }
 
 describe('authPlugin', () => {
@@ -208,5 +244,39 @@ describe('authPlugin', () => {
     });
     // Cookie path requires CSRF header; Bearer would have skipped it. 403 proves cookie was chosen.
     expect(res.statusCode).toBe(403);
+  });
+
+  it('consults app.clock to compute the idle ceiling', async () => {
+    const { clock, advance } = advanceableClock(1_700_000_000_000);
+    const clockSpy = vi.spyOn(clock, 'now');
+    const whereCapture: WhereCapture = {};
+    const { app } = await setupApp({ id: 's1', userId: 'u1' }, { clock, whereCapture });
+
+    const SESSION_IDLE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+    const firstRes = await app.inject({
+      method: 'GET',
+      url: '/protected',
+      headers: { Authorization: `Bearer ${RAW_TOKEN}` },
+    });
+    expect(firstRes.statusCode).toBe(200);
+    expect(clockSpy).toHaveBeenCalled();
+    // First request's idle ceiling: now - IDLE_TTL.
+    const firstIdle = new Date(1_700_000_000_000 - SESSION_IDLE_TTL_MS);
+    expect(whereContainsDate(whereCapture.lastArg, firstIdle)).toBe(true);
+
+    // Advance the fake clock by 1 hour and re-request — the WHERE clause's
+    // idle ceiling must shift by the same amount, proving the clock value
+    // flows through to the SQL.
+    advance(60 * 60 * 1000);
+    const secondRes = await app.inject({
+      method: 'GET',
+      url: '/protected',
+      headers: { Authorization: `Bearer ${RAW_TOKEN}` },
+    });
+    expect(secondRes.statusCode).toBe(200);
+    const secondIdle = new Date(1_700_000_000_000 + 60 * 60 * 1000 - SESSION_IDLE_TTL_MS);
+    expect(whereContainsDate(whereCapture.lastArg, secondIdle)).toBe(true);
+    expect(whereContainsDate(whereCapture.lastArg, firstIdle)).toBe(false);
   });
 });

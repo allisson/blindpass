@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { PaginationQuerySchema, VaultIdParamSchema } from '@blindpass/api-schema';
 import { toB64 } from '../../../utils/base64.js';
-import { getVaultAccess } from '../../../vaults/access.js';
+import { requireReader } from '../../../vaults/access.js';
 import * as trash from '../../../vaults/trash/repository.js';
 
 export function registerListTrashRoute(app: FastifyInstance): void {
@@ -15,8 +15,8 @@ export function registerListTrashRoute(app: FastifyInstance): void {
         const { vaultId } = request.params;
         const { cursor, limit } = request.query;
 
-        const access = await getVaultAccess(app.db, vaultId, request.userId);
-        if (!access) return reply.status(404).send({ error: 'Vault not found' });
+        const fail = await requireReader(app.db, vaultId, request.userId);
+        if (fail) return reply.status(404).send({ error: 'Vault not found' });
 
         const rows = await trash.listForVault(app.db, vaultId, cursor, limit);
         const hasMore = rows.length > limit;

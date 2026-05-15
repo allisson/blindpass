@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { CreateVaultRequestSchema } from '@blindpass/api-schema';
 import { b64, toB64 } from '../../utils/base64.js';
 import { createVault } from '../../vaults/service.js';
+import { asTx } from '../../db/tx.js';
 
 export function registerCreateVaultRoute(app: FastifyInstance): void {
   app
@@ -10,7 +11,7 @@ export function registerCreateVaultRoute(app: FastifyInstance): void {
     .post('/vaults', { schema: { body: CreateVaultRequestSchema } }, async (request, reply) => {
       const body = request.body;
       const vault = await app.db.transaction(async (tx) =>
-        createVault(tx, request.userId, {
+        createVault(asTx(tx), request.userId, {
           encryptedVaultKeyCiphertext: b64(body.encryptedVaultKey.ciphertext),
           encryptedVaultKeyNonce: b64(body.encryptedVaultKey.nonce),
           encryptedVaultDataCiphertext: b64(body.encryptedVaultData.ciphertext),

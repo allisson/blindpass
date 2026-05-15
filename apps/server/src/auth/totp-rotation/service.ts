@@ -1,6 +1,6 @@
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { TotpEnrollment } from '@blindpass/api-schema';
-import * as schema from '../../db/schema.js';
+import type { TxDb } from '../../db/tx.js';
+import type { Clock } from '../../plugins/clock.js';
 import { env } from '../../env.js';
 import * as totp from '../totp/index.js';
 import { verifyAuthenticatorForUser } from '../totp/verify-for-user.js';
@@ -9,7 +9,7 @@ import * as enrollments from '../enrollments/repository.js';
 import * as totpSecrets from '../totp-secrets/repository.js';
 import * as sessions from '../sessions/repository.js';
 
-type Db = NodePgDatabase<typeof schema>;
+type Db = TxDb;
 
 export type StartRotationInput = {
   authenticatorCode: string;
@@ -23,14 +23,15 @@ export async function startRotation(
   db: Db,
   userId: string,
   input: StartRotationInput,
+  clock: Clock,
 ): Promise<StartRotationResult> {
-  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode);
+  const counter = await verifyAuthenticatorForUser(db, userId, input.authenticatorCode, clock);
   if (counter == null) return { ok: false, reason: 'invalid_authenticator' };
 
   const user = await users.findUsernameById(db, userId);
   if (!user) return { ok: false, reason: 'user_not_found' };
 
-  const expiresAt = new Date(Date.now() + env.PENDING_TOTP_TTL_MS);
+  const expiresAt = new Date(clock.now() + env.PENDING_TOTP_TTL_MS);
   const enrollment = totp.enroll(user.username, expiresAt);
 
   await users.updateTotpCounter(db, userId, counter);
@@ -65,6 +66,7 @@ export async function completeRotation(
   db: Db,
   userId: string,
   input: CompleteRotationInput,
+  clock: Clock,
 ): Promise<CompleteRotationResult> {
   const user = await users.findCounterById(db, userId);
   if (!user) return { ok: false, reason: 'user_not_found' };
@@ -76,6 +78,7 @@ export async function completeRotation(
     enrollment.encryptedSecret,
     input.authenticatorCode,
     user.totpLastUsedCounter,
+    clock.now(),
   );
   if (counter == null) return { ok: false, reason: 'invalid_enrollment' };
 

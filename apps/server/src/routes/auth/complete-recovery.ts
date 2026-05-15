@@ -4,6 +4,7 @@ import { CompleteRecoveryRequestSchema } from '@blindpass/api-schema';
 import { b64 } from '../../utils/base64.js';
 import * as session from '../../auth/session/index.js';
 import { completeRecovery } from '../../auth/recovery/service.js';
+import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
 
 export function registerCompleteRecoveryRoute(app: FastifyInstance): void {
@@ -16,28 +17,32 @@ export function registerCompleteRecoveryRoute(app: FastifyInstance): void {
     async (request, reply) => {
       const body = request.body;
       const result = await app.db.transaction(async (tx) =>
-        completeRecovery(tx, {
-          username: body.username,
-          recoveryToken: body.recoveryToken,
-          enrollmentId: body.enrollmentId,
-          authenticatorCode: body.authenticatorCode,
-          recoveryVerifier: body.recoveryVerifier,
-          userAgent: request.headers['user-agent'],
-          newKeys: {
-            kekSalt: b64(body.kekSalt),
-            publicKey: b64(body.publicKey),
-            encryptedMasterKeyCiphertext: b64(body.encryptedMasterKey.ciphertext),
-            encryptedMasterKeyNonce: b64(body.encryptedMasterKey.nonce),
-            encryptedMasterKeyForRecoveryCiphertext: b64(
-              body.encryptedMasterKeyForRecovery.ciphertext,
-            ),
-            encryptedMasterKeyForRecoveryNonce: b64(body.encryptedMasterKeyForRecovery.nonce),
-            encryptedPrivateKeyCiphertext: b64(body.encryptedPrivateKey.ciphertext),
-            encryptedPrivateKeyNonce: b64(body.encryptedPrivateKey.nonce),
-            encryptedRecoveryKeyCiphertext: b64(body.encryptedRecoveryKey.ciphertext),
-            encryptedRecoveryKeyNonce: b64(body.encryptedRecoveryKey.nonce),
+        completeRecovery(
+          asTx(tx),
+          {
+            username: body.username,
+            recoveryToken: body.recoveryToken,
+            enrollmentId: body.enrollmentId,
+            authenticatorCode: body.authenticatorCode,
+            recoveryVerifier: body.recoveryVerifier,
+            userAgent: request.headers['user-agent'],
+            newKeys: {
+              kekSalt: b64(body.kekSalt),
+              publicKey: b64(body.publicKey),
+              encryptedMasterKeyCiphertext: b64(body.encryptedMasterKey.ciphertext),
+              encryptedMasterKeyNonce: b64(body.encryptedMasterKey.nonce),
+              encryptedMasterKeyForRecoveryCiphertext: b64(
+                body.encryptedMasterKeyForRecovery.ciphertext,
+              ),
+              encryptedMasterKeyForRecoveryNonce: b64(body.encryptedMasterKeyForRecovery.nonce),
+              encryptedPrivateKeyCiphertext: b64(body.encryptedPrivateKey.ciphertext),
+              encryptedPrivateKeyNonce: b64(body.encryptedPrivateKey.nonce),
+              encryptedRecoveryKeyCiphertext: b64(body.encryptedRecoveryKey.ciphertext),
+              encryptedRecoveryKeyNonce: b64(body.encryptedRecoveryKey.nonce),
+            },
           },
-        }),
+          app.clock,
+        ),
       );
 
       if (!result.ok) {

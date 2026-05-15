@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { TotpEnrollment } from '@blindpass/api-schema';
-import * as schema from '../../db/schema.js';
+import type { TxDb } from '../../db/tx.js';
+import type { Clock } from '../../plugins/clock.js';
 import { env } from '../../env.js';
 import * as totp from '../totp/index.js';
 import * as session from '../session/index.js';
@@ -14,7 +14,7 @@ import * as totpSecrets from '../totp-secrets/repository.js';
 import * as projectSettingsRepo from '../project-settings/repository.js';
 import * as vaultsRepo from '../../vaults/repository.js';
 
-type Db = NodePgDatabase<typeof schema>;
+type Db = TxDb;
 
 const MAX_ATTEMPTS = 3;
 
@@ -32,6 +32,7 @@ export type CompleteRegistrationResult =
 export async function completeRegistration(
   db: Db,
   input: CompleteRegistrationInput,
+  clock: Clock,
 ): Promise<CompleteRegistrationResult> {
   const user = await users.findFullByUsername(db, input.username);
   if (!user || user.revokedAt || user.verified) {
@@ -47,6 +48,7 @@ export async function completeRegistration(
     enrollment.encryptedSecret,
     input.authenticatorCode,
     user.totpLastUsedCounter,
+    clock.now(),
   );
   if (counter == null) {
     const attempts = enrollment.attempts + 1;
@@ -66,7 +68,7 @@ export async function completeRegistration(
     return { ok: false, reason: 'not_provisioned' };
   }
 
-  const proof = await session.issue(db, user.id, input.userAgent);
+  const proof = await session.issue(db, user.id, input.userAgent, clock);
   return { ok: true, proof, bundle: fromUserRow(fullUser) };
 }
 
@@ -97,7 +99,11 @@ export type RegisterUserResult =
   | { ok: true; enrollment: TotpEnrollment }
   | { ok: false; reason: 'registrations_disabled' | 'username_taken' };
 
-export async function registerUser(db: Db, input: RegisterUserInput): Promise<RegisterUserResult> {
+export async function registerUser(
+  db: Db,
+  input: RegisterUserInput,
+  clock: Clock,
+): Promise<RegisterUserResult> {
   await db.execute(sql`select pg_advisory_xact_lock(hashtext('admin_bootstrap')::bigint)`);
 
   const settings = await projectSettingsRepo.findOne(db);
@@ -132,7 +138,7 @@ export async function registerUser(db: Db, input: RegisterUserInput): Promise<Re
 
   await vaultsRepo.createInitial(db, { userId, ...input.vault });
 
-  const enrollmentExpiry = new Date(Date.now() + env.PENDING_TOTP_TTL_MS);
+  const enrollmentExpiry = new Date(clock.now() + env.PENDING_TOTP_TTL_MS);
   const enrollment = totp.enroll(input.username, enrollmentExpiry);
   const enrollmentId = await enrollments.createPending(db, {
     userId,

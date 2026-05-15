@@ -17,6 +17,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { env } from './env.js';
 import { dbPlugin } from './plugins/db.js';
+import { clockPlugin } from './plugins/clock.js';
 import { authPlugin } from './plugins/auth.js';
 import { registerAdminRoutes } from './routes/admin/index.js';
 import { registerAuthRoutes } from './routes/auth/index.js';
@@ -101,6 +102,7 @@ if (mode === 'migrate') {
     await app.register(swaggerUi, { routePrefix: '/docs' });
   }
   await app.register(dbPlugin);
+  await app.register(clockPlugin);
   await app.register(authPlugin);
 
   app.setValidatorCompiler(validatorCompiler);
@@ -130,7 +132,7 @@ if (mode === 'migrate') {
 
   const cleanupInterval = setInterval(
     () => {
-      const now = new Date();
+      const now = new Date(app.clock.now());
       void app.db
         .delete(sessions)
         .where(lt(sessions.expiresAt, now))
