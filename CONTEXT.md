@@ -138,7 +138,11 @@ The passphrase-protected `.blindpass` export envelope: `{version: 1, type: 'blin
 _Avoid_: encrypted backup, secure export.
 
 **ImportFormat**:
-The discriminated union `'chrome' | 'lastpass' | 'bitwarden' | 'blindpass'` that selects the parse path when importing items. Defined in `apps/web/src/lib/import/types.ts`.
+The discriminated union `'chrome' | 'lastpass' | 'bitwarden' | 'blindpass' | '1password' | 'dashlane' | 'apple-keychain' | 'keepassxc' | 'protonpass'` that selects the parse path when importing items. Defined in `apps/web/src/lib/import/types.ts`.
+
+**CategoryCoercion**:
+The policy that any source item whose category does not map to one of BlindPass's seven item types becomes a **SecureNote** with a `[Source Category] ` title prefix; source-specific fields land in `customFields`. Lets importers preserve data fidelity without growing the item taxonomy.
+_Avoid_: bucket dump, fallback note.
 
 ### Browser sync
 

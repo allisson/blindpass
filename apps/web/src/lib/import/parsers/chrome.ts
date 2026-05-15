@@ -12,7 +12,7 @@ function titleFromUrl(url: string): string {
 
 export function parse(raw: string): ImportResult {
   const rows = parseCsvRows(raw);
-  if (rows.length < 2) return { items: [], skipped: 0 };
+  if (rows.length < 2) return { items: [], skipped: 0, attachmentsDropped: 0 };
 
   const headers = rows[0].map((h) => h.toLowerCase().trim());
   const nameIdx = headers.indexOf('name');
@@ -22,7 +22,7 @@ export function parse(raw: string): ImportResult {
   const noteIdx = headers.indexOf('note');
 
   if (usernameIdx === -1 || passwordIdx === -1) {
-    return { items: [], skipped: rows.length - 1 };
+    return { items: [], skipped: rows.length - 1, attachmentsDropped: 0 };
   }
 
   const items = [];
@@ -62,5 +62,5 @@ export function parse(raw: string): ImportResult {
     }
   }
 
-  return { items, skipped };
+  return { items, skipped, attachmentsDropped: 0 };
 }

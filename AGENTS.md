@@ -38,6 +38,7 @@ packages/
 - [Biometric unlock compatibility](docs/agents/biometric-compat.md) — passkey provider support matrix, troubleshooting `PrfNotEnabledError`
 - [Testing conventions](docs/agents/testing.md) — unit vs integration, coverage gate, single-file runs
 - [DB migrations](docs/agents/db-migrations.md) — schema location, migration workflow
+- [Importers](docs/agents/imports.md) — parser interface, content-sniff registry, shared helpers, how to add a parser
 
 ## Releasing
 

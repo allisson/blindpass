@@ -119,11 +119,15 @@ describe('bitwarden parser', () => {
     expect(skipped).toBe(0);
   });
 
-  it('skips unknown type (counted as skipped)', () => {
+  it('coerces unknown type into a secure_note with bitwarden-type-prefixed title', () => {
     const raw = bw([{ id: '5', name: 'Unknown', type: 99 }]);
     const { items, skipped } = parse(raw);
-    expect(items).toHaveLength(0);
-    expect(skipped).toBe(1);
+    expect(skipped).toBe(0);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      type: 'secure_note',
+      title: '[Bitwarden type 99] Unknown',
+    });
   });
 
   it('skips malformed item (counted as skipped)', () => {
@@ -196,11 +200,11 @@ describe('bitwarden parser', () => {
     if (totpItem?.type === 'totp') expect(totpItem.algorithm).toBe('SHA1');
   });
 
-  it('skips item with non-number type', () => {
+  it('coerces item with non-number type', () => {
     const raw = bw([{ id: '5', name: 'Unknown', type: 'invalid' }]);
     const { items, skipped } = parse(raw);
-    expect(items).toHaveLength(0);
-    expect(skipped).toBe(1);
+    expect(skipped).toBe(0);
+    expect(items[0]).toMatchObject({ type: 'secure_note' });
   });
 
   it('parses totp with digits and period', () => {
@@ -434,11 +438,11 @@ describe('bitwarden parser', () => {
     if (totpItem?.type === 'totp') expect(totpItem.algorithm).toBe('SHA512');
   });
 
-  it('skips item when bwType is unknown', () => {
+  it('coerces item when bwType is unknown (duplicate path test)', () => {
     const raw = bw([{ id: 'x', name: 'Unknown', type: 99 }]);
     const { items, skipped } = parse(raw);
-    expect(items).toHaveLength(0);
-    expect(skipped).toBe(1);
+    expect(skipped).toBe(0);
+    expect(items[0]).toMatchObject({ type: 'secure_note', title: '[Bitwarden type 99] Unknown' });
   });
 
   it('parseCustomFields returns undefined for non-array', () => {
@@ -534,5 +538,59 @@ describe('bitwarden parser', () => {
       expect(totp.accountName).toBeUndefined();
       expect(totp.issuer).toBeUndefined();
     }
+  });
+
+  // Retrofit coverage: type-5 SSH key, catch-path coercion.
+  it('maps type-5 SSH key to developer_credential ssh_key mode', () => {
+    const raw = bw([
+      {
+        id: 'k',
+        name: 'Prod Key',
+        type: 5,
+        sshKey: {
+          privateKey: '-----BEGIN PRIVATE KEY-----',
+          publicKey: 'ssh-rsa AAAA',
+          keyFingerprint: 'SHA256:abc',
+        },
+      },
+    ]);
+    const { items, skipped } = parse(raw);
+    expect(skipped).toBe(0);
+    expect(items[0]).toMatchObject({
+      type: 'developer_credential',
+      credentialMode: 'ssh_key',
+      title: 'Prod Key',
+      privateKey: '-----BEGIN PRIVATE KEY-----',
+      publicKey: 'ssh-rsa AAAA',
+      fingerprint: 'SHA256:abc',
+      username: 'imported',
+      host: 'imported',
+    });
+  });
+
+  it('coerces type-5 SSH key when private/public/fingerprint missing', () => {
+    const raw = bw([{ id: 'k', name: 'Empty Key', type: 5, sshKey: { privateKey: '' } }]);
+    const { items } = parse(raw);
+    expect(items[0]).toMatchObject({
+      type: 'secure_note',
+      title: '[Bitwarden SSH Key] Empty Key',
+    });
+  });
+
+  it('still increments skipped on truly null items (catch path)', () => {
+    const raw = bw([null]);
+    const { items, skipped } = parse(raw);
+    expect(items).toHaveLength(0);
+    expect(skipped).toBe(1);
+  });
+
+  it('coerces item with missing type as a Bitwarden item (no "undefined" in title)', () => {
+    const raw = bw([{ id: 'x', name: 'Orphan' }]);
+    const { items, skipped } = parse(raw);
+    expect(skipped).toBe(0);
+    expect(items[0]).toMatchObject({
+      type: 'secure_note',
+      title: '[Bitwarden item] Orphan',
+    });
   });
 });

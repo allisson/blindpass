@@ -28,7 +28,7 @@ type ImportState =
   | { status: 'previewing'; result: ImportResult }
   | { status: 'importing'; done: number; total: number }
   | { status: 'uploading' }
-  | { status: 'done'; imported: number; skipped: number }
+  | { status: 'done'; imported: number; skipped: number; attachmentsDropped: number }
   | { status: 'error'; message: string };
 
 const FORMAT_LABELS: Record<ImportFormat, string> = {
@@ -36,6 +36,11 @@ const FORMAT_LABELS: Record<ImportFormat, string> = {
   lastpass: 'LastPass',
   bitwarden: 'Bitwarden',
   blindpass: 'BlindPass',
+  '1password': '1Password',
+  dashlane: 'Dashlane',
+  'apple-keychain': 'Apple Keychain',
+  keepassxc: 'KeePassXC',
+  protonpass: 'Proton Pass',
 };
 
 export function ImportSection() {
@@ -64,9 +69,9 @@ export function ImportSection() {
 
   const selectedVaultName = k.vaults.get(selectedVaultId)?.name ?? '';
 
-  function applyFile(file: File) {
+  async function applyFile(file: File) {
     setFileName(file.name);
-    const detected = detectFormat(file.name);
+    const detected = await detectFormat(file);
     if (detected) {
       setFormat(detected);
       setAutoDetected(true);
@@ -83,7 +88,7 @@ export function ImportSection() {
       setFileName(null);
       return;
     }
-    applyFile(file);
+    void applyFile(file);
   }
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
@@ -94,27 +99,22 @@ export function ImportSection() {
     const dt = new DataTransfer();
     dt.items.add(file);
     if (fileRef.current) fileRef.current.files = dt.files;
-    applyFile(file);
+    void applyFile(file);
   }
 
   async function handlePreview() {
     const file = fileRef.current?.files?.[0];
     if (!file) return;
     try {
-      const raw = await file.text();
       if (format === 'blindpass') {
+        const raw = await file.text();
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         if (parsed['type'] === 'blindpass-export-encrypted') {
           setState({ status: 'needs-passphrase', json: raw });
           return;
         }
-        const items = await importVaultPlaintext(raw);
-        const result: ImportResult = { items, skipped: 0 };
-        setPending(result);
-        setState({ status: 'previewing', result });
-        return;
       }
-      const result = parseFile(format, raw);
+      const result = await parseFile(format, file);
       setPending(result);
       setState({ status: 'previewing', result });
     } catch (err) {
@@ -142,7 +142,7 @@ export function ImportSection() {
         throw new Error('Incorrect passphrase');
       }
       const items = await importVaultPlaintext(new TextDecoder().decode(plaintextBytes));
-      const result: ImportResult = { items, skipped: 0 };
+      const result: ImportResult = { items, skipped: 0, attachmentsDropped: 0 };
       setPending(result);
       setState({ status: 'previewing', result });
     } catch (err) {
@@ -187,7 +187,12 @@ export function ImportSection() {
     }
 
     void sync.forceSync();
-    setState({ status: 'done', imported: total, skipped: pending.skipped });
+    setState({
+      status: 'done',
+      imported: total,
+      skipped: pending.skipped,
+      attachmentsDropped: pending.attachmentsDropped,
+    });
     setPending(null);
     if (fileRef.current) fileRef.current.value = '';
     setFileName(null);
@@ -248,6 +253,11 @@ export function ImportSection() {
               <SelectItem value="lastpass">LastPass</SelectItem>
               <SelectItem value="bitwarden">Bitwarden</SelectItem>
               <SelectItem value="blindpass">BlindPass</SelectItem>
+              <SelectItem value="1password">1Password</SelectItem>
+              <SelectItem value="dashlane">Dashlane</SelectItem>
+              <SelectItem value="apple-keychain">Apple Keychain</SelectItem>
+              <SelectItem value="keepassxc">KeePassXC</SelectItem>
+              <SelectItem value="protonpass">Proton Pass</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -320,7 +330,7 @@ export function ImportSection() {
               id="import-file"
               ref={fileRef}
               type="file"
-              accept={format === 'blindpass' ? '.json,.blindpass' : '.csv,.json'}
+              accept=".csv,.json,.blindpass,.1pux,.zip"
               onChange={handleFileChange}
               disabled={busy}
               className="sr-only"
@@ -337,7 +347,7 @@ export function ImportSection() {
                   <span className="text-foreground underline underline-offset-2">browse</span>
                 </p>
                 <p className="text-[10px] text-muted-foreground/60">
-                  {format === 'blindpass' ? '.json or .blindpass' : '.csv or .json'}
+                  CSV, JSON, .blindpass, .1pux or .zip
                 </p>
               </>
             )}
@@ -392,6 +402,13 @@ export function ImportSection() {
             {state.result.skipped > 0 && (
               <p className="text-xs text-muted-foreground mt-0.5">
                 {state.result.skipped} skipped (invalid or incomplete).
+              </p>
+            )}
+            {state.result.attachmentsDropped > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {state.result.attachmentsDropped} attachment
+                {state.result.attachmentsDropped !== 1 ? 's' : ''} could not be imported (BlindPass
+                does not support file attachments).
               </p>
             )}
           </div>
@@ -461,6 +478,13 @@ export function ImportSection() {
           </p>
           {state.skipped > 0 && (
             <p className="text-xs text-muted-foreground">{state.skipped} skipped.</p>
+          )}
+          {state.attachmentsDropped > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {state.attachmentsDropped} attachment
+              {state.attachmentsDropped !== 1 ? 's' : ''} could not be imported (BlindPass does not
+              support file attachments).
+            </p>
           )}
           <Button size="sm" variant="outline" onClick={handleReset} className="mt-1">
             Import more
