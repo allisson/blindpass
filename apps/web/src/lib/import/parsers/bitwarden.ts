@@ -1,58 +1,55 @@
 import { VaultItemSchema } from '@blindpass/vault';
 import type { VaultItem } from '@blindpass/vault';
+import { coerceToSecureNote } from '../coerce';
 import type { ImportResult } from '../types';
+import { parseTotpUri } from '../totp';
 
-interface TotpFields {
-  secret: string;
-  issuer?: string;
-  accountName?: string;
-  algorithm?: 'SHA1' | 'SHA256' | 'SHA512';
-  digits?: number;
-  period?: number;
+const BITWARDEN_TYPE_NAMES: Record<number, string> = {
+  1: 'Login',
+  2: 'Secure Note',
+  3: 'Card',
+  4: 'Identity',
+  5: 'SSH Key',
+};
+
+function bitwardenCategory(bwType: unknown): string {
+  if (typeof bwType === 'number' && BITWARDEN_TYPE_NAMES[bwType]) {
+    return `Bitwarden ${BITWARDEN_TYPE_NAMES[bwType]}`;
+  }
+  if (bwType === undefined || bwType === null) return 'Bitwarden item';
+  return `Bitwarden type ${bwType}`;
 }
 
-function parseTotpUri(uri: string): TotpFields | null {
-  const trimmed = uri.trim();
-  if (!trimmed) return null;
+function mapSshKey(item: Record<string, unknown>): VaultItem | null {
+  const sshKey = (item.sshKey ?? {}) as Record<string, unknown>;
+  const privateKey = typeof sshKey.privateKey === 'string' ? sshKey.privateKey : '';
+  const publicKey = typeof sshKey.publicKey === 'string' ? sshKey.publicKey : '';
+  const fingerprint = typeof sshKey.keyFingerprint === 'string' ? sshKey.keyFingerprint : '';
+  if (!privateKey || !publicKey || !fingerprint) return null;
+  const result = VaultItemSchema.safeParse({
+    type: 'developer_credential',
+    credentialMode: 'ssh_key',
+    title: item.name ?? '',
+    privateKey,
+    publicKey,
+    fingerprint,
+    username: 'imported',
+    host: 'imported',
+    notes: item.notes || undefined,
+    customFields: parseCustomFields(item.fields),
+  });
+  return result.success ? result.data : null;
+}
 
-  if (!trimmed.startsWith('otpauth://')) {
-    return { secret: trimmed };
-  }
-
-  try {
-    const url = new URL(trimmed);
-    if (url.protocol !== 'otpauth:') return null;
-    const secret = url.searchParams.get('secret');
-    if (!secret) return null;
-
-    // pathname is /totp/ISSUER:ACCOUNT or /totp/ACCOUNT
-    const label = decodeURIComponent(url.pathname.slice(1));
-    const colonIdx = label.indexOf(':');
-    const issuerFromPath = colonIdx !== -1 ? label.slice(0, colonIdx) : undefined;
-    const accountName = colonIdx !== -1 ? label.slice(colonIdx + 1) : label;
-
-    const issuer = url.searchParams.get('issuer') ?? issuerFromPath;
-    const rawAlgo = url.searchParams.get('algorithm');
-    const algorithm =
-      rawAlgo === 'SHA256' || rawAlgo === 'SHA512' ? rawAlgo : rawAlgo ? 'SHA1' : undefined;
-    const digits = url.searchParams.get('digits')
-      ? Number(url.searchParams.get('digits'))
-      : undefined;
-    const period = url.searchParams.get('period')
-      ? Number(url.searchParams.get('period'))
-      : undefined;
-
-    return {
-      secret,
-      issuer: issuer ?? undefined,
-      accountName: accountName || undefined,
-      algorithm,
-      digits,
-      period,
-    };
-  } catch {
-    return null;
-  }
+function coerceFromRawItem(item: Record<string, unknown>, bwType: unknown): VaultItem | null {
+  const title = typeof item.name === 'string' ? item.name : '';
+  const fields = parseCustomFields(item.fields) ?? [];
+  return coerceToSecureNote({
+    categoryName: bitwardenCategory(bwType),
+    title,
+    customFields: fields,
+    sourceNotes: typeof item.notes === 'string' ? item.notes : undefined,
+  });
 }
 
 function parseCustomFields(raw: unknown): { label: string; value: string }[] | undefined {
@@ -177,13 +174,33 @@ export function parse(raw: string): ImportResult {
         } else {
           skipped++;
         }
+      } else if (bwType === 5) {
+        const sshResult = mapSshKey(item);
+        if (sshResult) {
+          items.push(sshResult);
+        } else {
+          const coerced = coerceFromRawItem(item, bwType);
+          if (coerced) items.push(coerced);
+          else skipped++;
+        }
       } else {
-        skipped++;
+        const coerced = coerceFromRawItem(item, bwType);
+        if (coerced) items.push(coerced);
+        else skipped++;
       }
     } catch {
-      skipped++;
+      try {
+        const coerced = coerceFromRawItem(
+          rawItem as Record<string, unknown>,
+          (rawItem as Record<string, unknown>)?.type,
+        );
+        if (coerced) items.push(coerced);
+        else skipped++;
+      } catch {
+        skipped++;
+      }
     }
   }
 
-  return { items, skipped };
+  return { items, skipped, attachmentsDropped: 0 };
 }

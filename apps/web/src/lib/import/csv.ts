@@ -1,36 +1,52 @@
 export function parseCsvRows(raw: string): string[][] {
+  const input = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
   const rows: string[][] = [];
-  const lines = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    rows.push(parseCsvRow(trimmed));
-  }
-  return rows;
-}
-
-function parseCsvRow(line: string): string[] {
-  const fields: string[] = [];
-  let current = '';
+  let row: string[] = [];
+  let cell = '';
   let inQuotes = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        if (input[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else if (ch === '\r' && input[i + 1] === '\n') {
+        cell += '\n';
         i++;
+      } else if (ch === '\r') {
+        cell += '\n';
       } else {
-        inQuotes = !inQuotes;
+        cell += ch;
       }
-    } else if (char === ',' && !inQuotes) {
-      fields.push(current);
-      current = '';
+      continue;
+    }
+
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      row.push(cell);
+      cell = '';
+    } else if (ch === '\r' || ch === '\n') {
+      if (ch === '\r' && input[i + 1] === '\n') i++;
+      row.push(cell);
+      if (row.length > 1 || row[0] !== '') rows.push(row);
+      row = [];
+      cell = '';
     } else {
-      current += char;
+      cell += ch;
     }
   }
-  fields.push(current);
-  return fields;
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    if (row.length > 1 || row[0] !== '') rows.push(row);
+  }
+
+  return rows;
 }

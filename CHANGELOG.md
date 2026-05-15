@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Import support for 1Password (`.1pux`), Dashlane (zip bundle), Apple Keychain (CSV), KeePassXC (CSV), and Proton Pass (JSON)
+- `ImportResult.attachmentsDropped` surfaces the count of file attachments that could not be carried over (BlindPass has no attachment storage); affected items get a `[Lost attachments: …]` breadcrumb in their notes/content
+- Content-sniff format detection: parsers register a `signature` that inspects file shape, replacing the filename-extension-only heuristic
+
+### Changed
+
+- Bitwarden importer: items in unknown categories (including Bitwarden 2024.12+ SSH-key type 5 when fields are incomplete) coerce into a `secure_note` instead of being silently skipped; well-formed SSH keys map natively to `developer_credential` ssh_key mode
+- CSV parser now correctly handles multi-line quoted fields and strips UTF-8 BOM, fixing silent corruption of notes with embedded newlines
+
 ## [0.6.0] - 2026-05-13
 
 ### Added

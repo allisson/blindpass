@@ -4,7 +4,7 @@ import type { ImportResult } from '../types';
 
 export function parse(raw: string): ImportResult {
   const rows = parseCsvRows(raw);
-  if (rows.length < 2) return { items: [], skipped: 0 };
+  if (rows.length < 2) return { items: [], skipped: 0, attachmentsDropped: 0 };
 
   const headers = rows[0].map((h) => h.toLowerCase().trim());
   const nameIdx = headers.indexOf('name');
@@ -13,7 +13,7 @@ export function parse(raw: string): ImportResult {
   const passwordIdx = headers.indexOf('password');
   const extraIdx = headers.indexOf('extra');
 
-  if (passwordIdx === -1) return { items: [], skipped: rows.length - 1 };
+  if (passwordIdx === -1) return { items: [], skipped: rows.length - 1, attachmentsDropped: 0 };
 
   const items = [];
   let skipped = 0;
@@ -58,5 +58,5 @@ export function parse(raw: string): ImportResult {
     }
   }
 
-  return { items, skipped };
+  return { items, skipped, attachmentsDropped: 0 };
 }
