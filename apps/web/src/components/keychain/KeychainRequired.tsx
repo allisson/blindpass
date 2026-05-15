@@ -2,7 +2,7 @@ import { Navigate } from '@tanstack/react-router';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { decryptVaultItem, encryptVaultItem, type VaultItem } from '@blindpass/vault';
 import { decryptSymmetric, encryptSymmetric, generateKey } from '@blindpass/crypto';
-import type { EncryptedVaultItem } from '@blindpass/api-schema';
+import type { EncryptedVaultItem, VersionDetail } from '@blindpass/api-schema';
 import type { Keychain, KeyPair } from '@blindpass/types';
 import { fromBase64EncryptedValue, toBase64EncryptedValue } from '@/lib/b64';
 import { session, type Session, type VaultEntry } from '@/lib/session';
@@ -29,6 +29,10 @@ export interface KeychainHelpers {
     envelope: EncryptedVaultItem,
     vaultKey?: Uint8Array,
   ) => Promise<VaultItem & DecryptedItemBase>;
+  decryptVersion: (
+    envelope: Pick<VersionDetail, 'encryptedData' | 'encryptedItemKey'>,
+    vaultKey?: Uint8Array,
+  ) => Promise<VaultItem>;
   encryptItem: (
     payload: VaultItem,
     vaultKey?: Uint8Array,
@@ -36,9 +40,10 @@ export interface KeychainHelpers {
     encryptedData: { ciphertext: string; nonce: string };
     encryptedItemKey: { ciphertext: string; nonce: string };
   }>;
+  wrapVaultKey: (vaultKey: Uint8Array) => Promise<{ ciphertext: string; nonce: string }>;
 }
 
-export type KeychainContextValue = KeychainSnapshot & KeychainHelpers;
+export type KeychainContextValue = Omit<KeychainSnapshot, 'masterKey'> & KeychainHelpers;
 
 const KeychainContext = createContext<KeychainContextValue | null>(null);
 
@@ -111,6 +116,19 @@ export function KeychainRequired({ children }: Props) {
           updatedAt: envelope.updatedAt,
         };
       },
+      async decryptVersion(envelope, vaultKey) {
+        const wrapKey = vaultKey ?? snapshot.vaultKey;
+        const itemKey = await decryptSymmetric(
+          fromBase64EncryptedValue(envelope.encryptedItemKey),
+          wrapKey,
+        );
+        const vaultItem = await decryptVaultItem(
+          fromBase64EncryptedValue(envelope.encryptedData),
+          itemKey,
+        );
+        itemKey.fill(0);
+        return vaultItem;
+      },
       async encryptItem(payload, vaultKey) {
         const itemKey = await generateKey();
         const encryptedData = await encryptVaultItem(payload, itemKey);
@@ -121,6 +139,10 @@ export function KeychainRequired({ children }: Props) {
           encryptedData: toBase64EncryptedValue(encryptedData),
           encryptedItemKey: toBase64EncryptedValue(encryptedItemKey),
         };
+      },
+      async wrapVaultKey(vaultKey) {
+        const encrypted = await encryptSymmetric(vaultKey, snapshot.masterKey);
+        return toBase64EncryptedValue(encrypted);
       },
     };
     return { ...snapshot, ...helpers };
