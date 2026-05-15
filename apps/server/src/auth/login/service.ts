@@ -13,7 +13,7 @@ export type CompleteLoginInput = {
 };
 
 export type CompleteLoginResult =
-  | { ok: true; authToken: string }
+  | { ok: true; proof: session.ProofOfSession }
   | { ok: false; reason: 'invalid_credentials' };
 
 export async function completeLogin(
@@ -31,6 +31,6 @@ export async function completeLogin(
   }
 
   await users.updateTotpCounter(db, user.id, counter);
-  const authToken = await session.issue(db, user.id, input.userAgent);
-  return { ok: true, authToken };
+  const proof = await session.issue(db, user.id, input.userAgent);
+  return { ok: true, proof };
 }

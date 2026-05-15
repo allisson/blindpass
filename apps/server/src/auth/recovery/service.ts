@@ -103,7 +103,7 @@ export type CompleteRecoveryInput = {
 };
 
 export type CompleteRecoveryResult =
-  | { ok: true; authToken: string; bundle: ReturnType<typeof fromUserRow> }
+  | { ok: true; proof: session.ProofOfSession; bundle: ReturnType<typeof fromUserRow> }
   | { ok: false; reason: 'invalid' | 'not_provisioned' };
 
 export async function completeRecovery(
@@ -146,12 +146,12 @@ export async function completeRecovery(
     recoveryVerifierSalt: nextRecovery.salt,
     ...input.newKeys,
   });
-  const authToken = await session.issue(db, user.id, input.userAgent);
   const fullUser = await users.findFullById(db, user.id);
 
   if (!fullUser?.publicKey || !fullUser.kekSalt) {
     return { ok: false, reason: 'not_provisioned' };
   }
 
-  return { ok: true, authToken, bundle: fromUserRow(fullUser) };
+  const proof = await session.issue(db, user.id, input.userAgent);
+  return { ok: true, proof, bundle: fromUserRow(fullUser) };
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
-import { attachCookie, issue } from '../index.js';
+import { attachCookie, issue, type ProofOfSession } from '../index.js';
 import { hashToken } from '../../../utils/otp.js';
 
 vi.mock('../../../env.js', () => ({
@@ -14,7 +14,7 @@ vi.mock('../../../env.js', () => ({
 }));
 
 describe('session.issue', () => {
-  it('inserts a row with hashed token, ttl-based expiry, and returns raw token', async () => {
+  it('inserts a row with hashed token, ttl-based expiry, and returns a proof', async () => {
     const captured: { row?: Record<string, unknown> } = {};
     const db = {
       insert: () => ({
@@ -26,17 +26,40 @@ describe('session.issue', () => {
 
     const before = Date.now();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const token = await issue(db as any, 'user-1', 'curl/8.0');
+    const proof = await issue(db as any, 'user-1', 'curl/8.0');
     const after = Date.now();
 
-    expect(token).toMatch(/^[0-9a-f]{64}$/);
+    expect(proof.token).toMatch(/^[0-9a-f]{64}$/);
     expect(captured.row?.['userId']).toBe('user-1');
     expect(captured.row?.['userAgent']).toBe('curl/8.0');
-    expect(captured.row?.['tokenHash']).toBe(hashToken(token));
+    expect(captured.row?.['tokenHash']).toBe(hashToken(proof.token));
 
     const expiresAt = captured.row?.['expiresAt'] as Date;
     expect(expiresAt.getTime()).toBeGreaterThanOrEqual(before + 60_000);
     expect(expiresAt.getTime()).toBeLessThanOrEqual(after + 60_000);
+  });
+
+  it('returns a proof that JSON.stringify drops to undefined', async () => {
+    const db = {
+      insert: () => ({ values: vi.fn(async () => undefined) }),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const proof = await issue(db as any, 'user-1', undefined);
+    expect(JSON.stringify(proof)).toBeUndefined();
+    expect(JSON.stringify({ proof })).toBe('{}');
+  });
+
+  it('returns a proof whose token is non-enumerable (spread and keys are empty)', async () => {
+    const db = {
+      insert: () => ({ values: vi.fn(async () => undefined) }),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const proof = await issue(db as any, 'user-1', undefined);
+    expect(Object.keys(proof)).toEqual([]);
+    expect({ ...proof }).toEqual({});
+    expect(Object.assign({}, proof)).toEqual({});
+    // The token remains readable for the legitimate consumer.
+    expect(proof.token).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('passes undefined userAgent through', async () => {
@@ -59,7 +82,8 @@ describe('session.attachCookie', () => {
     const app = Fastify();
     await app.register(cookie);
     app.get('/x', async (_req, reply) => {
-      attachCookie(reply, 'rawtoken123');
+      const proof = { token: 'rawtoken123' } as unknown as ProofOfSession;
+      attachCookie(reply, proof);
       return { ok: true };
     });
     const res = await app.inject({ method: 'GET', url: '/x' });
