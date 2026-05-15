@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { StartTotpRotationRequestSchema } from '@blindpass/api-schema';
 import { startRotation } from '../../auth/totp-rotation/service.js';
+import { asTx } from '../../db/tx.js';
 
 export function registerStartTotpRotationRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -12,9 +13,14 @@ export function registerStartTotpRotationRoute(app: FastifyInstance): void {
     },
     async (request, reply) => {
       const result = await app.db.transaction(async (tx) =>
-        startRotation(tx, request.userId, {
-          authenticatorCode: request.body.authenticatorCode,
-        }),
+        startRotation(
+          asTx(tx),
+          request.userId,
+          {
+            authenticatorCode: request.body.authenticatorCode,
+          },
+          app.clock,
+        ),
       );
 
       if (!result.ok) {

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { DeleteAccountRequestSchema } from '@blindpass/api-schema';
 import { deleteAccount } from '../../auth/account/service.js';
+import { asTx } from '../../db/tx.js';
 import { authRateLimit } from '../auth/rate-limit.js';
 
 export function registerDeleteAccountRoute(app: FastifyInstance): void {
@@ -13,9 +14,14 @@ export function registerDeleteAccountRoute(app: FastifyInstance): void {
     },
     async (request, reply) => {
       const result = await app.db.transaction(async (tx) =>
-        deleteAccount(tx, request.userId, {
-          authenticatorCode: request.body.authenticatorCode,
-        }),
+        deleteAccount(
+          asTx(tx),
+          request.userId,
+          {
+            authenticatorCode: request.body.authenticatorCode,
+          },
+          app.clock,
+        ),
       );
 
       if (!result.ok) {

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { TotpEnrollment } from '@blindpass/api-schema';
-import * as schema from '../../db/schema.js';
+import type { TxDb } from '../../db/tx.js';
+import type { Clock } from '../../plugins/clock.js';
 import { env } from '../../env.js';
 import { hashToken } from '../../utils/otp.js';
 import * as totp from '../totp/index.js';
@@ -14,7 +14,7 @@ import * as recoveryTokens from '../recovery-tokens/repository.js';
 import * as sessionsRepo from '../sessions/repository.js';
 import * as verifier from './verifier.js';
 
-type Db = NodePgDatabase<typeof schema>;
+type Db = TxDb;
 
 export type VerifyRecoveryInput = {
   username: string;
@@ -33,6 +33,7 @@ export type VerifyRecoveryResult =
 export async function verifyRecovery(
   db: Db,
   input: VerifyRecoveryInput,
+  clock: Clock,
 ): Promise<VerifyRecoveryResult> {
   const user = await users.findFullByUsername(db, input.username);
   if (
@@ -51,8 +52,8 @@ export async function verifyRecovery(
   }
 
   const recoveryToken = randomBytes(32).toString('hex');
-  const recoveryExpiry = new Date(Date.now() + env.RECOVERY_TOKEN_TTL_MS);
-  const enrollmentExpiry = new Date(Date.now() + env.PENDING_TOTP_TTL_MS);
+  const recoveryExpiry = new Date(clock.now() + env.RECOVERY_TOKEN_TTL_MS);
+  const enrollmentExpiry = new Date(clock.now() + env.PENDING_TOTP_TTL_MS);
   const enrollment = totp.enroll(user.username, enrollmentExpiry);
 
   await recoveryTokens.deleteAllForUser(db, user.id);
@@ -109,6 +110,7 @@ export type CompleteRecoveryResult =
 export async function completeRecovery(
   db: Db,
   input: CompleteRecoveryInput,
+  clock: Clock,
 ): Promise<CompleteRecoveryResult> {
   const user = await users.findFullByUsername(db, input.username);
   if (!user || user.revokedAt) {
@@ -129,7 +131,12 @@ export async function completeRecovery(
     return { ok: false, reason: 'invalid' };
   }
 
-  const counter = totp.verify(enrollment.encryptedSecret, input.authenticatorCode, null);
+  const counter = totp.verify(
+    enrollment.encryptedSecret,
+    input.authenticatorCode,
+    null,
+    clock.now(),
+  );
   if (counter == null) {
     return { ok: false, reason: 'invalid' };
   }
@@ -152,6 +159,6 @@ export async function completeRecovery(
     return { ok: false, reason: 'not_provisioned' };
   }
 
-  const proof = await session.issue(db, user.id, input.userAgent);
+  const proof = await session.issue(db, user.id, input.userAgent, clock);
   return { ok: true, proof, bundle: fromUserRow(fullUser) };
 }

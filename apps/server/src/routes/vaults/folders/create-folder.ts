@@ -2,8 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { CreateFolderRequestSchema, VaultIdParamSchema } from '@blindpass/api-schema';
 import { b64, toB64 } from '../../../utils/base64.js';
-import { getVaultAccess } from '../../../vaults/access.js';
-import * as folders from '../../../vaults/folders/repository.js';
+import { createFolder } from '../../../vaults/folders/service.js';
+import { asTx } from '../../../db/tx.js';
 
 export function registerCreateFolderRoute(app: FastifyInstance): void {
   app
@@ -15,24 +15,27 @@ export function registerCreateFolderRoute(app: FastifyInstance): void {
         const { vaultId } = request.params;
         const { encryptedName } = request.body;
 
-        const access = await getVaultAccess(app.db, vaultId, request.userId);
-        if (!access) return reply.status(404).send({ error: 'Vault not found' });
-        if (access.role === 'viewer') return reply.status(403).send({ error: 'Forbidden' });
+        const result = await app.db.transaction(async (tx) =>
+          createFolder(asTx(tx), request.userId, vaultId, {
+            encryptedNameCiphertext: b64(encryptedName.ciphertext),
+            encryptedNameNonce: b64(encryptedName.nonce),
+          }),
+        );
 
-        const folder = await folders.create(app.db, vaultId, {
-          encryptedNameCiphertext: b64(encryptedName.ciphertext),
-          encryptedNameNonce: b64(encryptedName.nonce),
-        });
+        if (!result.ok) {
+          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
+          return reply.status(404).send({ error: 'Vault not found' });
+        }
 
         return reply.status(201).send({
           folder: {
-            id: folder.id,
+            id: result.folder.id,
             encryptedName: {
-              ciphertext: toB64(folder.encryptedNameCiphertext),
-              nonce: toB64(folder.encryptedNameNonce),
+              ciphertext: toB64(result.folder.encryptedNameCiphertext),
+              nonce: toB64(result.folder.encryptedNameNonce),
             },
-            createdAt: folder.createdAt.toISOString(),
-            updatedAt: folder.updatedAt.toISOString(),
+            createdAt: result.folder.createdAt.toISOString(),
+            updatedAt: result.folder.updatedAt.toISOString(),
           },
         });
       },

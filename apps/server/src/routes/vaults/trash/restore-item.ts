@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { VaultItemParamSchema } from '@blindpass/api-schema';
 import { restoreItem } from '../../../vaults/trash/service.js';
+import { asTx } from '../../../db/tx.js';
 
 export function registerRestoreItemRoute(app: FastifyInstance): void {
   app
@@ -11,7 +12,9 @@ export function registerRestoreItemRoute(app: FastifyInstance): void {
       { schema: { params: VaultItemParamSchema } },
       async (request, reply) => {
         const { vaultId, id } = request.params;
-        const result = await restoreItem(app.db, request.userId, vaultId, id);
+        const result = await app.db.transaction(async (tx) =>
+          restoreItem(asTx(tx), request.userId, vaultId, id),
+        );
 
         if (!result.ok) {
           if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });

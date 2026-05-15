@@ -147,7 +147,12 @@ describe('credential operations', () => {
   });
 
   it('rotates the authenticator and recovery phrase with fresh codes', async () => {
-    let now = Date.parse('2035-05-05T12:00:00.000Z');
+    // Anchor the mocked clock near real time. Both Postgres NOW() (writes
+    // `lastUsedAt`) and `app.clock.now()` (used by the auth plugin's idle
+    // check and by `totp.verify`) need to agree on "now" within
+    // SESSION_IDLE_TTL_MS, so anchoring at the real wall clock keeps the
+    // idle window valid while still advancing TOTP counters by 30s.
+    let now = Date.now();
     vi.spyOn(Date, 'now').mockImplementation(() => now);
 
     const app = await buildIntegrationApp();

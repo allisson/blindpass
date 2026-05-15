@@ -27,9 +27,11 @@ import * as totpSecrets from '../../totp-secrets/repository.js';
 import * as totp from '../../totp/index.js';
 import * as session from '../../session/index.js';
 import { completeRegistration } from '../service.js';
+import { fixedClock } from '../../../test/fake-clock.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = {} as any;
+const clock = fixedClock(0);
 const baseInput = {
   username: 'alice',
   enrollmentId: 'e1',
@@ -67,7 +69,7 @@ describe('completeRegistration', () => {
   it('rejects when user is missing', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(users.findFullByUsername).mockResolvedValue(undefined as any);
-    expect(await completeRegistration(db, baseInput)).toEqual({
+    expect(await completeRegistration(db, baseInput, clock)).toEqual({
       ok: false,
       reason: 'invalid_enrollment',
     });
@@ -79,7 +81,7 @@ describe('completeRegistration', () => {
       verified: true,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
-    expect(await completeRegistration(db, baseInput)).toEqual({
+    expect(await completeRegistration(db, baseInput, clock)).toEqual({
       ok: false,
       reason: 'invalid_enrollment',
     });
@@ -90,7 +92,7 @@ describe('completeRegistration', () => {
     vi.mocked(users.findFullByUsername).mockResolvedValue(verifiedUser as any);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(enrollments.findPending).mockResolvedValue(undefined as any);
-    expect(await completeRegistration(db, baseInput)).toEqual({
+    expect(await completeRegistration(db, baseInput, clock)).toEqual({
       ok: false,
       reason: 'invalid_enrollment',
     });
@@ -103,7 +105,7 @@ describe('completeRegistration', () => {
     vi.mocked(enrollments.findPending).mockResolvedValue({ ...enrollment, attempts: 2 } as any);
     vi.mocked(totp.verify).mockReturnValue(null);
 
-    expect(await completeRegistration(db, baseInput)).toEqual({
+    expect(await completeRegistration(db, baseInput, clock)).toEqual({
       ok: false,
       reason: 'invalid_enrollment',
     });
@@ -118,7 +120,7 @@ describe('completeRegistration', () => {
     vi.mocked(enrollments.findPending).mockResolvedValue({ ...enrollment, attempts: 0 } as any);
     vi.mocked(totp.verify).mockReturnValue(null);
 
-    await completeRegistration(db, baseInput);
+    await completeRegistration(db, baseInput, clock);
     expect(enrollments.bumpAttempts).toHaveBeenCalledWith(db, 'e1', 1);
     expect(enrollments.deleteById).not.toHaveBeenCalled();
   });
@@ -138,7 +140,7 @@ describe('completeRegistration', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
-    expect(await completeRegistration(db, baseInput)).toEqual({
+    expect(await completeRegistration(db, baseInput, clock)).toEqual({
       ok: false,
       reason: 'not_provisioned',
     });
@@ -155,7 +157,7 @@ describe('completeRegistration', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(users.findFullById).mockResolvedValue(verifiedUser as any);
 
-    const r = await completeRegistration(db, baseInput);
+    const r = await completeRegistration(db, baseInput, clock);
 
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.proof).toBe(fakeProof);
@@ -163,6 +165,6 @@ describe('completeRegistration', () => {
     expect(totpSecrets.replaceForUser).toHaveBeenCalledWith(db, 'u1', enrollment.encryptedSecret);
     expect(enrollments.deleteByUser).toHaveBeenCalledWith(db, 'u1');
     expect(users.markVerifiedAndCounter).toHaveBeenCalledWith(db, 'u1', 7);
-    expect(session.issue).toHaveBeenCalledWith(db, 'u1', 'curl/8');
+    expect(session.issue).toHaveBeenCalledWith(db, 'u1', 'curl/8', clock);
   });
 });

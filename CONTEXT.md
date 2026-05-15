@@ -193,18 +193,27 @@ Repo: `listForVault`, `create`, `findByIdForUser`, `deleteById`. Service: `creat
 Repo: `listForVault`, `listForUser`, `findTrashedById`, `restoreById`, `purgeById`, `emptyForVault`, `emptyForUser`. Service: `restoreItem` (writer access), `purgeItem` (owner only), `emptyVaultTrash` (owner only), `emptyUserTrash` (no access check needed — caller's own vaults).
 
 **FoldersRepository** (`vaults/folders/repository.ts`):
-`listForVault`, `create`, `update`, `deleteById`. No service — routes do access check inline.
+`listForVault`, `create`, `update`, `deleteById`.
+
+**FoldersService** (`vaults/folders/service.ts`):
+Composes access check + repo for each write ceremony: `createFolder`, `updateFolder`, `deleteFolder`. Mirrors the items / trash / shares service shape so vault-resource write paths are uniform. Read path (`listForVault`) skips the service and calls repo + `requireReader` directly.
 
 **VersionsRepository** (`vaults/versions/repository.ts`):
 `findItemInVault`, `listForItem`, `findById`. Read-only, repo-only.
 
 **VaultAccess** (`vaults/access.ts`):
-Per-request authorization check returning the caller's role on a vault: `owner`, `viewer`, or `editor`, or `null` if no access. Used as a guard in every vault route handler (and the items service).
+Per-request authorization. Exports `getVaultAccess` — the primitive that returns `{role}` (`owner | viewer | editor`) or `null`. On top of it, three role-gate helpers consumed by every vault write service and every vault read route: `requireOwner`, `requireWriter`, `requireReader`. Each returns `AccessFailure | null` (`'vault_not_found' | 'forbidden' | null`) — compact early-return at call sites: `const fail = await requireWriter(db, …); if (fail) return { ok: false, reason: fail };`. The helpers are the single audit point for "who can do what on a vault."
 
 **Quota** (`vaults/quota.ts`):
-Per-user vault count and per-vault item count enforcement. Acquires a `pg_advisory_xact_lock` keyed on the resource before counting, so concurrent writes can't both pass under the limit. Throws `QuotaExceededError` (handled by the global error handler → 403).
+Per-user vault count and per-vault item count enforcement. Acquires a `pg_advisory_xact_lock` keyed on the resource before counting, so concurrent writes can't both pass under the limit. The lock is released at statement end if no surrounding transaction exists — so the `assert*` helpers take **TxDb** to make tx-free misuse a compile error. Throws `QuotaExceededError` (handled by the global error handler → 403). The `getEffective*Quota` reads accept either handle.
 
-Each service method takes `Db` and a typed input, returns a discriminated-union **ServiceResult** (`{ok: true, ...} | {ok: false, reason: ...}`). Routes own `db.transaction(...)` and HTTP shape; services own domain rules.
+**TxDb** (`db/tx.ts`):
+Branded opaque type — `NodePgDatabase<typeof schema> & { readonly [txBrand]: true }`. The brand is type-only; the runtime value is the same Drizzle handle. Produced exclusively by `asTx(tx)` inside `app.db.transaction(async (tx) => …)` route handlers; consumed by every write-path service signature and by the quota `assert*` helpers. Promotes "this ceremony must be atomic" from prose convention into a function-signature obligation, the same move as **ProofOfSession**. Read-path services and repositories continue to accept the un-branded `NodePgDatabase<typeof schema>`, so the same handle flows through reads without forcing a needless transaction.
+
+**Clock** (`plugins/clock.ts`):
+Fastify decorator `app.clock: { now(): number }` registered between `dbPlugin` and `authPlugin`. Owns every time-sensitive read in the server: session expiry math (`session.issue`), recovery token expiry, pending-enrollment expiry, TOTP verify window (`totp.verify`), the auth plugin's session idle check, and the periodic cleanup interval in `index.ts`. Production decorates `{ now: () => Date.now() }`; tests register a `fixedClock(ms)` or `advanceableClock()` from `test/fake-clock.ts` to control time without `vi.spyOn(Date, 'now')` — the latter doesn't see the V8-internal clock that `new Date()` uses, so the global spy was an unreliable seam. Routes thread `app.clock` to write services that need it; the auth plugin reads it directly inside its `onRequest` hook.
+
+Each service method takes a `TxDb` (writes) or `Db` (reads), a typed input, and — when time-sensitive — a `Clock`. Returns a discriminated-union **ServiceResult** (`{ok: true, ...} | {ok: false, reason: ...}`). Routes own `db.transaction(...)` and HTTP shape; services own domain rules.
 
 **ServiceResult**:
 The discriminated-union return shape used by every auth service method. Routes pattern-match on `ok` and `reason` to choose status codes and error messages. Services never throw for expected validation failures; they return `{ok: false, reason}` instead.

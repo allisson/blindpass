@@ -1,10 +1,9 @@
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../db/schema.js';
+import type { TxDb } from '../db/tx.js';
 import { assertVaultQuota, getEffectiveOwnerQuota } from './quota.js';
 import * as vaults from './repository.js';
 import type { VaultRow } from './repository.js';
 
-type Db = NodePgDatabase<typeof schema>;
+type Db = TxDb;
 
 export type CreateVaultInput = {
   encryptedVaultKeyCiphertext: Buffer;

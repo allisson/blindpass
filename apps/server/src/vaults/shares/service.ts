@@ -1,10 +1,9 @@
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../../db/schema.js';
+import type { TxDb } from '../../db/tx.js';
 import * as users from '../../auth/users/repository.js';
 import * as vaults from '../repository.js';
 import * as shares from './repository.js';
 
-type Db = NodePgDatabase<typeof schema>;
+type Db = TxDb;
 
 export type CreateShareInput = {
   receiverUserId: string;

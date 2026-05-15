@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import { attachCookie, issue, type ProofOfSession } from '../index.js';
 import { hashToken } from '../../../utils/otp.js';
+import { fixedClock } from '../../../test/fake-clock.js';
 
 vi.mock('../../../env.js', () => ({
   env: {
@@ -24,10 +25,9 @@ describe('session.issue', () => {
       }),
     };
 
-    const before = Date.now();
+    const fixedNow = 1_700_000_000_000;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const proof = await issue(db as any, 'user-1', 'curl/8.0');
-    const after = Date.now();
+    const proof = await issue(db as any, 'user-1', 'curl/8.0', fixedClock(fixedNow));
 
     expect(proof.token).toMatch(/^[0-9a-f]{64}$/);
     expect(captured.row?.['userId']).toBe('user-1');
@@ -35,8 +35,7 @@ describe('session.issue', () => {
     expect(captured.row?.['tokenHash']).toBe(hashToken(proof.token));
 
     const expiresAt = captured.row?.['expiresAt'] as Date;
-    expect(expiresAt.getTime()).toBeGreaterThanOrEqual(before + 60_000);
-    expect(expiresAt.getTime()).toBeLessThanOrEqual(after + 60_000);
+    expect(expiresAt.getTime()).toBe(fixedNow + 60_000);
   });
 
   it('returns a proof that JSON.stringify drops to undefined', async () => {
@@ -44,7 +43,7 @@ describe('session.issue', () => {
       insert: () => ({ values: vi.fn(async () => undefined) }),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const proof = await issue(db as any, 'user-1', undefined);
+    const proof = await issue(db as any, 'user-1', undefined, fixedClock(0));
     expect(JSON.stringify(proof)).toBeUndefined();
     expect(JSON.stringify({ proof })).toBe('{}');
   });
@@ -54,7 +53,7 @@ describe('session.issue', () => {
       insert: () => ({ values: vi.fn(async () => undefined) }),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const proof = await issue(db as any, 'user-1', undefined);
+    const proof = await issue(db as any, 'user-1', undefined, fixedClock(0));
     expect(Object.keys(proof)).toEqual([]);
     expect({ ...proof }).toEqual({});
     expect(Object.assign({}, proof)).toEqual({});
@@ -72,7 +71,7 @@ describe('session.issue', () => {
       }),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await issue(db as any, 'user-2', undefined);
+    await issue(db as any, 'user-2', undefined, fixedClock(0));
     expect(captured.row?.['userAgent']).toBeUndefined();
   });
 });

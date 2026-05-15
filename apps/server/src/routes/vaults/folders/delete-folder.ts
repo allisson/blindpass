@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { FolderParamSchema } from '@blindpass/api-schema';
-import { getVaultAccess } from '../../../vaults/access.js';
-import * as folders from '../../../vaults/folders/repository.js';
+import { deleteFolder } from '../../../vaults/folders/service.js';
+import { asTx } from '../../../db/tx.js';
 
 export function registerDeleteFolderRoute(app: FastifyInstance): void {
   app
@@ -13,12 +13,16 @@ export function registerDeleteFolderRoute(app: FastifyInstance): void {
       async (request, reply) => {
         const { vaultId, folderId } = request.params;
 
-        const access = await getVaultAccess(app.db, vaultId, request.userId);
-        if (!access) return reply.status(404).send({ error: 'Vault not found' });
-        if (access.role === 'viewer') return reply.status(403).send({ error: 'Forbidden' });
+        const result = await app.db.transaction(async (tx) =>
+          deleteFolder(asTx(tx), request.userId, vaultId, folderId),
+        );
 
-        const deleted = await folders.deleteById(app.db, folderId, vaultId);
-        if (!deleted) return reply.status(404).send({ error: 'Folder not found' });
+        if (!result.ok) {
+          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
+          if (result.reason === 'folder_not_found')
+            return reply.status(404).send({ error: 'Folder not found' });
+          return reply.status(404).send({ error: 'Vault not found' });
+        }
 
         return reply.status(204).send();
       },

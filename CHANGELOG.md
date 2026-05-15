@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `TxDb` branded type (`apps/server/src/db/tx.ts`) and `asTx()` cast. Every write-path service signature (auth, vaults, shares, trash, folders, items) and the `vaults/quota.ts` advisory-lock helpers now require `TxDb`, making accidental calls on `app.db` outside a transaction a compile error. Closes a latent correctness gap where `pg_advisory_xact_lock` would silently no-op without a surrounding transaction
+- `FoldersService` (`apps/server/src/vaults/folders/service.ts`) extracted from inline route logic, mirroring the items / trash / shares service shape; folder write routes and the trash/list reader now run inside `db.transaction(...)`
+- `requireOwner` / `requireWriter` / `requireReader` exports on `vaults/access.ts` consolidate the role-gate pattern previously duplicated in items and trash services and in folder routes
+- `app.clock` Fastify decorator (`apps/server/src/plugins/clock.ts`) and `test/fake-clock.ts` helpers (`fixedClock`, `advanceableClock`) — session expiry, TOTP verify windows, recovery token expiry, the auth plugin's idle check, and the periodic cleanup interval all read time from `app.clock` so tests can control it without globally spying on `Date.now`
+- Unit tests covering `vaults/access.ts` role-gate matrix, `FoldersService` write paths, the auth plugin's clock-driven idle ceiling, and `verifyRecovery`'s clock-driven expiry stamping
+
+### Changed
+
+- Duplicate PG `23505` try/catch removed from `routes/auth/register.ts` and `routes/vaults/shares/create-share.ts`; the global error handler is now the only place that maps unique-violation to 409
+
+### Internal
+
+- Integration test app builder (`buildIntegrationApp`) now registers `clockPlugin` and the global `errorHandler` to match production wiring
+- The credential-rotation integration test anchors its mocked clock at real wall-time instead of a far-future fixed date, so the auth plugin's idle check (which now reads `app.clock`) and Postgres `NOW()` (used for `sessions.last_used_at` default) agree within the idle window
+
 ## [0.7.0] - 2026-05-15
 
 ### Added

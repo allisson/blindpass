@@ -7,6 +7,8 @@ type Db = NodePgDatabase<typeof schema>;
 
 export type VaultRole = 'owner' | 'viewer' | 'editor';
 
+export type AccessFailure = 'vault_not_found' | 'forbidden';
+
 export async function getVaultAccess(
   db: Db,
   vaultId: string,
@@ -28,5 +30,37 @@ export async function getVaultAccess(
 
   if (share) return { role: share.role as VaultRole };
 
+  return null;
+}
+
+export async function requireOwner(
+  db: Db,
+  vaultId: string,
+  userId: string,
+): Promise<AccessFailure | null> {
+  const access = await getVaultAccess(db, vaultId, userId);
+  if (!access) return 'vault_not_found';
+  if (access.role !== 'owner') return 'forbidden';
+  return null;
+}
+
+export async function requireWriter(
+  db: Db,
+  vaultId: string,
+  userId: string,
+): Promise<AccessFailure | null> {
+  const access = await getVaultAccess(db, vaultId, userId);
+  if (!access) return 'vault_not_found';
+  if (access.role === 'viewer') return 'forbidden';
+  return null;
+}
+
+export async function requireReader(
+  db: Db,
+  vaultId: string,
+  userId: string,
+): Promise<AccessFailure | null> {
+  const access = await getVaultAccess(db, vaultId, userId);
+  if (!access) return 'vault_not_found';
   return null;
 }

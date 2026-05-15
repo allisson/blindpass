@@ -15,9 +15,11 @@ import * as users from '../../users/repository.js';
 import { verifyAuthenticatorForUser } from '../../totp/verify-for-user.js';
 import * as session from '../../session/index.js';
 import { completeLogin } from '../service.js';
+import { fixedClock } from '../../../test/fake-clock.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = {} as any;
+const clock = fixedClock(0);
 
 describe('completeLogin', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -25,7 +27,11 @@ describe('completeLogin', () => {
   it('returns invalid_credentials when user is missing', async () => {
     vi.mocked(users.findCredentialsByUsername).mockResolvedValue(undefined);
     expect(
-      await completeLogin(db, { username: 'a', authenticatorCode: '000000', userAgent: undefined }),
+      await completeLogin(
+        db,
+        { username: 'a', authenticatorCode: '000000', userAgent: undefined },
+        clock,
+      ),
     ).toEqual({
       ok: false,
       reason: 'invalid_credentials',
@@ -39,11 +45,11 @@ describe('completeLogin', () => {
       verified: false,
       revokedAt: null,
     });
-    const r = await completeLogin(db, {
-      username: 'a',
-      authenticatorCode: '000000',
-      userAgent: undefined,
-    });
+    const r = await completeLogin(
+      db,
+      { username: 'a', authenticatorCode: '000000', userAgent: undefined },
+      clock,
+    );
     expect(r).toEqual({ ok: false, reason: 'invalid_credentials' });
   });
 
@@ -53,11 +59,11 @@ describe('completeLogin', () => {
       verified: true,
       revokedAt: new Date(),
     });
-    const r = await completeLogin(db, {
-      username: 'a',
-      authenticatorCode: '000000',
-      userAgent: undefined,
-    });
+    const r = await completeLogin(
+      db,
+      { username: 'a', authenticatorCode: '000000', userAgent: undefined },
+      clock,
+    );
     expect(r).toEqual({ ok: false, reason: 'invalid_credentials' });
   });
 
@@ -68,11 +74,11 @@ describe('completeLogin', () => {
       revokedAt: null,
     });
     vi.mocked(verifyAuthenticatorForUser).mockResolvedValue(null);
-    const r = await completeLogin(db, {
-      username: 'a',
-      authenticatorCode: '000000',
-      userAgent: undefined,
-    });
+    const r = await completeLogin(
+      db,
+      { username: 'a', authenticatorCode: '000000', userAgent: undefined },
+      clock,
+    );
     expect(r).toEqual({ ok: false, reason: 'invalid_credentials' });
     expect(users.updateTotpCounter).not.toHaveBeenCalled();
     expect(session.issue).not.toHaveBeenCalled();
@@ -88,14 +94,14 @@ describe('completeLogin', () => {
     const fakeProof = { token: 'tok-abc' } as unknown as session.ProofOfSession;
     vi.mocked(session.issue).mockResolvedValue(fakeProof);
 
-    const r = await completeLogin(db, {
-      username: 'a',
-      authenticatorCode: '123456',
-      userAgent: 'curl/8',
-    });
+    const r = await completeLogin(
+      db,
+      { username: 'a', authenticatorCode: '123456', userAgent: 'curl/8' },
+      clock,
+    );
 
     expect(r).toEqual({ ok: true, proof: fakeProof });
     expect(users.updateTotpCounter).toHaveBeenCalledWith(db, 'u1', 42);
-    expect(session.issue).toHaveBeenCalledWith(db, 'u1', 'curl/8');
+    expect(session.issue).toHaveBeenCalledWith(db, 'u1', 'curl/8', clock);
   });
 });

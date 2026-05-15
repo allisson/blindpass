@@ -2,7 +2,13 @@ import { count, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type * as schema from '../db/schema.js';
 import { projectSettings, users, vaultItems, vaults } from '../db/schema.js';
+import type { TxDb } from '../db/tx.js';
 
+// Reads accept either handle. Asserts require a real transaction — the
+// `pg_advisory_xact_lock` held by `acquireLock` is released when its statement
+// commits, so calling these on `app.db` (auto-commit per statement) silently
+// disables the quota's concurrency invariant. The brand makes that misuse a
+// type error.
 type Db = NodePgDatabase<typeof schema>;
 
 export type QuotaErrorCode = 'vault_limit_reached' | 'item_limit_reached';
@@ -23,11 +29,11 @@ export class QuotaExceededError extends Error {
   }
 }
 
-async function acquireLock(tx: Db, key: string): Promise<void> {
+async function acquireLock(tx: TxDb, key: string): Promise<void> {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${key})::bigint)`);
 }
 
-export async function assertVaultQuota(tx: Db, userId: string, limit: number): Promise<void> {
+export async function assertVaultQuota(tx: TxDb, userId: string, limit: number): Promise<void> {
   await acquireLock(tx, `vault_quota:${userId}`);
   const [row] = await tx.select({ value: count() }).from(vaults).where(eq(vaults.userId, userId));
   const current = Number(row?.value ?? 0);
@@ -64,7 +70,7 @@ export async function getEffectiveVaultItemQuota(tx: Db, vaultId: string): Promi
 }
 
 export async function assertItemQuota(
-  tx: Db,
+  tx: TxDb,
   vaultId: string,
   limit: number,
   adding = 1,

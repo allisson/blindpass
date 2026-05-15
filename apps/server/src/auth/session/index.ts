@@ -1,12 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyReply } from 'fastify';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { env } from '../../env.js';
 import { sessions } from '../../db/schema.js';
-import * as schema from '../../db/schema.js';
+import type { TxDb } from '../../db/tx.js';
+import type { Clock } from '../../plugins/clock.js';
 import { hashToken } from '../../utils/otp.js';
 
-type Db = NodePgDatabase<typeof schema>;
+type Db = TxDb;
 
 // Branded opaque type. Constructed only by `issue()`; consumed only by
 // `attachCookie()`. The brand prevents callers from synthesising a proof from a
@@ -22,12 +22,13 @@ export async function issue(
   db: Db,
   userId: string,
   userAgent: string | undefined,
+  clock: Clock,
 ): Promise<ProofOfSession> {
   const token = randomBytes(32).toString('hex');
   await db.insert(sessions).values({
     userId,
     tokenHash: hashToken(token),
-    expiresAt: new Date(Date.now() + env.SESSION_TTL_MS),
+    expiresAt: new Date(clock.now() + env.SESSION_TTL_MS),
     userAgent,
   });
   return makeProof(token);

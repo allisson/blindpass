@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { CompleteLoginRequestSchema } from '@blindpass/api-schema';
 import * as session from '../../auth/session/index.js';
 import { completeLogin } from '../../auth/login/service.js';
+import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
 
 export function registerCompleteLoginRoute(app: FastifyInstance): void {
@@ -14,11 +15,15 @@ export function registerCompleteLoginRoute(app: FastifyInstance): void {
     },
     async (request, reply) => {
       const result = await app.db.transaction(async (tx) =>
-        completeLogin(tx, {
-          username: request.body.username,
-          authenticatorCode: request.body.authenticatorCode,
-          userAgent: request.headers['user-agent'],
-        }),
+        completeLogin(
+          asTx(tx),
+          {
+            username: request.body.username,
+            authenticatorCode: request.body.authenticatorCode,
+            userAgent: request.headers['user-agent'],
+          },
+          app.clock,
+        ),
       );
 
       if (!result.ok) {

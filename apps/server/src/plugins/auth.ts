@@ -98,11 +98,11 @@ export const authPlugin = fp(async (app) => {
 
     const tokenHash = createHash('sha256').update(token).digest('hex');
 
-    const now = new Date();
+    const nowMs = app.clock.now();
     const [session] = await sessionLookup(
       tokenHash,
-      now,
-      new Date(now.getTime() - env.SESSION_IDLE_TTL_MS),
+      new Date(nowMs),
+      new Date(nowMs - env.SESSION_IDLE_TTL_MS),
     );
 
     if (!session) {

@@ -4,6 +4,7 @@ import { UpdateItemRequestSchema, VaultItemParamSchema } from '@blindpass/api-sc
 import { b64 } from '../../../utils/base64.js';
 import { updateItem } from '../../../vaults/items/service.js';
 import { toEncryptedVaultItem } from '../../../vaults/items/mapper.js';
+import { asTx } from '../../../db/tx.js';
 
 export function registerUpdateItemRoute(app: FastifyInstance): void {
   app
@@ -16,7 +17,7 @@ export function registerUpdateItemRoute(app: FastifyInstance): void {
         const body = request.body;
 
         const result = await app.db.transaction(async (tx) =>
-          updateItem(tx, request.userId, vaultId, id, {
+          updateItem(asTx(tx), request.userId, vaultId, id, {
             encryptedDataCiphertext: b64(body.encryptedData.ciphertext),
             encryptedDataNonce: b64(body.encryptedData.nonce),
             encryptedItemKeyCiphertext: b64(body.encryptedItemKey.ciphertext),

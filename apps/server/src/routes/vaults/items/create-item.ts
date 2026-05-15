@@ -4,6 +4,7 @@ import { CreateItemRequestSchema, VaultIdParamSchema } from '@blindpass/api-sche
 import { b64 } from '../../../utils/base64.js';
 import { createItem } from '../../../vaults/items/service.js';
 import { toEncryptedVaultItem } from '../../../vaults/items/mapper.js';
+import { asTx } from '../../../db/tx.js';
 
 export function registerCreateItemRoute(app: FastifyInstance): void {
   app
@@ -16,7 +17,7 @@ export function registerCreateItemRoute(app: FastifyInstance): void {
         const body = request.body;
 
         const result = await app.db.transaction(async (tx) =>
-          createItem(tx, request.userId, vaultId, {
+          createItem(asTx(tx), request.userId, vaultId, {
             folderId: body.folderId ?? null,
             encryptedDataCiphertext: b64(body.encryptedData.ciphertext),
             encryptedDataNonce: b64(body.encryptedData.nonce),

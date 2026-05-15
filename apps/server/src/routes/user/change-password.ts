@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { ChangePasswordRequestSchema } from '@blindpass/api-schema';
 import { b64 } from '../../utils/base64.js';
 import { changePassword } from '../../auth/account/service.js';
+import { asTx } from '../../db/tx.js';
 
 export function registerChangePasswordRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().put(
@@ -15,12 +16,17 @@ export function registerChangePasswordRoute(app: FastifyInstance): void {
       const { authenticatorCode, kekSalt, encryptedMasterKey } = request.body;
 
       const result = await app.db.transaction(async (tx) =>
-        changePassword(tx, request.userId, {
-          authenticatorCode,
-          kekSalt: b64(kekSalt),
-          encryptedMasterKeyCiphertext: b64(encryptedMasterKey.ciphertext),
-          encryptedMasterKeyNonce: b64(encryptedMasterKey.nonce),
-        }),
+        changePassword(
+          asTx(tx),
+          request.userId,
+          {
+            authenticatorCode,
+            kekSalt: b64(kekSalt),
+            encryptedMasterKeyCiphertext: b64(encryptedMasterKey.ciphertext),
+            encryptedMasterKeyNonce: b64(encryptedMasterKey.nonce),
+          },
+          app.clock,
+        ),
       );
 
       if (!result.ok) {

@@ -1,33 +1,8 @@
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../../db/schema.js';
-import { getVaultAccess } from '../access.js';
+import type { TxDb } from '../../db/tx.js';
+import { requireOwner, requireWriter, type AccessFailure } from '../access.js';
 import * as trash from './repository.js';
 
-type Db = NodePgDatabase<typeof schema>;
-
-type AccessFailure = 'vault_not_found' | 'forbidden';
-
-async function requireOwner(
-  db: Db,
-  vaultId: string,
-  userId: string,
-): Promise<AccessFailure | null> {
-  const access = await getVaultAccess(db, vaultId, userId);
-  if (!access) return 'vault_not_found';
-  if (access.role !== 'owner') return 'forbidden';
-  return null;
-}
-
-async function requireWriter(
-  db: Db,
-  vaultId: string,
-  userId: string,
-): Promise<AccessFailure | null> {
-  const access = await getVaultAccess(db, vaultId, userId);
-  if (!access) return 'vault_not_found';
-  if (access.role === 'viewer') return 'forbidden';
-  return null;
-}
+type Db = TxDb;
 
 export type RestoreItemResult =
   | { ok: true }
