@@ -140,6 +140,40 @@ describe('KeychainRequired', () => {
     expect(out.encryptedItemKey).toEqual({ ciphertext: 'c', nonce: 'n' });
   });
 
+  it('decryptVersion decrypts a narrow version envelope into a plain VaultItem', async () => {
+    sessionMock.get.mockReturnValue({
+      activeVaultId: 'v1',
+      vaults: new Map([['v1', { vaultKey: new Uint8Array([2]), name: 'P', isShared: false }]]),
+      keychain: { masterKey: new Uint8Array([1]), vaultKey: new Uint8Array([2]) },
+      keyPair: { publicKey: new Uint8Array(), privateKey: new Uint8Array() },
+    });
+    const { result } = renderHook(() => useKeychain(), {
+      wrapper: ({ children }) => wrap(children) as React.ReactElement,
+    });
+    const out = await result.current.decryptVersion({
+      encryptedData: { ciphertext: 'c', nonce: 'n' },
+      encryptedItemKey: { ciphertext: 'c', nonce: 'n' },
+    });
+    expect(out).toEqual({ type: 'login', title: 'X' });
+    expect(out).not.toHaveProperty('id');
+    expect(out).not.toHaveProperty('folderId');
+  });
+
+  it('wrapVaultKey wraps a vault key under the master key into a base64 envelope', async () => {
+    sessionMock.get.mockReturnValue({
+      activeVaultId: 'v1',
+      vaults: new Map([['v1', { vaultKey: new Uint8Array([2]), name: 'P', isShared: false }]]),
+      keychain: { masterKey: new Uint8Array([7]), vaultKey: new Uint8Array([2]) },
+      keyPair: { publicKey: new Uint8Array(), privateKey: new Uint8Array() },
+    });
+    const { result } = renderHook(() => useKeychain(), {
+      wrapper: ({ children }) => wrap(children) as React.ReactElement,
+    });
+    const freshVaultKey = new Uint8Array([99]);
+    const out = await result.current.wrapVaultKey(freshVaultKey);
+    expect(out).toEqual({ ciphertext: 'c', nonce: 'n' });
+  });
+
   it('useKeychain throws when called outside KeychainRequired provider', () => {
     expect(() => renderHook(() => useKeychain())).toThrow(
       'useKeychain must be called inside <KeychainRequired>',

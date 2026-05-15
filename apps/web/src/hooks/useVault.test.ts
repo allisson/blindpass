@@ -140,6 +140,12 @@ vi.mock('@/components/keychain/KeychainRequired', async () => {
           encryptedItemKey: { ciphertext: 'c', nonce: 'n' },
         };
       },
+      decryptVersion: async (envelope: { encryptedData: unknown; encryptedItemKey: unknown }) =>
+        vaultMod.decryptVaultItem(envelope.encryptedData as never, new Uint8Array(32)),
+      wrapVaultKey: async () => ({
+        ciphertext: 'c',
+        nonce: 'n',
+      }),
     }),
   };
 });
