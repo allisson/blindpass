@@ -1,14 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import {
-  AlertTriangle,
-  Calendar,
-  Loader2,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Siren,
-} from 'lucide-react';
+import { AlertTriangle, Calendar, Loader2, RefreshCw, ShieldCheck, Siren } from 'lucide-react';
 import { type DecryptedItem, useVaultItems } from '@/hooks/useVault';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +9,6 @@ import { getItemSubtitle } from '@/components/vault/ItemCard';
 import { passwordStrength } from '@/lib/passwordStrength';
 import { checkBreachesBatch, type BreachResult } from '@/lib/hibp';
 import { toast } from 'sonner';
-import { useOpenCommandPalette } from '@/components/vault/shell/CommandPaletteContext';
 
 export const Route = createFileRoute('/_vault/health')({
   component: HealthPage,
@@ -125,20 +116,12 @@ function Section({
 }
 
 function TopBar() {
-  const openCommandPalette = useOpenCommandPalette();
   return (
     <div className="h-14 bg-card border-b border-border shrink-0 flex items-center px-4 gap-3">
       <ShieldCheck className="w-5 h-5 text-muted-foreground shrink-0" />
       <span className="text-[16px] font-bold tracking-[-0.01em] text-foreground flex-1">
         Password Health
       </span>
-      <button
-        onClick={openCommandPalette}
-        className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
-        aria-label="Search and commands"
-      >
-        <Search className="w-4 h-4" />
-      </button>
     </div>
   );
 }

@@ -6,7 +6,6 @@ import {
   LayoutList,
   Monitor,
   Palette,
-  Search,
   ShieldCheck,
   Smartphone,
   Timer,
@@ -14,7 +13,6 @@ import {
   Upload,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useOpenCommandPalette } from '@/components/vault/shell/CommandPaletteContext';
 import { loadTheme, type Theme } from '@/lib/theme';
 import { loadDensity, type Density } from '@/lib/density';
 import { session } from '@/lib/session';
@@ -98,7 +96,6 @@ function GroupHeader({ children }: { children: string }) {
 }
 
 export function SettingsListPanel() {
-  const openCommandPalette = useOpenCommandPalette();
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [density, setDensity] = useState<Density>(() => loadDensity());
   const [lockMinutes, setLockMinutes] = useState(() => session.getIdleMinutes());
@@ -171,13 +168,6 @@ export function SettingsListPanel() {
         <h1 className="text-[16px] font-bold tracking-[-0.01em] text-foreground flex-1">
           Settings
         </h1>
-        <button
-          onClick={openCommandPalette}
-          className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
-          aria-label="Search and commands"
-        >
-          <Search className="w-4 h-4" />
-        </button>
       </div>
       <div className="pb-4">
         <GroupHeader>Preferences</GroupHeader>

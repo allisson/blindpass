@@ -10,7 +10,6 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useOpenCommandPalette } from '@/components/vault/shell/CommandPaletteContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -143,7 +142,6 @@ function TrashItemRow({
 }
 
 export function TrashPage() {
-  const openCommandPalette = useOpenCommandPalette();
   const { data: items, isLoading, isError } = useTrashItems();
   const vaults = useVaultList();
   const emptyTrash = useEmptyTrash();
@@ -284,13 +282,6 @@ export function TrashPage() {
         <span className="text-[16px] font-bold tracking-[-0.01em] text-foreground flex-1">
           Trash
         </span>
-        <button
-          onClick={openCommandPalette}
-          className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
-          aria-label="Search and commands"
-        >
-          <Search className="w-4 h-4" />
-        </button>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-6 max-w-4xl mx-auto w-full">
         <header className="mb-6 flex flex-col gap-3">

@@ -6,7 +6,7 @@ import {
   useMatch,
   useRouter,
 } from '@tanstack/react-router';
-import { lazy, Suspense, type Dispatch, type SetStateAction } from 'react';
+import { type Dispatch, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -26,6 +26,7 @@ import {
   Plus,
   Search,
   Shield,
+  Tag,
   Trash2,
   User,
   Users,
@@ -65,12 +66,7 @@ import {
   useDeleteFolder,
   type DecryptedFolder,
 } from '@/hooks/useFolders';
-const CommandPalette = lazy(() =>
-  import('@/components/CommandPalette').then((m) => ({ default: m.CommandPalette })),
-);
 import { VaultSheet } from '@/components/VaultSheet';
-import { ShortcutsDialog } from '@/components/ShortcutsDialog';
-import { applyTheme, loadTheme, type Theme } from '@/lib/theme';
 import { session, clearLastUsername, getLastUsername } from '@/lib/session';
 import { api } from '@/lib/api';
 import { vaultCache } from '@/lib/vaultCache';
@@ -79,10 +75,6 @@ import { SyncStatusBar } from '@/components/SyncStatusBar';
 import { KeychainRequired } from '@/components/keychain/KeychainRequired';
 import { BottomTabBar } from '@/components/vault/shell/BottomTabBar';
 import { ListPanelAnimator, MainAnimator } from '@/components/vault/shell/ListPanelAnimator';
-import {
-  CommandPaletteContext,
-  useOpenCommandPalette,
-} from '@/components/vault/shell/CommandPaletteContext';
 import { toast } from 'sonner';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 
@@ -97,23 +89,20 @@ export const Route = createFileRoute('/_vault')({
 });
 
 const TYPE_OPTIONS = [
-  { value: 'login', label: 'Login', Icon: KeyRound },
-  { value: 'secure_note', label: 'Note', Icon: FileText },
-  { value: 'payment_card', label: 'Card', Icon: CreditCard },
-  { value: 'identity', label: 'Identity', Icon: User },
-  { value: 'totp', label: 'Auth', Icon: Shield },
-  { value: 'developer_credential', label: 'Developer', Icon: Key },
-  { value: 'crypto_wallet', label: 'Wallet', Icon: Wallet },
+  { value: 'login', label: 'Logins', Icon: KeyRound },
+  { value: 'secure_note', label: 'Notes', Icon: FileText },
+  { value: 'payment_card', label: 'Cards', Icon: CreditCard },
+  { value: 'identity', label: 'Identities', Icon: User },
+  { value: 'totp', label: 'TOTP', Icon: Shield },
+  { value: 'developer_credential', label: 'Dev', Icon: Key },
+  { value: 'crypto_wallet', label: 'Crypto', Icon: Wallet },
 ];
 
 const STORAGE_KEY = 'bp:vault:typeFilter';
 
-function loadStoredTypes(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
-  } catch {
-    return [];
-  }
+function loadStoredType(): string {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return TYPE_OPTIONS.some((o) => o.value === stored) ? stored! : 'all';
 }
 
 type FolderFilter = 'all' | string;
@@ -377,6 +366,128 @@ function FolderPickerSheet({
   );
 }
 
+function TypeDropdownRow({
+  selectedType,
+  typeItemCount,
+  onOpenPicker,
+}: {
+  selectedType: string;
+  typeItemCount: number;
+  onOpenPicker: () => void;
+}) {
+  const isFiltering = selectedType !== 'all';
+  const option = TYPE_OPTIONS.find((o) => o.value === selectedType);
+  const label = isFiltering ? (option?.label ?? 'Type') : 'All Types';
+  const FilterIcon = isFiltering ? option!.Icon : Tag;
+  return (
+    <div className="h-11 border-b border-muted shrink-0 flex items-center px-3 gap-2">
+      <button
+        onClick={onOpenPicker}
+        className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg hover:bg-accent transition-colors touch-manipulation -ml-2"
+        aria-label="Filter by type"
+      >
+        <FilterIcon
+          className={`w-4 h-4 shrink-0 ${isFiltering ? 'text-primary' : 'text-muted-foreground'}`}
+        />
+        <span
+          className={`text-sm font-semibold ${isFiltering ? 'text-primary' : 'text-foreground'}`}
+        >
+          {label}
+        </span>
+        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+      </button>
+      <span className="ml-auto text-[11px] font-bold tracking-[0.06em] text-muted-foreground bg-muted px-[7px] py-[2px] rounded-sm shrink-0">
+        {typeItemCount} items
+      </span>
+    </div>
+  );
+}
+
+function TypePickerSheet({
+  open,
+  onOpenChange,
+  selectedType,
+  onSelect,
+  folderFiltered,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedType: string;
+  onSelect: (type: string) => void;
+  folderFiltered: { type: string }[];
+}) {
+  const typeCount = (type: string) => folderFiltered.filter((i) => i.type === type).length;
+
+  return (
+    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal container={document.getElementById('app-shell')}>
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50" />
+        <Drawer.Content
+          className="fixed bottom-0 inset-x-0 z-50 flex flex-col rounded-t-2xl bg-popover border-t border-border outline-none max-h-[85dvh]"
+          aria-describedby={undefined}
+        >
+          <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-border shrink-0" />
+          <div className="flex items-center justify-between px-4 py-3 shrink-0">
+            <Drawer.Title className="text-base font-semibold">Filter by type</Drawer.Title>
+            <button
+              onClick={() => onOpenChange(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto overscroll-contain flex-1 px-3 pb-4">
+            <button
+              onClick={() => {
+                onSelect('all');
+                onOpenChange(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation mb-0.5"
+            >
+              <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                <Tag className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <span className="flex-1 text-sm font-medium">All Types</span>
+              <span className="text-xs text-muted-foreground/70 mr-2" aria-hidden="true">
+                {folderFiltered.length}
+              </span>
+              <Check
+                className={`w-4 h-4 shrink-0 ${selectedType === 'all' ? 'text-primary' : 'invisible'}`}
+              />
+            </button>
+
+            <div className="space-y-0.5">
+              {TYPE_OPTIONS.map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    onSelect(value);
+                    onOpenChange(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <span className="flex-1 text-sm font-medium">{label}</span>
+                  <span className="text-xs text-muted-foreground/70 mr-2" aria-hidden="true">
+                    {typeCount(value)}
+                  </span>
+                  <Check
+                    className={`w-4 h-4 shrink-0 ${selectedType === value ? 'text-primary' : 'invisible'}`}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
+  );
+}
+
 function VaultListPanel({
   onOpenVaultSheet,
   showAllVaults,
@@ -392,7 +503,6 @@ function VaultListPanel({
   isAdmin: boolean;
   username: string;
 }) {
-  const openCommandPalette = useOpenCommandPalette();
   const { data: singleItems, isLoading: singleLoading, isError: singleError } = useVaultItems();
   const { data: allItems, isLoading: allLoading, isError: allError } = useAllVaultItems();
   const { data: folders = [] } = useFolders();
@@ -423,9 +533,10 @@ function VaultListPanel({
   const switchVaultFn = useSwitchVault();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(loadStoredTypes);
+  const [selectedType, setSelectedType] = useState<string>(loadStoredType);
   const [selectedFolderId, setSelectedFolderId] = useState<FolderFilter>('all');
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
@@ -440,7 +551,7 @@ function VaultListPanel({
 
   useEffect(() => {
     function onVaultSwitch() {
-      setSelectedTypes([]);
+      setSelectedType('all');
       setSelectedFolderId('all');
       setSelection(new Set());
       setLastClickedId(null);
@@ -450,17 +561,10 @@ function VaultListPanel({
     return () => window.removeEventListener('bp:vault-switch', onVaultSwitch);
   }, []);
 
-  function toggleType(type: string) {
-    setSelectedTypes((prev) => {
-      const next = prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function clearTypes() {
-    setSelectedTypes([]);
-    localStorage.removeItem(STORAGE_KEY);
+  function setType(type: string) {
+    setSelectedType(type);
+    if (type === 'all') localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, type);
   }
 
   useEffect(() => {
@@ -485,11 +589,16 @@ function VaultListPanel({
     return items.filter((i) => i.folderId === selectedFolderId);
   }, [items, selectedFolderId, showAllVaults]);
 
+  const typeFiltered = useMemo(
+    () =>
+      selectedType === 'all'
+        ? folderFiltered
+        : folderFiltered.filter((i) => i.type === selectedType),
+    [folderFiltered, selectedType],
+  );
+
   const filtered = useMemo(() => {
-    const result =
-      selectedTypes.length > 0
-        ? folderFiltered.filter((item) => selectedTypes.includes(item.type))
-        : folderFiltered;
+    const result = typeFiltered;
     if (!search.trim()) return result;
     const q = search.toLowerCase();
     return result.filter((item) => {
@@ -536,7 +645,7 @@ function VaultListPanel({
           return false;
       }
     });
-  }, [folderFiltered, search, selectedTypes]);
+  }, [typeFiltered, search]);
 
   const { weakIds, reusedIds } = useMemo(() => {
     const weak = new Set<string>();
@@ -792,14 +901,6 @@ function VaultListPanel({
             </button>
           )}
         </div>
-        <button
-          onClick={openCommandPalette}
-          data-testid="open-command-palette"
-          className="w-8 h-8 ml-1 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
-          aria-label="Search and commands"
-        >
-          <Search className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Row 3: Folder dropdown (hidden in all-vaults mode) */}
@@ -812,36 +913,12 @@ function VaultListPanel({
         />
       )}
 
-      {/* Row 4: Type filter chips */}
-      <div className="px-[14px] h-[46px] flex items-center gap-1 border-b border-muted shrink-0">
-        {TYPE_OPTIONS.map(({ value, label, Icon }) => {
-          const active = selectedTypes.includes(value);
-          return (
-            <button
-              key={value}
-              onClick={() => toggleType(value)}
-              title={label}
-              aria-label={`Filter by ${label}`}
-              aria-pressed={active}
-              className={`inline-flex items-center justify-center w-9 h-8 rounded-[3px] transition-colors ${
-                active
-                  ? 'bg-accent text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-            </button>
-          );
-        })}
-        {selectedTypes.length > 0 && (
-          <button
-            onClick={clearTypes}
-            className="text-[11px] font-bold tracking-[0.06em] uppercase ml-1 h-8 px-2 rounded-[3px] text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      {/* Row 4: Type filter */}
+      <TypeDropdownRow
+        selectedType={selectedType}
+        typeItemCount={typeFiltered.length}
+        onOpenPicker={() => setTypePickerOpen(true)}
+      />
 
       {isReadOnly && (
         <div className="px-4 py-2 flex items-center gap-1.5 bg-muted/40 border-b border-muted shrink-0">
@@ -1035,6 +1112,13 @@ function VaultListPanel({
           isReadOnly={isReadOnly}
         />
       )}
+      <TypePickerSheet
+        open={typePickerOpen}
+        onOpenChange={setTypePickerOpen}
+        selectedType={selectedType}
+        onSelect={setType}
+        folderFiltered={folderFiltered}
+      />
     </div>
   );
 }
@@ -1055,27 +1139,11 @@ function VaultLayout() {
   const mobileHideList = !!(isItemDetail || isNewItem || isEditItem);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [vaultSheetOpen, setVaultSheetOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>(() => loadTheme());
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { data: adminStatus } = useQuery({
     queryKey: ['adminStatus'],
     queryFn: () => api.getAdminStatus(),
     staleTime: Infinity,
   });
-
-  function handleThemeChange(t: Theme) {
-    applyTheme(t);
-    setTheme(t);
-  }
-
-  useEffect(() => {
-    function onThemeChange(e: Event) {
-      setTheme((e as CustomEvent<Theme>).detail);
-    }
-    window.addEventListener('bp:theme-change', onThemeChange);
-    return () => window.removeEventListener('bp:theme-change', onThemeChange);
-  }, []);
 
   function handleLock() {
     session.clearIdleTimer();
@@ -1107,29 +1175,12 @@ function VaultLayout() {
     document.addEventListener('click', handleActivity);
     document.addEventListener('touchstart', handleActivity, { passive: true });
 
-    function onPaletteShortcut(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        setPaletteOpen((v) => !v);
-      } else if (
-        e.key === '?' &&
-        !(e.target instanceof HTMLInputElement) &&
-        !(e.target instanceof HTMLTextAreaElement) &&
-        !document.querySelector('[role="dialog"]')
-      ) {
-        e.preventDefault();
-        setShortcutsOpen((v) => !v);
-      }
-    }
-    document.addEventListener('keydown', onPaletteShortcut);
-
     return () => {
       session.clearIdleTimer();
       document.removeEventListener('mousemove', handleActivity);
       document.removeEventListener('keydown', handleActivity);
       document.removeEventListener('click', handleActivity);
       document.removeEventListener('touchstart', handleActivity);
-      document.removeEventListener('keydown', onPaletteShortcut);
     };
   }, [qc, router]);
 
@@ -1149,18 +1200,12 @@ function VaultLayout() {
         adminStatus={adminStatus}
         handleLock={handleLock}
         handleLogout={handleLogout}
-        handleThemeChange={handleThemeChange}
         isMobile={isMobile}
         mobileHideList={mobileHideList}
-        paletteOpen={paletteOpen}
-        setPaletteOpen={setPaletteOpen}
-        setShortcutsOpen={setShortcutsOpen}
         setShowSignOutConfirm={setShowSignOutConfirm}
         setVaultSheetOpen={setVaultSheetOpen}
-        shortcutsOpen={shortcutsOpen}
         showListPanel={showListPanel}
         showSignOutConfirm={showSignOutConfirm}
-        theme={theme}
         vaultSheetOpen={vaultSheetOpen}
       />
     </KeychainRequired>
@@ -1171,18 +1216,12 @@ interface VaultLayoutContentProps {
   adminStatus: { isAdmin: boolean } | undefined;
   handleLock: () => void;
   handleLogout: () => void;
-  handleThemeChange: (theme: Theme) => void;
   isMobile: boolean;
   mobileHideList: boolean;
-  paletteOpen: boolean;
-  setPaletteOpen: Dispatch<SetStateAction<boolean>>;
-  setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
   setShowSignOutConfirm: Dispatch<SetStateAction<boolean>>;
   setVaultSheetOpen: Dispatch<SetStateAction<boolean>>;
-  shortcutsOpen: boolean;
   showListPanel: boolean;
   showSignOutConfirm: boolean;
-  theme: Theme;
   vaultSheetOpen: boolean;
 }
 
@@ -1190,18 +1229,12 @@ function VaultLayoutContent({
   adminStatus,
   handleLock,
   handleLogout,
-  handleThemeChange,
   isMobile,
   mobileHideList,
-  paletteOpen,
-  setPaletteOpen,
-  setShortcutsOpen,
   setShowSignOutConfirm,
   setVaultSheetOpen,
-  shortcutsOpen,
   showListPanel,
   showSignOutConfirm,
-  theme,
   vaultSheetOpen,
 }: VaultLayoutContentProps) {
   const [showAllVaults, setShowAllVaults] = useState(false);
@@ -1217,74 +1250,57 @@ function VaultLayoutContent({
   }, []);
 
   return (
-    <CommandPaletteContext.Provider value={() => setPaletteOpen(true)}>
-      <SyncBoundary>
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 min-h-0 relative overflow-hidden flex">
-            <ListPanelAnimator
-              show={showListPanel}
-              isMobile={isMobile}
-              mobileHideList={mobileHideList}
-            >
-              <VaultListPanel
-                onOpenVaultSheet={() => setVaultSheetOpen(true)}
-                showAllVaults={showAllVaults}
-                onLock={handleLock}
-                onSignOut={() => setShowSignOutConfirm(true)}
-                isAdmin={adminStatus?.isAdmin ?? false}
-                username={session.get()?.username ?? ''}
-              />
-            </ListPanelAnimator>
-            <MainAnimator
-              isMobile={isMobile}
-              showListPanel={showListPanel}
-              mobileHideList={mobileHideList}
-            >
-              <Outlet />
-            </MainAnimator>
-          </div>
-          <SyncStatusBar />
-          <BottomTabBar showListPanel={showListPanel} inert={vaultSheetOpen} />
-          <VaultSheet
-            open={vaultSheetOpen}
-            onOpenChange={setVaultSheetOpen}
-            isAllVaults={showAllVaults}
-            allVaultsItemCount={allVaultsItemCount}
-            onSelectAll={() => setShowAllVaults(true)}
-          />
-          <Suspense fallback={null}>
-            <CommandPalette
-              open={paletteOpen}
-              onOpenChange={setPaletteOpen}
-              onLockRequested={handleLock}
-              onSignOutRequested={() => setShowSignOutConfirm(true)}
-              onToggleTheme={() =>
-                handleThemeChange(
-                  theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark',
-                )
-              }
-              isDark={document.documentElement.classList.contains('dark')}
+    <SyncBoundary>
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 min-h-0 relative overflow-hidden flex">
+          <ListPanelAnimator
+            show={showListPanel}
+            isMobile={isMobile}
+            mobileHideList={mobileHideList}
+          >
+            <VaultListPanel
+              onOpenVaultSheet={() => setVaultSheetOpen(true)}
+              showAllVaults={showAllVaults}
+              onLock={handleLock}
+              onSignOut={() => setShowSignOutConfirm(true)}
+              isAdmin={adminStatus?.isAdmin ?? false}
+              username={session.get()?.username ?? ''}
             />
-          </Suspense>
-          <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-          <ResponsiveDialog
-            open={showSignOutConfirm}
-            onOpenChange={setShowSignOutConfirm}
-            title="Sign out?"
-            description="Your vault will be locked. You will need to sign in again to access it."
-            footer={
-              <>
-                <Button variant="destructive" onClick={handleLogout}>
-                  Sign out
-                </Button>
-                <Button variant="outline" onClick={() => setShowSignOutConfirm(false)}>
-                  Cancel
-                </Button>
-              </>
-            }
-          />
+          </ListPanelAnimator>
+          <MainAnimator
+            isMobile={isMobile}
+            showListPanel={showListPanel}
+            mobileHideList={mobileHideList}
+          >
+            <Outlet />
+          </MainAnimator>
         </div>
-      </SyncBoundary>
-    </CommandPaletteContext.Provider>
+        <SyncStatusBar />
+        <BottomTabBar showListPanel={showListPanel} inert={vaultSheetOpen} />
+        <VaultSheet
+          open={vaultSheetOpen}
+          onOpenChange={setVaultSheetOpen}
+          isAllVaults={showAllVaults}
+          allVaultsItemCount={allVaultsItemCount}
+          onSelectAll={() => setShowAllVaults(true)}
+        />
+        <ResponsiveDialog
+          open={showSignOutConfirm}
+          onOpenChange={setShowSignOutConfirm}
+          title="Sign out?"
+          description="Your vault will be locked. You will need to sign in again to access it."
+          footer={
+            <>
+              <Button variant="destructive" onClick={handleLogout}>
+                Sign out
+              </Button>
+              <Button variant="outline" onClick={() => setShowSignOutConfirm(false)}>
+                Cancel
+              </Button>
+            </>
+          }
+        />
+      </div>
+    </SyncBoundary>
   );
 }
