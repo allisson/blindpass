@@ -5,22 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-05-18
 
 ### Added
+
+- "All Vaults" aggregate view — search and browse items across every vault you own or share, with a vault-color dot on each item indicating its source
+- Per-vault deterministic color avatars in the vault picker and on items in the aggregate view
+- Type filter — single-select pill below the folder row that filters the current list by item type; remembered across reloads, resets when you switch vaults
+
+### Changed
+
+- Vault sheet is now a pure vault picker; lock, sign out, theme, and admin moved to a dedicated "More options" menu
+- Folder filter promoted from a horizontal scrolling strip to a dropdown button matching the new type-filter pattern
+
+### Removed
+
+- Command palette (`Cmd/Ctrl+K`) and the keyboard-shortcuts dialog — the type filter and folder dropdown cover the same flows from the touch UI. See [ADR-0007](docs/adr/0007-no-command-palette.md). `/` still focuses the search input.
+
+### Internal
 
 - `TxDb` branded type (`apps/server/src/db/tx.ts`) and `asTx()` cast. Every write-path service signature (auth, vaults, shares, trash, folders, items) and the `vaults/quota.ts` advisory-lock helpers now require `TxDb`, making accidental calls on `app.db` outside a transaction a compile error. Closes a latent correctness gap where `pg_advisory_xact_lock` would silently no-op without a surrounding transaction
 - `FoldersService` (`apps/server/src/vaults/folders/service.ts`) extracted from inline route logic, mirroring the items / trash / shares service shape; folder write routes and the trash/list reader now run inside `db.transaction(...)`
 - `requireOwner` / `requireWriter` / `requireReader` exports on `vaults/access.ts` consolidate the role-gate pattern previously duplicated in items and trash services and in folder routes
 - `app.clock` Fastify decorator (`apps/server/src/plugins/clock.ts`) and `test/fake-clock.ts` helpers (`fixedClock`, `advanceableClock`) — session expiry, TOTP verify windows, recovery token expiry, the auth plugin's idle check, and the periodic cleanup interval all read time from `app.clock` so tests can control it without globally spying on `Date.now`
-- Unit tests covering `vaults/access.ts` role-gate matrix, `FoldersService` write paths, the auth plugin's clock-driven idle ceiling, and `verifyRecovery`'s clock-driven expiry stamping
-
-### Changed
-
+- `SessionProof` is now an opaque, branded type — the cookie-attach call can only consume a proof produced by `session.issue`, so a thrown insert cannot leave an orphan cookie on the response
+- `useKeychain` is the single audit point for keychain access in the web app
 - Duplicate PG `23505` try/catch removed from `routes/auth/register.ts` and `routes/vaults/shares/create-share.ts`; the global error handler is now the only place that maps unique-violation to 409
-
-### Internal
-
+- Unit tests covering `vaults/access.ts` role-gate matrix, `FoldersService` write paths, the auth plugin's clock-driven idle ceiling, and `verifyRecovery`'s clock-driven expiry stamping
 - Integration test app builder (`buildIntegrationApp`) now registers `clockPlugin` and the global `errorHandler` to match production wiring
 - The credential-rotation integration test anchors its mocked clock at real wall-time instead of a far-future fixed date, so the auth plugin's idle check (which now reads `app.clock`) and Postgres `NOW()` (used for `sessions.last_used_at` default) agree within the idle window
 
@@ -154,6 +165,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reverse proxy guides for Caddy and nginx (TLS termination + HTTP→HTTPS redirect)
 - pnpm + Turborepo monorepo with isolated packages: `crypto`, `vault`, `api-schema`, `types`
 
+[0.8.0]: https://github.com/allisson/blindpass/releases/tag/v0.8.0
+[0.7.0]: https://github.com/allisson/blindpass/releases/tag/v0.7.0
 [0.6.0]: https://github.com/allisson/blindpass/releases/tag/v0.6.0
 [0.5.0]: https://github.com/allisson/blindpass/releases/tag/v0.5.0
 [0.4.1]: https://github.com/allisson/blindpass/releases/tag/v0.4.1
