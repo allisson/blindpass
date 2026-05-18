@@ -11,6 +11,7 @@ interface Props {
   item: DecryptedItem;
   isWeak?: boolean;
   isReused?: boolean;
+  vaultLabel?: { color: string; name: string };
 }
 
 export function getItemSubtitle(item: { type: string; [key: string]: unknown }): string {
@@ -44,7 +45,7 @@ export function getItemSubtitle(item: { type: string; [key: string]: unknown }):
   }
 }
 
-export const ItemCard = memo(function ItemCard({ item, isWeak, isReused }: Props) {
+export const ItemCard = memo(function ItemCard({ item, isWeak, isReused, vaultLabel }: Props) {
   const [copied, setCopied] = useState(false);
   const { pendingItemIds } = useSyncBoundary();
   const isPending = pendingItemIds.has(item.id);
@@ -114,6 +115,14 @@ export const ItemCard = memo(function ItemCard({ item, isWeak, isReused }: Props
           {getItemSubtitle(item)}
         </p>
       </div>
+      {vaultLabel && (
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ backgroundColor: vaultLabel.color }}
+          title={vaultLabel.name}
+          aria-label={`From ${vaultLabel.name}`}
+        />
+      )}
       {(item.type === 'login' || item.type === 'totp') && (
         <button
           onClick={handleCopy}

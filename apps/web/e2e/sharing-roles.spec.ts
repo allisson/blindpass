@@ -50,8 +50,10 @@ test.describe('Sharing Roles', () => {
       // 3. Owner shares with Viewer (viewer role)
       await ownerPage.getByTestId('vault-picker-trigger').click();
       await ownerPage
+        .getByRole('dialog')
         .locator('div')
-        .filter({ hasText: /^Shared Team Vault$/ })
+        .filter({ has: ownerPage.getByRole('button', { name: 'Shared Team Vault', exact: true }) })
+        .last()
         .getByTestId('share-vault-button')
         .click();
       await ownerPage.getByLabel('Share with (username)').fill(VIEWER_USERNAME);
@@ -65,8 +67,10 @@ test.describe('Sharing Roles', () => {
       // 4. Owner shares with Editor (editor role)
       await ownerPage.getByTestId('vault-picker-trigger').click();
       await ownerPage
+        .getByRole('dialog')
         .locator('div')
-        .filter({ hasText: /^Shared Team Vault$/ })
+        .filter({ has: ownerPage.getByRole('button', { name: 'Shared Team Vault', exact: true }) })
+        .last()
         .getByTestId('share-vault-button')
         .click();
       await ownerPage.getByLabel('Share with (username)').fill(EDITOR_USERNAME);
@@ -190,8 +194,10 @@ test.describe('Sharing Roles', () => {
       // 12. Owner's share list no longer contains the viewer
       await ownerPage.getByTestId('vault-picker-trigger').click();
       await ownerPage
+        .getByRole('dialog')
         .locator('div')
-        .filter({ hasText: /^Shared Team Vault$/ })
+        .filter({ has: ownerPage.getByRole('button', { name: 'Shared Team Vault', exact: true }) })
+        .last()
         .getByTestId('share-vault-button')
         .click();
       await expect(ownerPage.getByText(EDITOR_USERNAME)).toBeVisible();

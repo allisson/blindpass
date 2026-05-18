@@ -126,7 +126,7 @@ test('admin dashboard edits settings and user access', async ({ page }) => {
     await route.fallback();
   });
 
-  await page.getByTestId('vault-picker-trigger').click();
+  await page.getByRole('button', { name: 'More options' }).click();
   await page.getByRole('link', { name: 'Admin panel' }).click();
 
   await expect(page.getByRole('heading', { name: 'Administration' })).toBeVisible();

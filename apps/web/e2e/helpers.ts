@@ -9,7 +9,7 @@ interface SavedSession {
 
 async function waitForVaultHome(page: Page, timeout = 30_000): Promise<void> {
   await expect.poll(() => new URL(page.url()).pathname, { timeout }).toBe('/');
-  await expect(page.getByTestId('vault-list-heading')).toBeVisible({ timeout });
+  await expect(page.getByTestId('vault-picker-trigger')).toBeVisible({ timeout });
 }
 
 export async function captureBundle(page: Page): Promise<string> {
@@ -49,7 +49,7 @@ export async function lockVault(page: Page): Promise<void> {
     await page.getByRole('link', { name: 'Vault', exact: true }).click();
     await page.waitForURL('/', { timeout: 10_000 });
   }
-  await page.getByTestId('vault-picker-trigger').click();
+  await page.getByRole('button', { name: 'More options' }).click();
   await page.getByTestId('account-menu-lock').click();
 }
 
@@ -283,7 +283,7 @@ export async function createVault(page: Page, name: string): Promise<string> {
   }
 
   // Wait for the vault list to be visible to ensure the layout is ready
-  await page.getByTestId('vault-list-heading').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.getByTestId('vault-picker-trigger').waitFor({ state: 'visible', timeout: 15_000 });
 
   // Click the vault picker using data-testid
   await page.getByTestId('vault-picker-trigger').click();

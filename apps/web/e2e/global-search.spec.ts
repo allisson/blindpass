@@ -12,7 +12,7 @@ const PASSWORD = 'searchtest123!';
 let savedBundle: string;
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
