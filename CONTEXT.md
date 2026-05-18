@@ -218,6 +218,12 @@ Each service method takes a `TxDb` (writes) or `Db` (reads), a typed input, and 
 **ServiceResult**:
 The discriminated-union return shape used by every auth service method. Routes pattern-match on `ok` and `reason` to choose status codes and error messages. Services never throw for expected validation failures; they return `{ok: false, reason}` instead.
 
+## UI / Filter model
+
+**TypeFilter**:
+Single-select filter on the vault list. Rendered as a dropdown row identical in style to `FolderDropdownRow` — tappable row that opens a picker sheet. Stacks below the folder row (folder first, type second). Visible in both single-vault and all-vaults mode (type is comparable across vaults; folder is not). Exactly one value is active at a time: either `'all'` ("All Types") or one of the seven item type strings (`login`, `secure_note`, `payment_card`, `identity`, `totp`, `developer_credential`, `crypto_wallet`). The former chip row is replaced entirely. Count semantics: folder row shows `folderFiltered.length` (post-folder, pre-type); type row shows `typeFiltered.length` (post-both). Picker sheet shows "All Types" + 7 type rows, each with icon, label, and per-type count computed from `folderFiltered`. Labels follow the prototype set: `Logins · Cards · Notes · Identities · TOTP · Dev · Crypto`.
+_Avoid_: multi-filter, type toggle, selected types array, chip row.
+
 ## Flagged ambiguities
 
 - "auth helpers" was used as a catch-all in `routes/auth/helpers.ts` — split into **TotpEnrollment**, **SessionIssuance**, **RecoveryVerifier**, **AuthBundle** modules.
