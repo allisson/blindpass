@@ -10,12 +10,17 @@ import { lazy, Suspense, type Dispatch, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
+  Check,
+  ChevronDown,
   CreditCard,
   FileText,
   Folder,
   FolderOpen,
   Key,
   KeyRound,
+  Layers,
+  Lock,
+  LogOut,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -28,6 +33,8 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Drawer } from 'vaul';
+import { vaultColor } from '@/lib/vaultColor';
 import { ItemCard } from '@/components/vault/ItemCard';
 import { ItemCardSkeleton } from '@/components/vault/ItemCardSkeleton';
 import { OnboardingEmpty } from '@/components/vault/OnboardingEmpty';
@@ -40,9 +47,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useVaultItems, useDeleteItem, useMoveItem } from '@/hooks/useVault';
+import {
+  useVaultItems,
+  useAllVaultItems,
+  useDeleteItem,
+  useMoveItem,
+  useSwitchVault,
+  type DecryptedGlobalVaultItem,
+} from '@/hooks/useVault';
 import {
   useFolders,
   useCreateFolder,
@@ -103,76 +118,87 @@ function loadStoredTypes(): string[] {
 
 type FolderFilter = 'all' | string;
 
-const DRAG_MIME = 'application/x-blindpass-items';
-
-function readDragIds(e: React.DragEvent): string[] {
-  const raw = e.dataTransfer.getData(DRAG_MIME);
-  if (!raw) return [];
-  try {
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : [];
-  } catch {
-    return [];
-  }
+function FolderDropdownRow({
+  selectedFolderId,
+  folders,
+  folderItemCount,
+  onOpenPicker,
+}: {
+  selectedFolderId: FolderFilter;
+  folders: DecryptedFolder[];
+  folderItemCount: number;
+  onOpenPicker: () => void;
+}) {
+  const isFiltering = selectedFolderId !== 'all';
+  const label = isFiltering
+    ? (folders.find((f) => f.id === selectedFolderId)?.name ?? 'Folder')
+    : 'All Folders';
+  return (
+    <div className="h-11 border-b border-muted shrink-0 flex items-center px-3 gap-2">
+      <button
+        onClick={onOpenPicker}
+        className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg hover:bg-accent transition-colors touch-manipulation -ml-2"
+        aria-label="Filter by folder"
+      >
+        {isFiltering ? (
+          <FolderOpen className="w-4 h-4 text-primary shrink-0" />
+        ) : (
+          <Folder className="w-4 h-4 text-muted-foreground shrink-0" />
+        )}
+        <span
+          className={`text-sm font-semibold ${isFiltering ? 'text-primary' : 'text-foreground'}`}
+        >
+          {label}
+        </span>
+        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+      </button>
+      <span className="ml-auto text-[11px] font-bold tracking-[0.06em] text-muted-foreground bg-muted px-[7px] py-[2px] rounded-sm shrink-0">
+        {folderItemCount} items
+      </span>
+    </div>
+  );
 }
 
-function FolderStrip({
+function FolderPickerSheet({
+  open,
+  onOpenChange,
   folders,
   selectedFolderId,
   onSelect,
+  items,
   isReadOnly,
-  onDropItems,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   folders: DecryptedFolder[];
   selectedFolderId: FolderFilter;
   onSelect: (id: FolderFilter) => void;
+  items: { folderId?: string | null }[] | undefined;
   isReadOnly: boolean;
-  onDropItems?: (folderId: string | null, ids: string[]) => void;
 }) {
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-
-  function dropProps(target: 'unfiled' | string) {
-    if (isReadOnly || !onDropItems) return {};
-    return {
-      onDragOver: (e: React.DragEvent) => {
-        if (e.dataTransfer.types.includes(DRAG_MIME)) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          setDragOverId(target);
-        }
-      },
-      onDragLeave: () => {
-        setDragOverId((prev) => (prev === target ? null : prev));
-      },
-      onDrop: (e: React.DragEvent) => {
-        e.preventDefault();
-        const ids = readDragIds(e);
-        setDragOverId(null);
-        if (ids.length) {
-          onDropItems(target === 'unfiled' ? null : target, ids);
-        }
-      },
-    };
-  }
   const createFolder = useCreateFolder();
   const renameFolder = useRenameFolder();
   const deleteFolder = useDeleteFolder();
-  const [creatingFolder, setCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createName, setCreateName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
+  const totalCount = items?.length ?? 0;
+  const folderCount = (folderId: string) =>
+    items?.filter((i) => i.folderId === folderId).length ?? 0;
+
   async function commitCreate() {
-    const name = newFolderName.trim();
+    const name = createName.trim();
     if (!name) {
-      setCreatingFolder(false);
-      setNewFolderName('');
+      setCreating(false);
       return;
     }
     const folder = await createFolder.mutateAsync(name);
-    setCreatingFolder(false);
-    setNewFolderName('');
+    setCreateName('');
+    setCreating(false);
     onSelect(folder.id);
+    onOpenChange(false);
   }
 
   async function commitRename(folderId: string) {
@@ -186,121 +212,196 @@ function FolderStrip({
     await deleteFolder.mutateAsync(folderId);
   }
 
-  const pillBase =
-    'shrink-0 text-[12px] font-bold tracking-[0.04em] h-7 px-3 rounded-[3px] border transition-colors whitespace-nowrap flex items-center';
-  const pillActive = 'bg-primary border-primary text-white';
-  const pillInactive = 'bg-card border-border text-muted-foreground hover:text-foreground';
-
   return (
-    <div
-      className="px-[14px] flex gap-2 overflow-x-auto scrollbar-none h-11 items-center border-b border-muted shrink-0"
-      data-testid="folder-strip"
-    >
-      <button
-        data-testid="folder-filter-all"
-        onClick={() => onSelect('all')}
-        className={`${pillBase} ${selectedFolderId === 'all' ? pillActive : pillInactive}`}
-      >
-        All
-      </button>
-      {folders.map((folder) => (
-        <div key={folder.id} className="shrink-0 flex items-center gap-0.5 group/folder">
-          {renamingId === folder.id ? (
-            <input
-              autoFocus
-              data-testid={`rename-folder-input-${folder.id}`}
-              className="text-xs px-2 py-0.5 rounded border border-primary/40 bg-background text-foreground outline-none w-24"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void commitRename(folder.id);
-                if (e.key === 'Escape') setRenamingId(null);
-              }}
-              onBlur={() => void commitRename(folder.id)}
-            />
-          ) : (
+    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal container={document.getElementById('app-shell')}>
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50" />
+        <Drawer.Content
+          className="fixed bottom-0 inset-x-0 z-50 flex flex-col rounded-t-2xl bg-popover border-t border-border outline-none max-h-[85dvh]"
+          aria-describedby={undefined}
+        >
+          <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-border shrink-0" />
+          <div className="flex items-center justify-between px-4 py-3 shrink-0">
+            <Drawer.Title className="text-base font-semibold">Filter by folder</Drawer.Title>
             <button
-              data-testid={`folder-item-${folder.id}`}
-              onClick={() => onSelect(folder.id)}
-              {...dropProps(folder.id)}
-              className={`${pillBase} ${selectedFolderId === folder.id ? pillActive : pillInactive} ${
-                dragOverId === folder.id ? 'ring-2 ring-primary/40 scale-105' : ''
-              }`}
+              onClick={() => onOpenChange(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
+              aria-label="Close"
             >
-              {folder.name}
+              <X className="w-4 h-4" />
             </button>
-          )}
-          {!isReadOnly && renamingId !== folder.id && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                data-testid={`folder-options-button-${folder.id}`}
-                className="flex p-1.5 rounded text-muted-foreground hover:text-foreground transition-colors ml-0.5"
-                aria-label={`Options for ${folder.name}`}
-              >
-                <MoreHorizontal className="w-3.5 h-3.5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="bottom" className="w-32">
-                <DropdownMenuItem
-                  data-testid={`rename-folder-button-${folder.id}`}
-                  onClick={() => {
-                    setRenamingId(folder.id);
-                    setRenameValue(folder.name);
-                  }}
-                >
-                  <Pencil className="w-3.5 h-3.5 mr-2" />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  data-testid={`delete-folder-button-${folder.id}`}
-                  onClick={() => void handleDelete(folder.id)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      ))}
-      {!isReadOnly &&
-        (creatingFolder ? (
-          <div className="shrink-0 flex items-center gap-1">
-            <input
-              autoFocus
-              data-testid="new-folder-input"
-              placeholder="Folder name…"
-              className="text-xs px-2 py-0.5 rounded border border-primary/40 bg-background text-foreground outline-none w-28"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void commitCreate();
-                if (e.key === 'Escape') {
-                  setCreatingFolder(false);
-                  setNewFolderName('');
-                }
-              }}
-              onBlur={() => void commitCreate()}
-            />
           </div>
-        ) : (
-          <button
-            data-testid="create-folder-button"
-            onClick={() => setCreatingFolder(true)}
-            className={`${pillBase} border-dashed ${pillInactive}`}
-            aria-label="New folder"
-          >
-            <Plus className="w-3 h-3" />
-          </button>
-        ))}
-    </div>
+
+          <div className="overflow-y-auto overscroll-contain flex-1 px-3 pb-2">
+            <button
+              onClick={() => {
+                onSelect('all');
+                onOpenChange(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation mb-0.5"
+            >
+              <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                <Folder className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <span className="flex-1 text-sm font-medium">All Folders</span>
+              <span className="text-xs text-muted-foreground/70 mr-2" aria-hidden="true">
+                {totalCount}
+              </span>
+              <Check
+                className={`w-4 h-4 shrink-0 ${selectedFolderId === 'all' ? 'text-primary' : 'invisible'}`}
+              />
+            </button>
+
+            <div className="space-y-0.5">
+              {folders.map((folder) => (
+                <div key={folder.id} className="flex items-center gap-1">
+                  {renamingId === folder.id ? (
+                    <Input
+                      autoFocus
+                      data-testid={`rename-folder-input-${folder.id}`}
+                      className="flex-1 h-10 text-sm mx-1"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void commitRename(folder.id);
+                        if (e.key === 'Escape') setRenamingId(null);
+                      }}
+                      onBlur={() => void commitRename(folder.id)}
+                    />
+                  ) : (
+                    <button
+                      data-testid={`folder-item-${folder.id}`}
+                      onClick={() => {
+                        onSelect(folder.id);
+                        onOpenChange(false);
+                      }}
+                      className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation min-w-0"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                        <Folder className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <span className="flex-1 text-sm font-medium truncate">{folder.name}</span>
+                      <span className="text-xs text-muted-foreground/70 mr-2" aria-hidden="true">
+                        {folderCount(folder.id)}
+                      </span>
+                      <Check
+                        className={`w-4 h-4 shrink-0 ${selectedFolderId === folder.id ? 'text-primary' : 'invisible'}`}
+                      />
+                    </button>
+                  )}
+                  {!isReadOnly && renamingId !== folder.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        data-testid={`folder-options-button-${folder.id}`}
+                        className="w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+                        aria-label={`Options for ${folder.name}`}
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-32">
+                        <DropdownMenuItem
+                          data-testid={`rename-folder-button-${folder.id}`}
+                          onClick={() => {
+                            setRenamingId(folder.id);
+                            setRenameValue(folder.name);
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5 mr-2" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          data-testid={`delete-folder-button-${folder.id}`}
+                          onClick={() => void handleDelete(folder.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {!isReadOnly && (
+            <div
+              className="px-3 pt-2 border-t border-border"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
+              {creating ? (
+                <div className="flex items-center gap-2 py-1">
+                  <Input
+                    autoFocus
+                    data-testid="new-folder-input"
+                    placeholder="Folder name…"
+                    className="flex-1 h-10 text-sm"
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void commitCreate();
+                      if (e.key === 'Escape') {
+                        setCreating(false);
+                        setCreateName('');
+                      }
+                    }}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    data-testid="create-folder-button"
+                    className="h-10 w-10 shrink-0"
+                    onClick={() => void commitCreate()}
+                    disabled={createFolder.isPending}
+                    aria-label="Confirm create folder"
+                  >
+                    <Check className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  data-testid="create-folder-button"
+                  onClick={() => setCreating(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-white h-11 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors touch-manipulation mt-1 mb-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create folder
+                </button>
+              )}
+            </div>
+          )}
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
 
-function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void }) {
+function VaultListPanel({
+  onOpenVaultSheet,
+  showAllVaults,
+  onLock,
+  onSignOut,
+  isAdmin,
+  username,
+}: {
+  onOpenVaultSheet?: () => void;
+  showAllVaults: boolean;
+  onLock: () => void;
+  onSignOut: () => void;
+  isAdmin: boolean;
+  username: string;
+}) {
   const openCommandPalette = useOpenCommandPalette();
-  const { data: items, isLoading, isError } = useVaultItems();
+  const { data: singleItems, isLoading: singleLoading, isError: singleError } = useVaultItems();
+  const { data: allItems, isLoading: allLoading, isError: allError } = useAllVaultItems();
   const { data: folders = [] } = useFolders();
+
+  const items = showAllVaults ? allItems : singleItems;
+  const isLoading = showAllVaults ? allLoading : singleLoading;
+  const isError = showAllVaults ? allError : singleError;
+
+  const [activeVaultId, setActiveVaultId] = useState(() => session.get()?.activeVaultId ?? '');
   const [activeVaultName, setActiveVaultName] = useState(() => {
     const s = session.get();
     return s ? (s.vaults.get(s.activeVaultId)?.name ?? '') : '';
@@ -308,16 +409,23 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
   useEffect(() => {
     function onSwitch() {
       const s = session.get();
-      if (s) setActiveVaultName(s.vaults.get(s.activeVaultId)?.name ?? '');
+      if (s) {
+        setActiveVaultId(s.activeVaultId);
+        setActiveVaultName(s.vaults.get(s.activeVaultId)?.name ?? '');
+      }
     }
     window.addEventListener('bp:vault-switch', onSwitch);
     return () => window.removeEventListener('bp:vault-switch', onSwitch);
   }, []);
+
   const deleteItem = useDeleteItem();
   const moveItem = useMoveItem();
+  const switchVaultFn = useSwitchVault();
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>(loadStoredTypes);
   const [selectedFolderId, setSelectedFolderId] = useState<FolderFilter>('all');
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
@@ -327,7 +435,9 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStart = useRef<{ x: number; y: number } | null>(null);
   const s = session.get();
-  const isReadOnly = s ? s.vaults.get(s.activeVaultId)?.role === 'viewer' : false;
+  const isReadOnly =
+    !showAllVaults && (s ? s.vaults.get(s.activeVaultId)?.role === 'viewer' : false);
+
   useEffect(() => {
     function onVaultSwitch() {
       setSelectedTypes([]);
@@ -371,9 +481,9 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
 
   const folderFiltered = useMemo(() => {
     if (!items) return [];
-    if (selectedFolderId === 'all') return items;
+    if (showAllVaults || selectedFolderId === 'all') return items;
     return items.filter((i) => i.folderId === selectedFolderId);
-  }, [items, selectedFolderId]);
+  }, [items, selectedFolderId, showAllVaults]);
 
   const filtered = useMemo(() => {
     const result =
@@ -448,14 +558,8 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
     return { weakIds: weak, reusedIds: reused };
   }, [items]);
 
-  const headingLabel = useMemo(() => {
-    if (selectedFolderId === 'all') return 'All Items';
-    if (selectedFolderId === 'unfiled') return 'Unfiled';
-    return folders.find((f) => f.id === selectedFolderId)?.name ?? 'Folder';
-  }, [selectedFolderId, folders]);
-
   const activeFolder =
-    selectedFolderId !== 'all' && selectedFolderId !== 'unfiled'
+    !showAllVaults && selectedFolderId !== 'all' && selectedFolderId !== 'unfiled'
       ? folders.find((f) => f.id === selectedFolderId)
       : undefined;
 
@@ -550,16 +654,6 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
     }
   }
 
-  async function handleFolderDrop(folderId: string | null, ids: string[]) {
-    try {
-      await Promise.all(ids.map((id) => moveItem.mutateAsync({ id, folderId })));
-      toast.success(`Moved ${ids.length} item${ids.length === 1 ? '' : 's'}`);
-      if (ids.length > 1) clearSelection();
-    } catch {
-      toast.error('Failed to move some items');
-    }
-  }
-
   async function bulkDelete() {
     const ids = [...selection];
     setBulkDeleteOpen(false);
@@ -594,67 +688,88 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
       data-testid="vault-list"
       onKeyDown={onPanelKeyDown}
     >
-      {/* Top bar — 56px, bg-card */}
+      {/* Row 1: Vault pill + overflow menu */}
       <div className="h-14 bg-card border-b border-border shrink-0 flex items-center px-4 gap-2">
-        {onOpenVaultSheet && (
-          <button
-            onClick={onOpenVaultSheet}
-            data-testid="vault-picker-trigger"
-            data-active-vault={activeVaultName}
-            className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
-            aria-label="Account and vaults"
-          >
-            <Users className="w-4 h-4" />
-          </button>
-        )}
-        {selectedFolderId !== 'all' ? (
-          <FolderOpen className="w-4 h-4 text-primary shrink-0" />
-        ) : (
-          <Folder className="w-4 h-4 text-muted-foreground shrink-0" />
-        )}
-        <span
-          data-testid="vault-list-heading"
-          className="text-[16px] font-bold tracking-[-0.01em] text-foreground truncate flex-1"
-        >
-          {headingLabel}
-        </span>
-        {items && items.length > 0 && (
-          <span className="text-[11px] font-bold tracking-[0.06em] text-muted-foreground bg-muted px-[7px] py-[2px] rounded-sm shrink-0">
-            {selectedTypes.length > 0 || search.trim() ? filtered.length : folderFiltered.length}
-          </span>
-        )}
         <button
-          onClick={openCommandPalette}
-          data-testid="open-command-palette"
-          className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
-          aria-label="Search and commands"
+          onClick={onOpenVaultSheet}
+          data-testid="vault-picker-trigger"
+          data-active-vault={showAllVaults ? 'all' : activeVaultName}
+          className="flex-1 min-w-0 flex items-center gap-2 rounded-xl hover:bg-accent transition-colors px-2 py-1.5 -ml-2 touch-manipulation"
+          aria-label={showAllVaults ? 'All vaults' : activeVaultName}
         >
-          <Search className="w-4 h-4" />
+          {showAllVaults ? (
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4 text-muted-foreground" />
+            </div>
+          ) : (
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-[14px] font-bold"
+              style={{ backgroundColor: vaultColor(activeVaultId) }}
+            >
+              {activeVaultName.charAt(0).toUpperCase() || '?'}
+            </div>
+          )}
+          <span className="text-[16px] font-bold tracking-[-0.01em] text-foreground truncate">
+            {showAllVaults ? 'All vaults' : activeVaultName}
+          </span>
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
         </button>
-        {!isReadOnly && (
-          <Link
-            to="/items/new"
-            search={newItemSearch}
-            className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white shrink-0 touch-manipulation"
-            aria-label="New item"
-          >
-            <Plus className="w-4 h-4" />
-          </Link>
-        )}
+
+        <div className="flex items-center gap-1 shrink-0">
+          {!isReadOnly && !showAllVaults && (
+            <Link
+              to="/items/new"
+              search={newItemSearch}
+              className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white shrink-0 touch-manipulation"
+              aria-label="New item"
+            >
+              <Plus className="w-4 h-4" />
+            </Link>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+              aria-label="More options"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">{username}</div>
+              <DropdownMenuSeparator />
+              {isAdmin && (
+                <>
+                  <DropdownMenuItem>
+                    <Link to="/admin" className="flex items-center gap-2 w-full">
+                      <Shield className="w-3.5 h-3.5" />
+                      Admin panel
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem data-testid="account-menu-lock" onClick={onLock}>
+                <Lock className="w-3.5 h-3.5 mr-2" />
+                Lock vault
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onSignOut}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="w-3.5 h-3.5 mr-2" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      <FolderStrip
-        folders={folders}
-        selectedFolderId={selectedFolderId}
-        onSelect={setSelectedFolderId}
-        isReadOnly={isReadOnly}
-        onDropItems={(folderId, ids) => void handleFolderDrop(folderId, ids)}
-      />
+
+      {/* Row 2: Search bar */}
       <div className="px-[14px] h-[50px] flex items-center border-b border-muted shrink-0">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           <Input
             ref={searchRef}
-            placeholder="Search…"
+            placeholder="Search items…"
             aria-label="Search vault items"
             className="pl-8 pr-8 h-9 text-sm"
             value={search}
@@ -677,7 +792,27 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
             </button>
           )}
         </div>
+        <button
+          onClick={openCommandPalette}
+          data-testid="open-command-palette"
+          className="w-8 h-8 ml-1 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+          aria-label="Search and commands"
+        >
+          <Search className="w-4 h-4" />
+        </button>
       </div>
+
+      {/* Row 3: Folder dropdown (hidden in all-vaults mode) */}
+      {!showAllVaults && (
+        <FolderDropdownRow
+          selectedFolderId={selectedFolderId}
+          folders={folders}
+          folderItemCount={folderFiltered.length}
+          onOpenPicker={() => setFolderPickerOpen(true)}
+        />
+      )}
+
+      {/* Row 4: Type filter chips */}
       <div className="px-[14px] h-[46px] flex items-center gap-1 border-b border-muted shrink-0">
         {TYPE_OPTIONS.map(({ value, label, Icon }) => {
           const active = selectedTypes.includes(value);
@@ -707,6 +842,7 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
           </button>
         )}
       </div>
+
       {isReadOnly && (
         <div className="px-4 py-2 flex items-center gap-1.5 bg-muted/40 border-b border-muted shrink-0">
           <Users className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -715,6 +851,7 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
           </span>
         </div>
       )}
+
       <div
         ref={listRef}
         className="flex-1 overflow-y-auto"
@@ -771,30 +908,45 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
           !isError &&
           filtered.map((item) => {
             const isSelected = selection.has(item.id);
+            const gItem = showAllVaults ? (item as DecryptedGlobalVaultItem) : undefined;
+            const vaultLabel = gItem
+              ? {
+                  color: vaultColor(gItem.vaultId),
+                  name: s?.vaults.get(gItem.vaultId)?.name ?? 'Unknown vault',
+                }
+              : undefined;
+            const needsVaultSwitch = gItem && gItem.vaultId !== activeVaultId;
             return (
               <div
                 key={item.id}
                 data-item-id={item.id}
-                draggable={!isReadOnly}
-                onDragStart={(e) => {
-                  if (isReadOnly) return;
-                  const ids = isSelected && selection.size > 1 ? [...selection] : [item.id];
-                  e.dataTransfer.setData(DRAG_MIME, JSON.stringify(ids));
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
                 className={`relative ${
                   isSelected ? 'ring-1 ring-inset ring-primary/60 bg-primary/5' : ''
-                } ${!isReadOnly ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                }`}
+                onClickCapture={
+                  needsVaultSwitch
+                    ? (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        switchVaultFn(gItem.vaultId);
+                        qc.removeQueries({ queryKey: ['items'] });
+                        qc.removeQueries({ queryKey: ['folders'] });
+                        window.dispatchEvent(new CustomEvent('bp:vault-switch'));
+                      }
+                    : undefined
+                }
               >
                 <ItemCard
                   item={item}
                   isWeak={weakIds.has(item.id)}
                   isReused={reusedIds.has(item.id)}
+                  vaultLabel={vaultLabel}
                 />
               </div>
             );
           })}
       </div>
+
       {selection.size > 0 && !isReadOnly && (
         <div
           data-testid="bulk-bar"
@@ -854,6 +1006,7 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
           </Button>
         </div>
       )}
+
       <ResponsiveDialog
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
@@ -870,6 +1023,18 @@ function VaultListPanel({ onOpenVaultSheet }: { onOpenVaultSheet?: () => void })
           </>
         }
       />
+
+      {!showAllVaults && (
+        <FolderPickerSheet
+          open={folderPickerOpen}
+          onOpenChange={setFolderPickerOpen}
+          folders={folders}
+          selectedFolderId={selectedFolderId}
+          onSelect={setSelectedFolderId}
+          items={singleItems}
+          isReadOnly={isReadOnly}
+        />
+      )}
     </div>
   );
 }
@@ -1039,6 +1204,18 @@ function VaultLayoutContent({
   theme,
   vaultSheetOpen,
 }: VaultLayoutContentProps) {
+  const [showAllVaults, setShowAllVaults] = useState(false);
+  const { data: allVaultsData } = useAllVaultItems({ enabled: vaultSheetOpen || showAllVaults });
+  const allVaultsItemCount = allVaultsData?.length ?? 0;
+
+  useEffect(() => {
+    function onSwitch() {
+      setShowAllVaults(false);
+    }
+    window.addEventListener('bp:vault-switch', onSwitch);
+    return () => window.removeEventListener('bp:vault-switch', onSwitch);
+  }, []);
+
   return (
     <CommandPaletteContext.Provider value={() => setPaletteOpen(true)}>
       <SyncBoundary>
@@ -1049,7 +1226,14 @@ function VaultLayoutContent({
               isMobile={isMobile}
               mobileHideList={mobileHideList}
             >
-              <VaultListPanel onOpenVaultSheet={() => setVaultSheetOpen(true)} />
+              <VaultListPanel
+                onOpenVaultSheet={() => setVaultSheetOpen(true)}
+                showAllVaults={showAllVaults}
+                onLock={handleLock}
+                onSignOut={() => setShowSignOutConfirm(true)}
+                isAdmin={adminStatus?.isAdmin ?? false}
+                username={session.get()?.username ?? ''}
+              />
             </ListPanelAnimator>
             <MainAnimator
               isMobile={isMobile}
@@ -1064,12 +1248,9 @@ function VaultLayoutContent({
           <VaultSheet
             open={vaultSheetOpen}
             onOpenChange={setVaultSheetOpen}
-            onLock={handleLock}
-            onSignOut={() => setShowSignOutConfirm(true)}
-            username={session.get()?.username ?? ''}
-            theme={theme}
-            onThemeChange={handleThemeChange}
-            isAdmin={adminStatus?.isAdmin ?? false}
+            isAllVaults={showAllVaults}
+            allVaultsItemCount={allVaultsItemCount}
+            onSelectAll={() => setShowAllVaults(true)}
           />
           <Suspense fallback={null}>
             <CommandPalette

@@ -35,7 +35,7 @@ test('shows quota toast when server reports vault_limit_reached', async ({ page 
     await route.fallback();
   });
 
-  await page.getByTestId('vault-list-heading').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.getByTestId('vault-picker-trigger').waitFor({ state: 'visible', timeout: 15_000 });
   await page.getByTestId('vault-picker-trigger').click();
   await page.getByTestId('new-vault-button').click();
   await page.getByTestId('new-vault-name-input').fill('Should Not Save');

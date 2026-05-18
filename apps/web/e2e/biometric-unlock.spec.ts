@@ -88,7 +88,7 @@ test('unlock-with-biometric: lock then unlock without password entry', async ({ 
   await biometric.click();
 
   await page.waitForURL('/', { timeout: 30_000 });
-  await expect(page.getByTestId('vault-list-heading')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('vault-picker-trigger')).toBeVisible({ timeout: 10_000 });
 });
 
 test('use-password-instead: fallback link reveals form and unlock works', async ({ page }) => {
@@ -105,7 +105,7 @@ test('use-password-instead: fallback link reveals form and unlock works', async 
   await page.getByLabel('Master password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Unlock vault' }).click();
   await page.waitForURL('/', { timeout: 30_000 });
-  await expect(page.getByTestId('vault-list-heading')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('vault-picker-trigger')).toBeVisible({ timeout: 10_000 });
 
   // Enrollment is preserved through a password-fallback unlock
   expect(await readBiometricEnrollmentCount(page)).toBe(1);

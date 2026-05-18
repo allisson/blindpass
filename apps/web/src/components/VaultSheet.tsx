@@ -1,38 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Link, useRouter } from '@tanstack/react-router';
+import { useRouter } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Check,
-  Lock,
-  LogOut,
-  Monitor,
-  Moon,
-  Pencil,
-  Plus,
-  Shield,
-  Sun,
-  UserPlus,
-  Users,
-} from 'lucide-react';
+import { Check, Layers, LogOut, Pencil, Plus, UserPlus, Users, X } from 'lucide-react';
 import { Drawer } from 'vaul';
 import { toast } from 'sonner';
 import { session } from '@/lib/session';
 import { extractErrorMessage } from '@/lib/errors';
+import { vaultColor } from '@/lib/vaultColor';
 import { useCreateVault, useRenameVault, useSwitchVault } from '@/hooks/useVault';
 import { useLeaveShare } from '@/hooks/useVaultSharing';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { ShareVaultModal } from '@/components/vault/ShareVaultModal';
-
-type Theme = 'light' | 'dark' | 'system';
-
-const THEME_OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
-  { value: 'light', label: 'Light', Icon: Sun },
-  { value: 'dark', label: 'Dark', Icon: Moon },
-  { value: 'system', label: 'System', Icon: Monitor },
-];
 
 interface VaultEntry {
   id: string;
@@ -45,23 +25,17 @@ interface VaultEntry {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLock: () => void;
-  onSignOut: () => void;
-  username: string;
-  theme: Theme;
-  onThemeChange: (t: Theme) => void;
-  isAdmin: boolean;
+  isAllVaults: boolean;
+  allVaultsItemCount: number;
+  onSelectAll: () => void;
 }
 
 export function VaultSheet({
   open,
   onOpenChange,
-  onLock,
-  onSignOut,
-  username,
-  theme,
-  onThemeChange,
-  isAdmin,
+  isAllVaults,
+  allVaultsItemCount,
+  onSelectAll,
 }: Props) {
   const [localActiveId, setLocalActiveId] = useState(() => session.get()?.activeVaultId ?? '');
   const [localVaults, setLocalVaults] = useState<VaultEntry[]>(() => {
@@ -114,7 +88,7 @@ export function VaultSheet({
   }, []);
 
   function handleSwitch(id: string) {
-    if (id === localActiveId) {
+    if (!isAllVaults && id === localActiveId) {
       onOpenChange(false);
       return;
     }
@@ -212,12 +186,43 @@ export function VaultSheet({
             aria-describedby={undefined}
           >
             <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-border shrink-0" />
-            <Drawer.Title className="sr-only">Switch vault</Drawer.Title>
 
-            <div className="overflow-y-auto overscroll-contain flex-1 px-3 pt-2 pb-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold px-1 mb-1.5">
-                Vaults
-              </p>
+            <div className="flex items-center justify-between px-4 py-3 shrink-0">
+              <Drawer.Title className="text-base font-semibold">Vaults</Drawer.Title>
+              <button
+                onClick={() => onOpenChange(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto overscroll-contain flex-1 px-3 pb-2">
+              {/* All vaults row */}
+              <button
+                onClick={() => {
+                  onSelectAll();
+                  onOpenChange(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation mb-0.5"
+              >
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Layers className="w-4 h-4 text-primary" />
+                </div>
+                <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                  <span className="text-sm font-medium">All vaults</span>
+                  <span className="text-[11px] text-muted-foreground/70">
+                    {allVaultsItemCount} items
+                  </span>
+                </span>
+                <Check
+                  className={`w-4 h-4 shrink-0 ${isAllVaults ? 'text-primary' : 'invisible'}`}
+                />
+              </button>
+
+              <div className="h-px bg-border mx-3 my-1" />
+
               <div className="space-y-0.5">
                 {localVaults.map((vault) => (
                   <div key={vault.id} className="flex items-center gap-1">
@@ -238,9 +243,13 @@ export function VaultSheet({
                         onClick={() => handleSwitch(vault.id)}
                         className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-accent transition-colors touch-manipulation min-w-0"
                       >
-                        <Check
-                          className={`w-4 h-4 shrink-0 ${vault.id === localActiveId ? 'text-primary' : 'invisible'}`}
-                        />
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white text-sm font-bold"
+                          style={{ backgroundColor: vaultColor(vault.id) }}
+                          aria-hidden="true"
+                        >
+                          {vault.name.charAt(0).toUpperCase()}
+                        </div>
                         <span className="flex-1 min-w-0 flex flex-col leading-tight">
                           <span className="text-sm font-medium truncate">{vault.name}</span>
                           {vault.isShared && vault.ownerUsername && (
@@ -257,9 +266,12 @@ export function VaultSheet({
                                 : 'Shared with you'
                             }
                           >
-                            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <Users className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
                           </span>
                         )}
+                        <Check
+                          className={`w-4 h-4 shrink-0 ${!isAllVaults && vault.id === localActiveId ? 'text-primary' : 'invisible'}`}
+                        />
                       </button>
                     )}
                     {renameId !== vault.id && !vault.isShared && (
@@ -312,8 +324,14 @@ export function VaultSheet({
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div
+              className="px-3 pt-2 pb-4 border-t border-border"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
               {creating ? (
-                <div className="flex items-center gap-2 px-1 mt-2">
+                <div className="flex items-center gap-2">
                   <Input
                     autoFocus
                     data-testid="new-vault-name-input"
@@ -347,101 +365,18 @@ export function VaultSheet({
               ) : (
                 <button
                   data-testid="new-vault-button"
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-muted-foreground hover:bg-accent transition-colors mt-1 touch-manipulation"
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-white h-11 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors touch-manipulation"
                   onClick={() => setCreating(true)}
                 >
-                  <Plus className="w-4 h-4 shrink-0" />
-                  <span className="text-sm">New vault</span>
+                  <Plus className="w-4 h-4" />
+                  Create vault
                 </button>
               )}
-            </div>
-
-            <Separator />
-            <div className="px-3 pt-3 pb-1">
-              <div className="flex items-center gap-3 px-3 py-2">
-                <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-semibold text-primary uppercase">
-                    {username.charAt(0).toUpperCase() || '?'}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0 leading-tight">
-                  <span className="block text-sm font-medium text-foreground truncate">
-                    {username}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground/70">Account</span>
-                </div>
-              </div>
-              <Separator className="mt-1 mb-2" />
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold px-3 mb-1.5">
-                Theme
-              </p>
-              <div
-                className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-muted/50 mb-1"
-                role="radiogroup"
-                aria-label="Theme"
-              >
-                {THEME_OPTIONS.map(({ value, label, Icon }) => {
-                  const active = theme === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      onClick={() => onThemeChange(value)}
-                      className={`flex flex-col items-center gap-0.5 py-1.5 rounded text-xs transition-colors touch-manipulation ${
-                        active
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  onClick={() => onOpenChange(false)}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-muted-foreground hover:bg-accent active:bg-accent transition-colors touch-manipulation"
-                >
-                  <Shield className="w-4 h-4 shrink-0" />
-                  <span className="text-sm">Admin panel</span>
-                </Link>
-              )}
-            </div>
-            <Separator />
-            <div
-              className="px-3 py-2 flex flex-col gap-0.5"
-              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
-            >
-              <button
-                data-testid="account-menu-lock"
-                onClick={() => {
-                  onOpenChange(false);
-                  onLock();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-muted-foreground hover:bg-accent active:bg-accent transition-colors touch-manipulation"
-              >
-                <Lock className="w-4 h-4 shrink-0" />
-                <span className="text-sm">Lock vault</span>
-              </button>
-              <button
-                onClick={() => {
-                  onOpenChange(false);
-                  onSignOut();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-destructive/80 hover:bg-destructive/10 active:bg-destructive/10 transition-colors touch-manipulation"
-              >
-                <LogOut className="w-4 h-4 shrink-0" />
-                <span className="text-sm">Sign out</span>
-              </button>
             </div>
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+
       {leaveConfirm && (
         <ResponsiveDialog
           open={leaveConfirm !== null}

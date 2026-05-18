@@ -98,7 +98,7 @@ test.describe('@screenshot screenshots', () => {
       await page.getByLabel('I have saved my recovery key in a safe place').click();
       await page.getByRole('button', { name: "I've saved my recovery key" }).click();
       await page.waitForURL('/', { timeout: 15_000 });
-      await expect(page.getByTestId('vault-list-heading')).toBeVisible();
+      await expect(page.getByTestId('vault-picker-trigger')).toBeVisible();
 
       // Seed a fictional, item-type-diverse vault.
       await createVaultItem(page, 'login', 'Mailbox', {
@@ -134,7 +134,7 @@ test.describe('@screenshot screenshots', () => {
       // 03 — Vault home (populated). Click bottom tab Vault link (SPA, no reload).
       await page.getByRole('link', { name: 'Vault', exact: true }).click();
       await page.waitForURL('/', { timeout: 10_000 });
-      await expect(page.getByTestId('vault-list-heading')).toBeVisible();
+      await expect(page.getByTestId('vault-picker-trigger')).toBeVisible();
       await expect(page.getByTestId('vault-list').getByText('Mailbox')).toBeVisible();
       await polishForScreenshot(page, username);
       await page.screenshot({ path: file('03-vault') });

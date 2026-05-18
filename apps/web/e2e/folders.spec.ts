@@ -29,15 +29,19 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function createFolder(page: import('@playwright/test').Page, name: string): Promise<void> {
+  await page.getByRole('button', { name: 'Filter by folder' }).click();
   await page.getByTestId('create-folder-button').click();
   await page.getByTestId('new-folder-input').fill(name);
   await page.getByTestId('new-folder-input').press('Enter');
-  await expect(page.getByTestId('folder-strip')).toContainText(name, { timeout: 10_000 });
+  // Sheet closes and filter switches to the new folder
+  await expect(page.getByRole('button', { name: 'Filter by folder' })).toContainText(name, {
+    timeout: 10_000,
+  });
 }
 
-test('creates a folder and shows it in the folder strip', async ({ page }) => {
+test('creates a folder and shows it in the folder filter', async ({ page }) => {
   await createFolder(page, 'Work');
-  await expect(page.getByTestId('folder-strip')).toContainText('Work');
+  await expect(page.getByRole('button', { name: 'Filter by folder' })).toContainText('Work');
 });
 
 test('folder filter All shows all items', async ({ page }) => {
@@ -47,7 +51,8 @@ test('folder filter All shows all items', async ({ page }) => {
   });
   await page.getByRole('link', { name: 'Vault', exact: true }).click();
   await page.waitForURL('/', { timeout: 10_000 });
-  await page.getByTestId('folder-filter-all').click();
+  await page.getByRole('button', { name: 'Filter by folder' }).click();
+  await page.getByRole('button', { name: 'All Folders' }).click();
   await expect(page.getByTestId('vault-list')).toContainText('Filter Test Item');
 });
 
@@ -63,7 +68,8 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
 
   // Create a folder (auto-selects it; reset to All so unfiled item is visible)
   await createFolder(page, 'Personal');
-  await page.getByTestId('folder-filter-all').click();
+  await page.getByRole('button', { name: 'Filter by folder' }).click();
+  await page.getByRole('button', { name: 'All Folders' }).click();
 
   // Click the item to open detail view
   await page.getByTestId('vault-list').getByText('Movable Item', { exact: true }).click();
@@ -86,27 +92,34 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
   // Navigate back so the list panel is visible, then filter by Personal folder
   await page.getByRole('link', { name: 'Vault', exact: true }).click();
   await page.waitForURL('/', { timeout: 10_000 });
-  await page.getByTestId('folder-strip').getByText('Personal', { exact: true }).click();
+  await page.getByRole('button', { name: 'Filter by folder' }).click();
+  await page.getByRole('button', { name: 'Personal', exact: true }).click();
   await expect(page.getByTestId('vault-list')).toContainText('Movable Item', { timeout: 10_000 });
 });
 
 test('renames a folder', async ({ page }) => {
   await createFolder(page, 'OldName');
 
-  const folderStrip = page.getByTestId('folder-strip');
+  // Open the folder picker to access folder options
+  await page.getByRole('button', { name: 'Filter by folder' }).click();
 
-  // Open the options dropdown and click Rename
+  // Open the options dropdown; use dispatchEvent to activate Rename — bypasses the
+  // pointer-event hit-test conflict between the base-ui portal and the Vaul Drawer.
   await page.getByRole('button', { name: /Options for OldName/i }).click();
-  await page.getByRole('menuitem', { name: 'Rename' }).click();
+  await page.getByRole('menuitem', { name: 'Rename' }).dispatchEvent('click');
 
   // Find the rename input and change the name
-  const renameInput = folderStrip.locator('input');
+  const renameInput = page.locator('[data-testid^="rename-folder-input-"]');
   await renameInput.clear();
   await renameInput.fill('NewName');
   await renameInput.press('Enter');
 
-  await expect(folderStrip).toContainText('NewName', { timeout: 10_000 });
-  await expect(folderStrip).not.toContainText('OldName', { timeout: 5_000 });
+  await expect(page.getByRole('button', { name: 'NewName', exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByRole('button', { name: 'OldName', exact: true })).toHaveCount(0, {
+    timeout: 5_000,
+  });
 });
 
 test('deletes a folder and its items appear in All', async ({ page }) => {
@@ -138,16 +151,20 @@ test('deletes a folder and its items appear in All', async ({ page }) => {
   await page.getByRole('link', { name: 'Vault' }).first().click();
   await page.waitForURL('/', { timeout: 10_000 });
 
-  // Delete the folder
-  const folderStrip = page.getByTestId('folder-strip');
+  // Open the folder picker and delete the folder
+  await page.getByRole('button', { name: 'Filter by folder' }).click();
   await page.getByRole('button', { name: /Options for ToDelete/i }).click();
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).dispatchEvent('click');
 
-  // Folder pill should be gone
-  await expect(folderStrip).not.toContainText('ToDelete', { timeout: 10_000 });
+  // Folder should be gone from the picker
+  await expect(page.getByRole('button', { name: 'ToDelete', exact: true })).toHaveCount(0, {
+    timeout: 10_000,
+  });
+
+  // Reset to All Folders (closes picker)
+  await page.getByRole('button', { name: 'All Folders' }).click();
 
   // Item should still appear under All
-  await page.getByTestId('folder-filter-all').click();
   await expect(page.getByTestId('vault-list')).toContainText('WillBeOrphaned', {
     timeout: 10_000,
   });

@@ -35,10 +35,11 @@ export function useVaultItems() {
   });
 }
 
-export function useAllVaultItems() {
+export function useAllVaultItems(options?: { enabled?: boolean }) {
   const k = useKeychain();
   return useQuery({
     queryKey: ALL_VAULT_ITEMS_KEY,
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const cached = await vaultCache.getAllItems();
       return Promise.all(
