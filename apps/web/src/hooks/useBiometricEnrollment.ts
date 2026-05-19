@@ -13,10 +13,7 @@ import {
 import { wrapMasterKey } from '@/lib/biometric/buk';
 import { api } from '@/lib/api';
 import { getLastUsername, session } from '@/lib/session';
-
-function uint8ToBase64(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes));
-}
+import { toBase64 } from '@/lib/b64';
 
 export type EnrollmentPhase = 'idle' | 'probing' | 'enrolling' | 'disenrolling' | 'done' | 'error';
 
@@ -110,7 +107,7 @@ export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
 
       const label = getBiometricLabel();
       const serverRes = await api.registerBiometricCredential({
-        credentialId: uint8ToBase64(credentialId),
+        credentialId: toBase64(credentialId),
         label: label ?? undefined,
       });
 
