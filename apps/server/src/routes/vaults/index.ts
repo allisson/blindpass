@@ -23,6 +23,7 @@ import { registerCreateFolderRoute } from './folders/create-folder.js';
 import { registerListFoldersRoute } from './folders/list-folders.js';
 import { registerUpdateFolderRoute } from './folders/update-folder.js';
 import { registerDeleteFolderRoute } from './folders/delete-folder.js';
+import { registerDeleteVaultRoute } from './delete-vault.js';
 
 export function registerVaultRoutes(app: FastifyInstance): void {
   registerListVaultsRoute(app);
@@ -49,4 +50,5 @@ export function registerVaultRoutes(app: FastifyInstance): void {
   registerListFoldersRoute(app);
   registerUpdateFolderRoute(app);
   registerDeleteFolderRoute(app);
+  registerDeleteVaultRoute(app);
 }
