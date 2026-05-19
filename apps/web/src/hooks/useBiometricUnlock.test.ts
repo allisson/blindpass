@@ -12,6 +12,7 @@ vi.mock('@/lib/session', () => ({
 
 import { useBiometricUnlock } from './useBiometricUnlock';
 import { enrollmentStore, ENROLLMENT_VERSION } from '@/lib/biometric';
+import { ApiError } from '@/lib/api';
 
 const KEYS_RESPONSE = {
   kekSalt: 'salt',
@@ -27,7 +28,7 @@ const VAULT_OWNED = {
   encryptedVaultKey: { ciphertext: 'c', nonce: 'n' },
 };
 
-function makeDeps(opts?: { fail?: 'unlock' | 'cancel' | 'invalidState' | 'noVault' }) {
+function makeDeps(opts?: { fail?: 'unlock' | 'cancel' | 'invalidState' | 'noVault' | 'revoked' }) {
   const masterKey = new Uint8Array([1, 2, 3]);
   const privateKey = new Uint8Array([4, 5, 6]);
   const vaultKey = new Uint8Array([7, 8, 9]);
@@ -57,6 +58,11 @@ function makeDeps(opts?: { fail?: 'unlock' | 'cancel' | 'invalidState' | 'noVaul
           vaults: opts?.fail === 'noVault' ? [] : [VAULT_OWNED],
           nextCursor: null,
         }),
+        getBiometricCredential: vi.fn(
+          opts?.fail === 'revoked'
+            ? () => Promise.reject(new ApiError(404, 'Not found'))
+            : () => Promise.resolve({} as never),
+        ),
       },
       primitives: {
         unlockWithBiometric: vi.fn(
@@ -97,6 +103,19 @@ async function seedEnrollment() {
     encryptedMasterKey: { ciphertext: new Uint8Array([3]), nonce: new Uint8Array([4]) },
     rpId: 'localhost',
     createdAt: 'now',
+  });
+}
+
+async function seedEnrollmentWithServerCredential() {
+  await enrollmentStore.put({
+    version: ENROLLMENT_VERSION,
+    username: 'tester',
+    credentialId: new Uint8Array([1]),
+    prfSalt: new Uint8Array([2]),
+    encryptedMasterKey: { ciphertext: new Uint8Array([3]), nonce: new Uint8Array([4]) },
+    rpId: 'localhost',
+    createdAt: 'now',
+    serverCredentialId: 'server-cred-uuid',
   });
 }
 
@@ -173,6 +192,20 @@ describe('useBiometricUnlock', () => {
     });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe('no_vault');
+  });
+
+  it('returns credential_revoked and wipes enrollment when server returns 404', async () => {
+    await seedEnrollmentWithServerCredential();
+    const { deps } = makeDeps({ fail: 'revoked' });
+    const { result } = renderHook(() => useBiometricUnlock(deps));
+    let res!: Awaited<ReturnType<typeof result.current.unlock>>;
+    await act(async () => {
+      res = await result.current.unlock();
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.code).toBe('credential_revoked');
+    const remaining = await enrollmentStore.get('tester');
+    expect(remaining).toBeNull();
   });
 
   it('reset clears phase and error', async () => {

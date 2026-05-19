@@ -127,6 +127,27 @@ export const CompleteTotpRotationRequestSchema = z.object({
   authenticatorCode: AuthenticatorCodeSchema,
 });
 
+export const BiometricCredentialSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  lastSeenAt: z.string().datetime(),
+});
+
+export const RegisterBiometricCredentialRequestSchema = z.object({
+  credentialId: Base64StringSchema,
+  label: z.string().max(255).optional(),
+});
+
+export const RegisterBiometricCredentialResponseSchema = z.object({
+  id: z.string().uuid(),
+  createdAt: z.string().datetime(),
+});
+
+export const ListBiometricCredentialsResponseSchema = z.object({
+  credentials: z.array(BiometricCredentialSchema),
+});
+
 export const SessionSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.string().datetime(),
@@ -161,3 +182,13 @@ export type TotpEnrollment = z.infer<typeof TotpEnrollmentSchema>;
 export type AuthSessionBundle = z.infer<typeof AuthSessionBundleSchema>;
 export type Session = z.infer<typeof SessionSchema>;
 export type ListSessionsResponse = z.infer<typeof ListSessionsResponseSchema>;
+export type BiometricCredential = z.infer<typeof BiometricCredentialSchema>;
+export type RegisterBiometricCredentialRequest = z.infer<
+  typeof RegisterBiometricCredentialRequestSchema
+>;
+export type RegisterBiometricCredentialResponse = z.infer<
+  typeof RegisterBiometricCredentialResponseSchema
+>;
+export type ListBiometricCredentialsResponse = z.infer<
+  typeof ListBiometricCredentialsResponseSchema
+>;

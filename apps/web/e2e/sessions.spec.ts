@@ -111,6 +111,15 @@ test.describe.serial('sessions page basics', () => {
     await expect(ownerPage.getByText('Current device.')).toBeAttached({ timeout: 10_000 });
   });
 
+  test('biometric devices section is visible with empty state', async () => {
+    await expect(ownerPage.getByRole('heading', { name: 'Biometric devices' })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(ownerPage.getByText('No biometric devices enrolled.')).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
   test('current session has no revoke button', async () => {
     await ownerPage.getByText('Current device.').waitFor({ state: 'attached', timeout: 10_000 });
 

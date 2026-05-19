@@ -5,6 +5,7 @@ import type {
   AdminSettingsResponse,
   AdminStatusResponse,
   ListAdminUsersResponse,
+  BiometricCredential,
   CompleteLoginRequest,
   CompleteRecoveryRequest,
   CompleteRegistrationRequest,
@@ -20,6 +21,7 @@ import type {
   FolderResponse,
   ItemResponse,
   KeysResponse,
+  ListBiometricCredentialsResponse,
   ListFoldersResponse,
   ListGlobalTrashResponse,
   ListUserItemsDeltaResponse,
@@ -30,6 +32,8 @@ import type {
   ListVaultsResponse,
   ListVersionsResponse,
   MoveItemRequest,
+  RegisterBiometricCredentialRequest,
+  RegisterBiometricCredentialResponse,
   RegisterRequest,
   RegisterResponse,
   RotateRecoveryPhraseRequest,
@@ -227,6 +231,15 @@ export const api = {
   getSessions: () => request<ListSessionsResponse>('GET', '/auth/sessions'),
   deleteSession: (sessionId: string) => request<void>('DELETE', `/auth/sessions/${sessionId}`),
   deleteAllOtherSessions: () => request<void>('DELETE', '/auth/sessions'),
+
+  registerBiometricCredential: (body: RegisterBiometricCredentialRequest) =>
+    request<RegisterBiometricCredentialResponse>('POST', '/auth/biometric-credentials', body),
+  listBiometricCredentials: () =>
+    request<ListBiometricCredentialsResponse>('GET', '/auth/biometric-credentials'),
+  getBiometricCredential: (id: string) =>
+    request<BiometricCredential>('GET', `/auth/biometric-credentials/${id}`),
+  deleteBiometricCredential: (id: string) =>
+    request<void>('DELETE', `/auth/biometric-credentials/${id}`),
 
   getAdminStatus: () => request<AdminStatusResponse>('GET', '/admin/status'),
   getAdminSettings: () => request<AdminSettingsResponse>('GET', '/admin/settings'),

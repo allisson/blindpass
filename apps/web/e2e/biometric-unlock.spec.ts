@@ -111,6 +111,52 @@ test('use-password-instead: fallback link reveals form and unlock works', async 
   expect(await readBiometricEnrollmentCount(page)).toBe(1);
 });
 
+test('remote-revocation: shows revocation message and password fallback when credential deleted from another device', async ({
+  page,
+}) => {
+  await gotoBiometricSettings(page);
+  await clickEnableBiometric(page);
+
+  // Remotely delete the biometric credential via the API (simulates another device revoking it)
+  const deleted = await page.evaluate(async () => {
+    const listRes = await fetch('/auth/biometric-credentials', { credentials: 'include' });
+    if (!listRes.ok) return false;
+    const data = (await listRes.json()) as { credentials: Array<{ id: string }> };
+    const cred = data.credentials[0];
+    if (!cred) return false;
+    const delRes = await fetch(`/auth/biometric-credentials/${cred.id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'x-bp-client': 'web' },
+    });
+    return delRes.status === 204;
+  });
+  expect(deleted, 'credential was deleted server-side').toBe(true);
+
+  await lockVault(page);
+  await page.waitForURL(/\/unlock/, { timeout: 10_000 });
+
+  // Biometric button shows because local enrollment still exists
+  const biometric = page.getByRole('button', { name: UNLOCK_BUTTON });
+  await expect(biometric).toBeVisible({ timeout: 10_000 });
+  await biometric.click();
+
+  // Revocation message should appear in the password form area
+  await expect(page.getByTestId('biometric-revocation-message')).toBeVisible({ timeout: 15_000 });
+
+  // Biometric button should be hidden (enrollment wiped)
+  await expect(biometric).not.toBeVisible({ timeout: 5_000 });
+
+  // Local enrollment is cleared
+  await expect.poll(() => readBiometricEnrollmentCount(page), { timeout: 5_000 }).toBe(0);
+
+  // Password form is functional
+  await page.getByLabel('Master password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Unlock vault' }).click();
+  await page.waitForURL('/', { timeout: 30_000 });
+  await expect(page.getByTestId('vault-picker-trigger')).toBeVisible({ timeout: 10_000 });
+});
+
 test('disenroll: removes record and hides biometric button on /unlock', async ({ page }) => {
   await gotoBiometricSettings(page);
   await clickEnableBiometric(page);

@@ -216,6 +216,29 @@ export const vaultItemVersions = pgTable(
   ],
 );
 
+export const biometricCredentials = pgTable(
+  'biometric_credentials',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    credentialId: bytea('credential_id').notNull(),
+    label: varchar('label', { length: 255 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(now),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().default(now),
+  },
+  (table) => [
+    index('biometric_credentials_user_id_idx').on(table.userId),
+    uniqueIndex('biometric_credentials_user_credential_unique').on(
+      table.userId,
+      table.credentialId,
+    ),
+  ],
+);
+
 export const vaultShares = pgTable(
   'vault_shares',
   {

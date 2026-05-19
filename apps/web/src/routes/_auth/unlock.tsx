@@ -39,6 +39,7 @@ function UnlockPage() {
 
   const [biometricEnrolled, setBiometricEnrolled] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [revocationMessage, setRevocationMessage] = useState<string | null>(null);
   const biometricLabel = getBiometricLabel();
 
   useEffect(() => {
@@ -121,6 +122,13 @@ function UnlockPage() {
     if (result.error.code === 'biometric_cancelled') {
       // Quietly reset; password fallback stays available.
       biometricCeremony.reset();
+      return;
+    }
+    if (result.error.code === 'credential_revoked') {
+      // Enrollment already wiped in useBiometricUnlock; update UI to show password form.
+      setBiometricEnrolled(false);
+      setRevocationMessage(result.error.message);
+      setShowPassword(true);
       return;
     }
     // Other errors: keep biometric option, but reveal password fallback.
@@ -214,6 +222,10 @@ function UnlockPage() {
               <FieldError message={errors.password?.message} />
             </div>
             <FieldError message={passwordCeremony.error?.message} data-testid="error-message" />
+            <FieldError
+              message={revocationMessage ?? undefined}
+              data-testid="biometric-revocation-message"
+            />
             <Button type="submit" className="w-full" loading={busy} disabled={busy}>
               {passwordCeremony.phase !== 'idle' && busy
                 ? loadingMsg || (isSubmitting ? 'Unlocking…' : 'Unlock vault')

@@ -17,6 +17,7 @@ export type CeremonyErrorCode =
   | 'kdf_failed'
   | 'biometric_failed'
   | 'biometric_cancelled'
+  | 'credential_revoked'
   | 'unknown';
 
 export interface CeremonyError {
@@ -85,6 +86,12 @@ export function mapCeremonyError(err: unknown): CeremonyError {
     return { code: 'network', message: err.message, cause: err };
   }
   if (err instanceof Error) {
+    if (err.name === 'CredentialRevokedError')
+      return {
+        code: 'credential_revoked',
+        message: err.message,
+        cause: err,
+      };
     if (err.name === 'NotAllowedError')
       return {
         code: 'biometric_cancelled',

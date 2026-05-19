@@ -8,6 +8,7 @@ import { registerVerifyRecoveryRoute } from './verify-recovery.js';
 import { registerCompleteRecoveryRoute } from './complete-recovery.js';
 import { registerSessionsRoutes } from './sessions.js';
 import { registerLogoutRoute } from './logout.js';
+import { registerBiometricCredentialsRoutes } from './biometric-credentials.js';
 
 export function registerAuthRoutes(app: FastifyInstance): void {
   registerRegisterRoute(app);
@@ -19,4 +20,5 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   registerCompleteRecoveryRoute(app);
   registerSessionsRoutes(app);
   registerLogoutRoute(app);
+  registerBiometricCredentialsRoutes(app);
 }

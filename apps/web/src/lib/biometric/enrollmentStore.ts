@@ -11,6 +11,7 @@ export interface BiometricEnrollment {
   rpId: string;
   createdAt: string;
   label?: string;
+  serverCredentialId?: string;
 }
 
 const DB_NAME = 'bp:biometric-unlock';
