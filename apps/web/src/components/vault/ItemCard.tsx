@@ -92,22 +92,14 @@ export const ItemCard = memo(function ItemCard({ item, isWeak, isReused, vaultLa
               data-testid="item-pending-spinner"
             />
           )}
-          {(isWeak || isReused) && (
-            <span className="flex items-center gap-1 shrink-0">
-              {isWeak && (
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-destructive"
-                  title="Weak password"
-                  aria-label="Weak password"
-                />
-              )}
-              {isReused && (
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-[oklch(0.65_0.16_60)]"
-                  title="Reused password"
-                  aria-label="Reused password"
-                />
-              )}
+          {isWeak && (
+            <span className="text-[10px] font-bold px-1 py-px rounded bg-destructive/15 text-destructive shrink-0">
+              Weak
+            </span>
+          )}
+          {isReused && (
+            <span className="text-[10px] font-bold px-1 py-px rounded bg-[oklch(0.65_0.16_60)]/15 text-[oklch(0.55_0.16_60)] shrink-0">
+              Reused
             </span>
           )}
         </div>

@@ -244,7 +244,7 @@ export async function createVaultItem(
   title: string,
   fields: Record<string, string> = {},
 ): Promise<void> {
-  // With isMobile=true the list panel slides off-screen on item detail/edit/new routes.
+  // The list panel slides off-screen (mobileHideList=true) on item detail/edit/new routes.
   // Use "Back to vault" (top of the detail view) rather than the Vault tab (bottom), since
   // a Sonner success toast at bottom-center can overlap the tab bar and intercept clicks.
   if (new URL(page.url()).pathname !== '/') {

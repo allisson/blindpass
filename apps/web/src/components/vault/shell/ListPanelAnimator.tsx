@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 
 interface Props {
   show: boolean;
-  isMobile: boolean;
   mobileHideList: boolean;
   children: ReactNode;
 }
@@ -15,7 +14,7 @@ const TRANSITION = {
 };
 const INSTANT = { duration: 0 };
 
-export function ListPanelAnimator({ show, isMobile, mobileHideList, children }: Props) {
+export function ListPanelAnimator({ show, mobileHideList, children }: Props) {
   const reduceMotion = useReducedMotion();
   return (
     <AnimatePresence initial={false}>
@@ -24,15 +23,15 @@ export function ListPanelAnimator({ show, isMobile, mobileHideList, children }: 
           key="vault-list"
           initial={{
             opacity: 0,
-            x: isMobile && mobileHideList ? '-100%' : -8,
+            x: mobileHideList ? '-100%' : -8,
           }}
           animate={{
             opacity: 1,
-            x: isMobile && mobileHideList ? '-100%' : 0,
+            x: mobileHideList ? '-100%' : 0,
           }}
           exit={{
             opacity: 0,
-            x: isMobile ? '-100%' : -8,
+            x: '-100%',
           }}
           transition={reduceMotion ? INSTANT : TRANSITION}
           className="solid-panel border-r absolute inset-0 flex flex-col"
@@ -45,20 +44,14 @@ export function ListPanelAnimator({ show, isMobile, mobileHideList, children }: 
 }
 
 interface MainAnimatorProps {
-  isMobile: boolean;
   showListPanel: boolean;
   mobileHideList: boolean;
   children: ReactNode;
 }
 
-export function MainAnimator({
-  isMobile,
-  showListPanel,
-  mobileHideList,
-  children,
-}: MainAnimatorProps) {
+export function MainAnimator({ showListPanel, mobileHideList, children }: MainAnimatorProps) {
   const reduceMotion = useReducedMotion();
-  const slideOut = isMobile && showListPanel && !mobileHideList;
+  const slideOut = showListPanel && !mobileHideList;
   return (
     <motion.main
       className="absolute inset-0 overflow-auto"

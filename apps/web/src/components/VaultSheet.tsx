@@ -191,7 +191,7 @@ export function VaultSheet({
               <Drawer.Title className="text-base font-semibold">Vaults</Drawer.Title>
               <button
                 onClick={() => onOpenChange(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
+                className="w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />

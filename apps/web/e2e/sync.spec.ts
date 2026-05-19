@@ -39,30 +39,6 @@ test('SyncStatusBar shows synced state after load', async ({ page }) => {
   await expect(page.getByTestId('sync-status-bar')).toContainText('Synced', { timeout: 5_000 });
 });
 
-test('force-sync button triggers re-sync', async ({ page }) => {
-  test.setTimeout(30_000);
-  await unlockVault(page, savedBundle, PASSWORD);
-
-  // Wait for initial sync to complete
-  await expect(page.getByTestId('sync-status-bar')).toHaveAttribute('data-sync-status', 'idle', {
-    timeout: 15_000,
-  });
-
-  await page.getByTestId('force-sync-btn').click();
-
-  // Should transition through syncing
-  await expect(page.getByTestId('sync-status-bar'))
-    .toHaveAttribute('data-sync-status', 'syncing', { timeout: 5_000 })
-    .catch(() => {
-      // May have already completed — acceptable
-    });
-
-  // Should return to idle
-  await expect(page.getByTestId('sync-status-bar')).toHaveAttribute('data-sync-status', 'idle', {
-    timeout: 15_000,
-  });
-});
-
 test('offline mode: shows cached items and offline badge', async ({ page }) => {
   test.setTimeout(60_000);
 
@@ -82,12 +58,18 @@ test('offline mode: shows cached items and offline badge', async ({ page }) => {
   // Go offline — setOffline blocks ALL network including localhost, so no page reload
   await page.context().setOffline(true);
 
-  // Trigger sync to surface offline status (force-sync calls runSync which checks navigator.onLine)
-  await page.getByTestId('force-sync-btn').click();
+  // Wait until navigator.onLine is false before triggering sync; setOffline propagates
+  // asynchronously through CDP and runSync checks navigator.onLine at the top, so
+  // dispatching focus too early causes the sync to succeed before offline is detected.
+  await page.waitForFunction(() => !navigator.onLine);
+
+  // Dispatch a focus event to trigger a sync attempt; runSync sees navigator.onLine===false
+  // and immediately emits 'offline' without making a network request.
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
 
   // SyncStatusBar should show offline state
   await expect(page.getByTestId('sync-status-bar')).toHaveAttribute('data-sync-status', 'offline', {
-    timeout: 10_000,
+    timeout: 15_000,
   });
   await expect(page.getByTestId('sync-status-bar')).toContainText('Offline', { timeout: 5_000 });
 

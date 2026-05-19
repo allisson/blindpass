@@ -156,6 +156,10 @@ test('deletes a folder and its items appear in All', async ({ page }) => {
   await page.getByRole('button', { name: /Options for ToDelete/i }).click();
   await page.getByRole('menuitem', { name: 'Delete' }).dispatchEvent('click');
 
+  // Confirm the deletion in the confirmation dialog; use dispatchEvent to bypass the
+  // Vaul drawer overlay from the folder picker which intercepts pointer events.
+  await page.getByRole('button', { name: 'Delete' }).dispatchEvent('click');
+
   // Folder should be gone from the picker
   await expect(page.getByRole('button', { name: 'ToDelete', exact: true })).toHaveCount(0, {
     timeout: 10_000,

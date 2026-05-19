@@ -98,51 +98,70 @@ const TYPE_OPTIONS = [
   { value: 'crypto_wallet', label: 'Crypto', Icon: Wallet },
 ];
 
-const STORAGE_KEY = 'bp:vault:typeFilter';
-
-function loadStoredType(): string {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return TYPE_OPTIONS.some((o) => o.value === stored) ? stored! : 'all';
-}
-
 type FolderFilter = 'all' | string;
 
-function FolderDropdownRow({
+function FilterRow({
   selectedFolderId,
   folders,
-  folderItemCount,
-  onOpenPicker,
+  onOpenFolderPicker,
+  selectedType,
+  itemCount,
+  onOpenTypePicker,
+  showAllVaults,
 }: {
   selectedFolderId: FolderFilter;
   folders: DecryptedFolder[];
-  folderItemCount: number;
-  onOpenPicker: () => void;
+  onOpenFolderPicker: () => void;
+  selectedType: string;
+  itemCount: number;
+  onOpenTypePicker: () => void;
+  showAllVaults: boolean;
 }) {
-  const isFiltering = selectedFolderId !== 'all';
-  const label = isFiltering
+  const isFolderFiltering = selectedFolderId !== 'all';
+  const folderLabel = isFolderFiltering
     ? (folders.find((f) => f.id === selectedFolderId)?.name ?? 'Folder')
     : 'All Folders';
+  const isTypeFiltering = selectedType !== 'all';
+  const typeOption = TYPE_OPTIONS.find((o) => o.value === selectedType);
+  const typeLabel = isTypeFiltering ? (typeOption?.label ?? 'Type') : 'All Types';
+  const TypeIcon = isTypeFiltering ? typeOption!.Icon : Tag;
+
   return (
-    <div className="h-11 border-b border-muted shrink-0 flex items-center px-3 gap-2">
-      <button
-        onClick={onOpenPicker}
-        className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg hover:bg-accent transition-colors touch-manipulation -ml-2"
-        aria-label="Filter by folder"
-      >
-        {isFiltering ? (
-          <FolderOpen className="w-4 h-4 text-primary shrink-0" />
-        ) : (
-          <Folder className="w-4 h-4 text-muted-foreground shrink-0" />
-        )}
-        <span
-          className={`text-sm font-semibold ${isFiltering ? 'text-primary' : 'text-foreground'}`}
+    <div className="h-11 border-b border-muted shrink-0 flex items-center px-3 gap-1.5">
+      {!showAllVaults && (
+        <button
+          onClick={onOpenFolderPicker}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors touch-manipulation ${
+            isFolderFiltering
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+          }`}
+          aria-label="Filter by folder"
         >
-          {label}
-        </span>
-        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+          {isFolderFiltering ? (
+            <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+          ) : (
+            <Folder className="w-3.5 h-3.5 shrink-0" />
+          )}
+          <span className="max-w-[90px] truncate">{folderLabel}</span>
+          <ChevronDown className="w-3 h-3 shrink-0 opacity-60" />
+        </button>
+      )}
+      <button
+        onClick={onOpenTypePicker}
+        className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors touch-manipulation ${
+          isTypeFiltering
+            ? 'bg-primary/10 text-primary'
+            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+        }`}
+        aria-label="Filter by type"
+      >
+        <TypeIcon className="w-3.5 h-3.5 shrink-0" />
+        <span>{typeLabel}</span>
+        <ChevronDown className="w-3 h-3 shrink-0 opacity-60" />
       </button>
       <span className="ml-auto text-[11px] font-bold tracking-[0.06em] text-muted-foreground bg-muted px-[7px] py-[2px] rounded-sm shrink-0">
-        {folderItemCount} items
+        {itemCount} items
       </span>
     </div>
   );
@@ -172,6 +191,7 @@ function FolderPickerSheet({
   const [createName, setCreateName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
 
   const totalCount = items?.length ?? 0;
   const folderCount = (folderId: string) =>
@@ -214,7 +234,7 @@ function FolderPickerSheet({
             <Drawer.Title className="text-base font-semibold">Filter by folder</Drawer.Title>
             <button
               onClick={() => onOpenChange(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
+              className="w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
@@ -300,7 +320,7 @@ function FolderPickerSheet({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           data-testid={`delete-folder-button-${folder.id}`}
-                          onClick={() => void handleDelete(folder.id)}
+                          onClick={() => setDeletingFolderId(folder.id)}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="w-3.5 h-3.5 mr-2" />
@@ -362,44 +382,31 @@ function FolderPickerSheet({
           )}
         </Drawer.Content>
       </Drawer.Portal>
+      <ResponsiveDialog
+        open={deletingFolderId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingFolderId(null);
+        }}
+        title="Delete folder?"
+        description="The folder will be removed. Items inside will become unfiled."
+        footer={
+          <>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deletingFolderId) void handleDelete(deletingFolderId);
+                setDeletingFolderId(null);
+              }}
+            >
+              Delete
+            </Button>
+            <Button variant="outline" onClick={() => setDeletingFolderId(null)}>
+              Cancel
+            </Button>
+          </>
+        }
+      />
     </Drawer.Root>
-  );
-}
-
-function TypeDropdownRow({
-  selectedType,
-  typeItemCount,
-  onOpenPicker,
-}: {
-  selectedType: string;
-  typeItemCount: number;
-  onOpenPicker: () => void;
-}) {
-  const isFiltering = selectedType !== 'all';
-  const option = TYPE_OPTIONS.find((o) => o.value === selectedType);
-  const label = isFiltering ? (option?.label ?? 'Type') : 'All Types';
-  const FilterIcon = isFiltering ? option!.Icon : Tag;
-  return (
-    <div className="h-11 border-b border-muted shrink-0 flex items-center px-3 gap-2">
-      <button
-        onClick={onOpenPicker}
-        className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg hover:bg-accent transition-colors touch-manipulation -ml-2"
-        aria-label="Filter by type"
-      >
-        <FilterIcon
-          className={`w-4 h-4 shrink-0 ${isFiltering ? 'text-primary' : 'text-muted-foreground'}`}
-        />
-        <span
-          className={`text-sm font-semibold ${isFiltering ? 'text-primary' : 'text-foreground'}`}
-        >
-          {label}
-        </span>
-        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-      </button>
-      <span className="ml-auto text-[11px] font-bold tracking-[0.06em] text-muted-foreground bg-muted px-[7px] py-[2px] rounded-sm shrink-0">
-        {typeItemCount} items
-      </span>
-    </div>
   );
 }
 
@@ -431,7 +438,7 @@ function TypePickerSheet({
             <Drawer.Title className="text-base font-semibold">Filter by type</Drawer.Title>
             <button
               onClick={() => onOpenChange(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
+              className="w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-manipulation"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
@@ -533,7 +540,7 @@ function VaultListPanel({
   const switchVaultFn = useSwitchVault();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [selectedType, setSelectedType] = useState<string>(loadStoredType);
+  const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedFolderId, setSelectedFolderId] = useState<FolderFilter>('all');
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
@@ -555,17 +562,10 @@ function VaultListPanel({
       setSelectedFolderId('all');
       setSelection(new Set());
       setLastClickedId(null);
-      localStorage.removeItem(STORAGE_KEY);
     }
     window.addEventListener('bp:vault-switch', onVaultSwitch);
     return () => window.removeEventListener('bp:vault-switch', onVaultSwitch);
   }, []);
-
-  function setType(type: string) {
-    setSelectedType(type);
-    if (type === 'all') localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, type);
-  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -793,7 +793,7 @@ function VaultListPanel({
 
   return (
     <div
-      className="flex flex-col relative flex-1 min-h-0"
+      className="flex flex-col flex-1 min-h-0"
       data-testid="vault-list"
       onKeyDown={onPanelKeyDown}
     >
@@ -829,7 +829,7 @@ function VaultListPanel({
             <Link
               to="/items/new"
               search={newItemSearch}
-              className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white shrink-0 touch-manipulation"
+              className="w-10 h-10 bg-primary rounded flex items-center justify-center text-white shrink-0 touch-manipulation"
               aria-label="New item"
             >
               <Plus className="w-4 h-4" />
@@ -837,7 +837,7 @@ function VaultListPanel({
           )}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="w-8 h-8 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
+              className="w-10 h-10 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 touch-manipulation"
               aria-label="More options"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -903,21 +903,15 @@ function VaultListPanel({
         </div>
       </div>
 
-      {/* Row 3: Folder dropdown (hidden in all-vaults mode) */}
-      {!showAllVaults && (
-        <FolderDropdownRow
-          selectedFolderId={selectedFolderId}
-          folders={folders}
-          folderItemCount={folderFiltered.length}
-          onOpenPicker={() => setFolderPickerOpen(true)}
-        />
-      )}
-
-      {/* Row 4: Type filter */}
-      <TypeDropdownRow
+      {/* Row 3: Combined filter row */}
+      <FilterRow
+        selectedFolderId={selectedFolderId}
+        folders={folders}
+        onOpenFolderPicker={() => setFolderPickerOpen(true)}
         selectedType={selectedType}
-        typeItemCount={typeFiltered.length}
-        onOpenPicker={() => setTypePickerOpen(true)}
+        itemCount={filtered.length}
+        onOpenTypePicker={() => setTypePickerOpen(true)}
+        showAllVaults={showAllVaults}
       />
 
       {isReadOnly && (
@@ -1027,7 +1021,7 @@ function VaultListPanel({
       {selection.size > 0 && !isReadOnly && (
         <div
           data-testid="bulk-bar"
-          className="absolute left-0 right-0 px-3 py-2 border-t border-border bg-popover flex items-center gap-2 shadow-lg bottom-0"
+          className="px-3 py-2 border-t border-border bg-popover flex items-center gap-2 shrink-0"
         >
           <span className="text-xs font-medium text-foreground tabular-nums">{selection.size}</span>
           <span className="text-xs text-muted-foreground">selected</span>
@@ -1116,7 +1110,7 @@ function VaultListPanel({
         open={typePickerOpen}
         onOpenChange={setTypePickerOpen}
         selectedType={selectedType}
-        onSelect={setType}
+        onSelect={setSelectedType}
         folderFiltered={folderFiltered}
       />
     </div>
@@ -1124,7 +1118,6 @@ function VaultListPanel({
 }
 
 function VaultLayout() {
-  const isMobile = true;
   const router = useRouter();
   const qc = useQueryClient();
   const isTrash = useMatch({ from: '/_vault/trash', shouldThrow: false });
@@ -1190,7 +1183,6 @@ function VaultLayout() {
     clearLastUsername();
     qc.clear();
     void vaultCache.clearAll();
-    localStorage.removeItem(STORAGE_KEY);
     router.navigate({ to: '/login' });
   }
 
@@ -1200,7 +1192,6 @@ function VaultLayout() {
         adminStatus={adminStatus}
         handleLock={handleLock}
         handleLogout={handleLogout}
-        isMobile={isMobile}
         mobileHideList={mobileHideList}
         setShowSignOutConfirm={setShowSignOutConfirm}
         setVaultSheetOpen={setVaultSheetOpen}
@@ -1216,7 +1207,6 @@ interface VaultLayoutContentProps {
   adminStatus: { isAdmin: boolean } | undefined;
   handleLock: () => void;
   handleLogout: () => void;
-  isMobile: boolean;
   mobileHideList: boolean;
   setShowSignOutConfirm: Dispatch<SetStateAction<boolean>>;
   setVaultSheetOpen: Dispatch<SetStateAction<boolean>>;
@@ -1229,7 +1219,6 @@ function VaultLayoutContent({
   adminStatus,
   handleLock,
   handleLogout,
-  isMobile,
   mobileHideList,
   setShowSignOutConfirm,
   setVaultSheetOpen,
@@ -1253,11 +1242,7 @@ function VaultLayoutContent({
     <SyncBoundary>
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex-1 min-h-0 relative overflow-hidden flex">
-          <ListPanelAnimator
-            show={showListPanel}
-            isMobile={isMobile}
-            mobileHideList={mobileHideList}
-          >
+          <ListPanelAnimator show={showListPanel} mobileHideList={mobileHideList}>
             <VaultListPanel
               onOpenVaultSheet={() => setVaultSheetOpen(true)}
               showAllVaults={showAllVaults}
@@ -1267,11 +1252,7 @@ function VaultLayoutContent({
               username={session.get()?.username ?? ''}
             />
           </ListPanelAnimator>
-          <MainAnimator
-            isMobile={isMobile}
-            showListPanel={showListPanel}
-            mobileHideList={mobileHideList}
-          >
+          <MainAnimator showListPanel={showListPanel} mobileHideList={mobileHideList}>
             <Outlet />
           </MainAnimator>
         </div>

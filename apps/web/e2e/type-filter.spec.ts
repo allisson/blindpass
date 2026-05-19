@@ -58,12 +58,10 @@ test('resets to All Types and shows all items', async ({ page }) => {
   await expect(list).toContainText('My Note');
 });
 
-test('type filter persists after page reload', async ({ page }) => {
+test('type filter resets to All Types after page reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Filter by type' }).click();
   await page.getByRole('button', { name: 'Logins' }).click();
-
-  const stored = await page.evaluate(() => localStorage.getItem('bp:vault:typeFilter'));
-  expect(stored).toBe('login');
+  await expect(page.getByRole('button', { name: 'Filter by type' })).toContainText('Logins');
 
   await page.reload();
   await page.waitForURL(/\/unlock/, { timeout: 15_000 });
@@ -71,7 +69,7 @@ test('type filter persists after page reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Unlock vault' }).click();
   await page.waitForURL('/', { timeout: 30_000 });
 
-  await expect(page.getByRole('button', { name: 'Filter by type' })).toContainText('Logins', {
+  await expect(page.getByRole('button', { name: 'Filter by type' })).toContainText('All Types', {
     timeout: 10_000,
   });
 });
