@@ -46,7 +46,8 @@ The unlocked, in-memory set `{MasterKey, VaultKey(s), private signing key}` held
 ### Vault domain
 
 **Vault**:
-A named container of **VaultItems** owned by one user, optionally shared.
+A named container of **VaultItems** owned by one user, optionally shared. Deleting a vault permanently purges all its items immediately — no trash, no recovery. A user must always retain at least one vault; deletion is blocked (422) when only one remains.
+_Invariant_: every account holds at least one vault at all times.
 
 **VaultItem**:
 One stored credential, fully decrypted. Type-discriminated payload: login, note, card, identity, TOTP, crypto wallet, dev credential. Lives in the browser only — the server never sees this shape. Defined in `packages/vault/src/item/schema.ts`.
@@ -184,7 +185,7 @@ Composes access check + quota + repo for each write ceremony: `createItem`, `bat
 Vault-table queries: `createInitial`, `createVault`, `listOwnedByUser`, `listSharedWithUser`, `findOwnedById`, `updateMetadata`, `listIdsByOwner`.
 
 **VaultsService** (`vaults/service.ts`):
-`createVault` ceremony — checks owner quota, then inserts. Other vault ops (update, list) skip service.
+`createVault` — checks owner quota, then inserts. `deleteVault` — enforces the last-vault guard (rejects if only one vault remains), then deletes the vault and permanently purges all its items. Other vault ops (update, list) skip service.
 
 **SharesRepository** + **SharesService** (`vaults/shares/`):
 Repo: `listForVault`, `create`, `findByIdForUser`, `deleteById`. Service: `createShare` (self-share check + receiver lookup + insert), `deleteShare` (caller must be owner or receiver).
