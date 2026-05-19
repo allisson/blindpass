@@ -108,5 +108,9 @@ export async function updateMetadata(
 }
 
 export async function listIdsByOwner(db: Db, userId: string): Promise<{ id: string }[]> {
-  return db.select({ id: vaults.id }).from(vaults).where(eq(vaults.userId, userId));
+  return db.select({ id: vaults.id }).from(vaults).where(eq(vaults.userId, userId)).for('update');
+}
+
+export async function deleteById(db: Db, vaultId: string): Promise<void> {
+  await db.delete(vaults).where(eq(vaults.id, vaultId));
 }

@@ -168,6 +168,7 @@ export const api = {
   createVault: (body: CreateVaultRequest) => request<VaultResponse>('POST', '/vaults', body),
   updateVault: (vaultId: string, body: UpdateVaultRequest) =>
     request<VaultResponse>('PUT', `/vaults/${vaultId}`, body),
+  deleteVault: (vaultId: string) => request<void>('DELETE', `/vaults/${vaultId}`),
 
   getUserItems: (cursor?: string) =>
     request<ListUserItemsResponse>(

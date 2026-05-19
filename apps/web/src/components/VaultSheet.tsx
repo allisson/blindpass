@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Layers, LogOut, Pencil, Plus, UserPlus, Users, X } from 'lucide-react';
+import { Check, Layers, LogOut, Pencil, Plus, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { Drawer } from 'vaul';
 import { toast } from 'sonner';
 import { session } from '@/lib/session';
 import { extractErrorMessage } from '@/lib/errors';
 import { vaultColor } from '@/lib/vaultColor';
-import { useCreateVault, useRenameVault, useSwitchVault } from '@/hooks/useVault';
+import { useCreateVault, useDeleteVault, useRenameVault, useSwitchVault } from '@/hooks/useVault';
 import { useLeaveShare } from '@/hooks/useVaultSharing';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -60,11 +60,16 @@ export function VaultSheet({
   } | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [shareVaultId, setShareVaultId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ vaultId: string; name: string } | null>(
+    null,
+  );
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
 
   const switchVault = useSwitchVault();
   const createVault = useCreateVault();
   const renameVault = useRenameVault();
   const leaveShare = useLeaveShare();
+  const deleteVault = useDeleteVault();
   const router = useRouter();
   const qc = useQueryClient();
 
@@ -173,6 +178,19 @@ export function VaultSheet({
       toast.success(`Left vault "${vaultName}"`);
     } catch (err) {
       setLeaveError(extractErrorMessage(err, 'Failed to leave vault'));
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteConfirm) return;
+    const { vaultId, name: vaultName } = deleteConfirm;
+    try {
+      await deleteVault.mutateAsync(vaultId);
+      setDeleteConfirm(null);
+      setDeleteConfirmName('');
+      toast.success(`Vault "${vaultName}" deleted`);
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to delete vault'));
     }
   }
 
@@ -299,6 +317,23 @@ export function VaultSheet({
                           aria-label="Share vault"
                         >
                           <UserPlus className="w-4 h-4" />
+                        </button>
+                        <button
+                          data-testid="delete-vault-button"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-destructive/60 hover:text-destructive hover:bg-destructive/10 active:bg-destructive/10 transition-colors touch-manipulation shrink-0"
+                          onClick={() => {
+                            const ownedCount = localVaults.filter((v) => !v.isShared).length;
+                            if (ownedCount <= 1) {
+                              toast.error("You can't delete your only vault");
+                              return;
+                            }
+                            setDeleteConfirm({ vaultId: vault.id, name: vault.name });
+                            onOpenChange(false);
+                          }}
+                          title="Delete vault"
+                          aria-label="Delete vault"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </>
                     )}
@@ -431,6 +466,57 @@ export function VaultSheet({
             if (!o) setShareVaultId(null);
           }}
         />
+      )}
+      {deleteConfirm && (
+        <ResponsiveDialog
+          open
+          onOpenChange={(o) => {
+            if (!o && !deleteVault.isPending) {
+              setDeleteConfirm(null);
+              setDeleteConfirmName('');
+            }
+          }}
+          title="Delete vault"
+          description={
+            <>
+              This permanently deletes &ldquo;{deleteConfirm.name}&rdquo; and all its items,
+              folders, and shares. Type the vault name to confirm.
+            </>
+          }
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteConfirm(null);
+                  setDeleteConfirmName('');
+                }}
+                disabled={deleteVault.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-testid="confirm-delete-vault-button"
+                variant="destructive"
+                onClick={() => void handleDelete()}
+                disabled={deleteConfirmName !== deleteConfirm.name || deleteVault.isPending}
+              >
+                {deleteVault.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
+            </>
+          }
+        >
+          <Input
+            autoFocus
+            placeholder={deleteConfirm.name}
+            value={deleteConfirmName}
+            onChange={(e) => setDeleteConfirmName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && deleteConfirmName === deleteConfirm.name)
+                void handleDelete();
+            }}
+          />
+        </ResponsiveDialog>
       )}
     </>
   );

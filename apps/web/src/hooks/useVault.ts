@@ -253,6 +253,30 @@ export function useCreateVault() {
   });
 }
 
+export function useDeleteVault() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vaultId: string) => api.deleteVault(vaultId),
+    onSuccess: (_data, vaultId) => {
+      const s = session.get();
+      if (s) {
+        const nextId =
+          [...s.vaults.keys()].find((id) => id !== vaultId && !s.vaults.get(id)?.isShared) ??
+          [...s.vaults.keys()].find((id) => id !== vaultId);
+        if (nextId) session.switchVault(nextId);
+        const entry = s.vaults.get(vaultId);
+        if (entry) entry.vaultKey.fill(0);
+        s.vaults.delete(vaultId);
+      }
+      qc.removeQueries({ queryKey: VAULT_ITEMS_KEY });
+      qc.removeQueries({ queryKey: TRASH_ITEMS_KEY });
+      qc.removeQueries({ queryKey: FOLDERS_KEY });
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] === 'itemVersions' });
+      window.dispatchEvent(new CustomEvent('bp:vault-switch'));
+    },
+  });
+}
+
 export function useRenameVault() {
   const k = useKeychain();
   return useMutation({
