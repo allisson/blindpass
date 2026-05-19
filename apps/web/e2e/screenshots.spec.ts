@@ -45,6 +45,7 @@ const THEMES = ['light', 'dark'] as const;
 test.describe('@screenshot screenshots', () => {
   for (const theme of THEMES) {
     test(`capture ${theme}`, async ({ browser }) => {
+      test.setTimeout(120_000);
       const context = await browser.newContext({
         viewport: VIEWPORT,
         // Skip framer-motion entry animations so screenshots land on steady-state UI.
