@@ -17,6 +17,8 @@ export function SyncStatusBar() {
   const { phase, lastError, lastSyncedAt, consecutiveFailures, forceSync } = useSyncBoundary();
   const stuck = phase === 'error' && consecutiveFailures >= STUCK_THRESHOLD;
 
+  if (phase === 'idle' && lastSyncedAt === null) return null;
+
   return (
     <div
       className="px-3 py-1.5 flex items-center gap-1.5"
@@ -45,7 +47,7 @@ export function SyncStatusBar() {
         {phase === 'error' &&
           (stuck ? `Sync stuck (${consecutiveFailures} retries)` : 'Sync failed')}
       </span>
-      {phase === 'error' ? (
+      {phase === 'error' && (
         <button
           onClick={() => void forceSync()}
           className="text-[10px] font-medium text-destructive hover:text-destructive/80 transition-colors shrink-0"
@@ -54,18 +56,6 @@ export function SyncStatusBar() {
         >
           Retry
         </button>
-      ) : (
-        phase !== 'syncing' && (
-          <button
-            onClick={() => void forceSync()}
-            className="p-0.5 rounded text-muted-foreground/60 hover:text-foreground transition-colors shrink-0"
-            aria-label="Force sync"
-            title="Force sync"
-            data-testid="force-sync-btn"
-          >
-            <RefreshCw className="w-2.5 h-2.5" />
-          </button>
-        )
       )}
     </div>
   );
