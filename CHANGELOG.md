@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-05-19
+
+### Added
+
+- Vault deletion — owners can delete a vault from the vault picker; all items inside are permanently purged immediately
+
+### Fixed
+
+- Filter row consolidated into a single layout component; `isMobile` prop removed from `VaultSheet` and `ItemCard`; `ListPanelAnimator` and `SyncStatusBar` polished; flaky e2e specs for folders, sync, and type-filter corrected
+
 ## [0.8.0] - 2026-05-18
 
 ### Added
