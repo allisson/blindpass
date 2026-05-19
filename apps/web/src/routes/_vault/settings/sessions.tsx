@@ -8,6 +8,8 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { enrollmentStore } from '@/lib/biometric';
+import { getLastUsername, session } from '@/lib/session';
 
 export const Route = createFileRoute('/_vault/settings/sessions')({
   component: SessionsPage,
@@ -276,6 +278,19 @@ function BiometricCredentialsList() {
     setRevoking(id);
     try {
       await api.deleteBiometricCredential(id);
+
+      try {
+        const username = session.get()?.username ?? getLastUsername();
+        if (username) {
+          const enrollment = await enrollmentStore.get(username);
+          if (enrollment?.serverCredentialId === id) {
+            await enrollmentStore.delete(username);
+          }
+        }
+      } catch {
+        // best-effort local cleanup; server revocation already succeeded
+      }
+
       setCredentials((prev) => (prev ? prev.filter((c) => c.id !== id) : prev));
       toast.success('Biometric enrollment revoked');
     } catch {

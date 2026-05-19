@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { registerBiometricCredentialsRoutes } from '../biometric-credentials.js';
+import { errorHandler } from '../../../error-handler.js';
 
 const { mockRegister, mockList, mockFind, mockDelete, mockTouch } = vi.hoisted(() => ({
   mockRegister: vi.fn(),
@@ -20,11 +22,15 @@ vi.mock('../../../auth/biometric-credentials/repository.js', () => ({
 
 const CALLER_ID = 'caller-user-id';
 const CRED_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+const NONEXISTENT_UUID = '00000000-0000-0000-0000-000000000000';
 const CRED_B64 = Buffer.from('test-credential-bytes').toString('base64');
 const NOW = new Date('2024-06-01T12:00:00.000Z');
 
 function buildApp() {
   const app = Fastify();
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+  app.setErrorHandler(errorHandler);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   app.decorate('db', {} as any);
   app.addHook('preHandler', async (request) => {
@@ -74,6 +80,16 @@ describe('POST /auth/biometric-credentials', () => {
       expect.any(Buffer),
       undefined,
     );
+  });
+
+  it('returns 400 on invalid body', async () => {
+    const { app } = buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/biometric-credentials',
+      body: { label: 'Missing credentialId' },
+    });
+    expect(res.statusCode).toBe(400);
   });
 });
 
@@ -139,11 +155,20 @@ describe('GET /auth/biometric-credentials/:id', () => {
     const { app } = buildApp();
     const res = await app.inject({
       method: 'GET',
-      url: '/auth/biometric-credentials/nonexistent',
+      url: `/auth/biometric-credentials/${NONEXISTENT_UUID}`,
     });
     expect(res.statusCode).toBe(404);
     expect(res.json()).toMatchObject({ error: 'Not found' });
     expect(mockTouch).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 on invalid id parameter', async () => {
+    const { app } = buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/auth/biometric-credentials/nonexistent',
+    });
+    expect(res.statusCode).toBe(400);
   });
 });
 
@@ -164,9 +189,18 @@ describe('DELETE /auth/biometric-credentials/:id', () => {
     const { app } = buildApp();
     const res = await app.inject({
       method: 'DELETE',
-      url: '/auth/biometric-credentials/nonexistent',
+      url: `/auth/biometric-credentials/${NONEXISTENT_UUID}`,
     });
     expect(res.statusCode).toBe(404);
     expect(res.json()).toMatchObject({ error: 'Not found' });
+  });
+
+  it('returns 400 on invalid id parameter', async () => {
+    const { app } = buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/auth/biometric-credentials/nonexistent',
+    });
+    expect(res.statusCode).toBe(400);
   });
 });
