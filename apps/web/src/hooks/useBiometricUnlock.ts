@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { fetchAllPages } from '@/lib/fetchAllPages';
 import { unlockWithBiometric as defaultUnlock } from '@/lib/keychain';
 import {
@@ -17,7 +17,7 @@ export interface BiometricUnlockSuccess {
 }
 
 export interface UseBiometricUnlockDeps {
-  api?: Pick<typeof api, 'getKeys' | 'getVault'>;
+  api?: Pick<typeof api, 'getKeys' | 'getVault' | 'getBiometricCredential'>;
   primitives?: {
     unlockWithBiometric?: typeof defaultUnlock;
     buildVaultsMap?: typeof defaultBuildVaultsMap;
@@ -54,7 +54,17 @@ export function useBiometricUnlock(deps: UseBiometricUnlockDeps = {}): UseBiomet
           if (!enrollment)
             throw new Error('No biometric enrollment for this account on this device.');
 
-          const [keysData, vaults] = await Promise.all([
+          const credentialCheckPromise = enrollment.serverCredentialId
+            ? apiImpl
+                .getBiometricCredential(enrollment.serverCredentialId)
+                .then(() => true as const)
+                .catch((e: unknown) => {
+                  if (e instanceof ApiError && e.status === 404) return null;
+                  throw e;
+                })
+            : Promise.resolve(true as const); // enrollments without serverCredentialId pre-date server tracking; skip the check
+
+          const [keysData, vaults, credentialValid] = await Promise.all([
             apiImpl.getKeys(),
             fetchAllPages((cursor) =>
               apiImpl.getVault(cursor).then((r) => ({
@@ -62,7 +72,17 @@ export function useBiometricUnlock(deps: UseBiometricUnlockDeps = {}): UseBiomet
                 nextCursor: r.nextCursor,
               })),
             ),
+            credentialCheckPromise,
           ]);
+
+          if (credentialValid === null) {
+            await enrollmentStore.delete(username);
+            const revoked = new Error(
+              'Biometric unlock was revoked from another device. Please sign in with your password.',
+            );
+            revoked.name = 'CredentialRevokedError';
+            throw revoked;
+          }
 
           const ownedVault = vaults.find((v) => !v.isShared);
           if (!ownedVault) throw new Error('No vault found.');

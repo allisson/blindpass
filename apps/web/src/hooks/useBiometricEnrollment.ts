@@ -11,7 +11,12 @@ import {
   type PrfSupport,
 } from '@/lib/biometric';
 import { wrapMasterKey } from '@/lib/biometric/buk';
+import { api } from '@/lib/api';
 import { getLastUsername, session } from '@/lib/session';
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes));
+}
 
 export type EnrollmentPhase = 'idle' | 'probing' | 'enrolling' | 'disenrolling' | 'done' | 'error';
 
@@ -103,6 +108,12 @@ export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
 
       const encryptedMasterKey = await wrapMasterKey(masterKey, prfOutput);
 
+      const label = getBiometricLabel();
+      const serverRes = await api.registerBiometricCredential({
+        credentialId: uint8ToBase64(credentialId),
+        label: label ?? undefined,
+      });
+
       const record: BiometricEnrollment = {
         version: ENROLLMENT_VERSION,
         username,
@@ -111,7 +122,8 @@ export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
         encryptedMasterKey,
         rpId,
         createdAt: new Date().toISOString(),
-        label: getBiometricLabel(),
+        label: label ?? undefined,
+        serverCredentialId: serverRes.id,
       };
       await enrollmentStore.put(record);
       setIsEnrolled(true);
@@ -132,7 +144,13 @@ export function useBiometricEnrollment(): UseBiometricEnrollmentReturn {
     setPhase('disenrolling');
     try {
       const username = session.get()?.username ?? getLastUsername();
-      if (username) await enrollmentStore.delete(username);
+      if (username) {
+        const enrollment = await enrollmentStore.get(username);
+        if (enrollment?.serverCredentialId) {
+          void api.deleteBiometricCredential(enrollment.serverCredentialId).catch(() => {});
+        }
+        await enrollmentStore.delete(username);
+      }
       setIsEnrolled(false);
       setPhase('done');
     } catch (err: unknown) {

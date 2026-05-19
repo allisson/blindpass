@@ -24,6 +24,13 @@ describe('mapCeremonyError', () => {
     expect(err.code).toBe('network');
   });
 
+  it('maps CredentialRevokedError to credential_revoked', () => {
+    const err = new Error('Biometric unlock was revoked from another device.');
+    err.name = 'CredentialRevokedError';
+    expect(mapCeremonyError(err).code).toBe('credential_revoked');
+    expect(mapCeremonyError(err).message).toBe(err.message);
+  });
+
   it('maps mac/ciphertext errors to wrong_password', () => {
     expect(mapCeremonyError(new Error('bad mac')).code).toBe('wrong_password');
     expect(mapCeremonyError(new Error('invalid ciphertext')).code).toBe('wrong_password');

@@ -5,9 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "version": "7",
       "when": 1777999386932,
       "tag": "0000_username_authenticator",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779209736709,
+      "tag": "0001_fluffy_unus",
       "breakpoints": true
     }
   ]

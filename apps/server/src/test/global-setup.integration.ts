@@ -18,6 +18,7 @@ export async function setup() {
     DROP TABLE IF EXISTS user_totp_secrets CASCADE;
     DROP TABLE IF EXISTS sessions CASCADE;
     DROP TABLE IF EXISTS project_settings CASCADE;
+    DROP TABLE IF EXISTS biometric_credentials CASCADE;
     DROP TABLE IF EXISTS users CASCADE;
     DROP SCHEMA IF EXISTS drizzle CASCADE;
   `);
@@ -31,7 +32,7 @@ export async function teardown() {
   await pool.query(`
     TRUNCATE TABLE vault_item_versions, vault_items, vault_folders,
     vault_shares, vaults, recovery_tokens, pending_totp_enrollments,
-    user_totp_secrets, sessions, project_settings, users
+    user_totp_secrets, sessions, project_settings, biometric_credentials, users
     RESTART IDENTITY CASCADE;
   `);
   await pool.end();

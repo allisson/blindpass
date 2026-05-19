@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AlertCircle, LogOut } from 'lucide-react';
+import { AlertCircle, Fingerprint, LogOut } from 'lucide-react';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { useCallback, useEffect, useState } from 'react';
-import type { Session } from '@blindpass/api-schema';
+import type { BiometricCredential, Session } from '@blindpass/api-schema';
 import { Button } from '@/components/ui/button';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -253,6 +253,141 @@ function SessionsList() {
   );
 }
 
+function BiometricCredentialsList() {
+  const [credentials, setCredentials] = useState<BiometricCredential[] | null>(null);
+  const [error, setError] = useState(false);
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setError(false);
+    setCredentials(null);
+    api
+      .listBiometricCredentials()
+      .then((res) => setCredentials(res.credentials))
+      .catch(() => setError(true));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleRevoke(id: string) {
+    setRevoking(id);
+    try {
+      await api.deleteBiometricCredential(id);
+      setCredentials((prev) => (prev ? prev.filter((c) => c.id !== id) : prev));
+      toast.success('Biometric enrollment revoked');
+    } catch {
+      toast.error('Failed to revoke biometric enrollment');
+    } finally {
+      setRevoking(null);
+    }
+  }
+
+  async function confirmRevoke(): Promise<void> {
+    if (!confirmRevokeId) return;
+    await handleRevoke(confirmRevokeId);
+    setConfirmRevokeId(null);
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 text-destructive/70 text-sm py-3">
+        <AlertCircle className="w-4 h-4 shrink-0" />
+        Failed to load biometric devices.
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+          onClick={load}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (!credentials) {
+    return (
+      <div className="divide-y divide-border">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="py-3">
+            <Skeleton className="h-4 w-40 rounded-none" />
+            <Skeleton className="h-3 w-28 mt-2 rounded-none" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (credentials.length === 0) {
+    return <p className="text-sm text-muted-foreground py-3">No biometric devices enrolled.</p>;
+  }
+
+  return (
+    <div>
+      <ul className="divide-y divide-border">
+        {credentials.map((c) => (
+          <li
+            key={c.id}
+            data-testid="biometric-credential-row"
+            className="flex items-start justify-between gap-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm font-medium text-foreground truncate">
+                <Fingerprint className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{c.label ?? 'Biometric device'}</span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Last used{' '}
+                <time
+                  dateTime={c.lastSeenAt}
+                  title="Recorded when the device contacts the server; may lag for offline devices"
+                  className="font-mono tracking-[0.06em] text-foreground/80"
+                >
+                  {formatTimestamp(c.lastSeenAt)}
+                </time>
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              disabled={revoking === c.id}
+              onClick={() => setConfirmRevokeId(c.id)}
+            >
+              <LogOut className="w-3 h-3" />
+              Revoke
+            </Button>
+          </li>
+        ))}
+      </ul>
+
+      <ResponsiveDialog
+        open={confirmRevokeId !== null}
+        onOpenChange={(open) => !open && setConfirmRevokeId(null)}
+        title="Revoke biometric enrollment?"
+        description="That device will no longer be able to unlock with biometric. It will need to sign in with the master password to re-enroll."
+        footer={
+          <>
+            <Button
+              variant="destructive"
+              disabled={revoking === confirmRevokeId}
+              onClick={() => void confirmRevoke()}
+            >
+              Revoke
+            </Button>
+            <Button variant="outline" onClick={() => setConfirmRevokeId(null)}>
+              Cancel
+            </Button>
+          </>
+        }
+      />
+    </div>
+  );
+}
+
 function SessionsPage() {
   return (
     <SettingsPage
@@ -261,6 +396,13 @@ function SessionsPage() {
     >
       <h2 className="text-sm font-semibold text-foreground mb-3">Active sessions</h2>
       <SessionsList />
+      <h2 className="text-sm font-semibold text-foreground mt-8 mb-3">Biometric devices</h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        Devices with biometric unlock enrolled. Revoking removes the device's ability to unlock
+        without the master password on its next attempt. Until then, a device with physical access
+        may still unlock offline.
+      </p>
+      <BiometricCredentialsList />
     </SettingsPage>
   );
 }
