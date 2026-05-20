@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { MoveItemRequestSchema, VaultItemParamSchema } from '@blindpass/api-schema';
 import { moveItem } from '../../../vaults/items/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerMoveItemRoute(app: FastifyInstance): void {
   app
@@ -18,14 +19,11 @@ export function registerMoveItemRoute(app: FastifyInstance): void {
           moveItem(asTx(tx), request.userId, vaultId, id, folderId),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
-          if (result.reason === 'folder_not_found')
-            return reply.status(404).send({ error: 'Folder not found' });
-          if (result.reason === 'item_not_found')
-            return reply.status(404).send({ error: 'Item not found' });
-          return reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            item_not_found: [404, 'Item not found'],
+            folder_not_found: [404, 'Folder not found'],
+          });
 
         return reply.status(204).send();
       },

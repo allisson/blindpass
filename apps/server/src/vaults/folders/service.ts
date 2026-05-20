@@ -1,3 +1,6 @@
+// These service functions are intentionally thin (access guard + repo call +
+// ServiceResult wrap). The seam exists for naming consistency with deeper
+// vault-resource services and as a stable place to add domain rules later.
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { TxDb } from '../../db/tx.js';
 import type * as schema from '../../db/schema.js';

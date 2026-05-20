@@ -14,22 +14,19 @@ export async function getVaultAccess(
   vaultId: string,
   userId: string,
 ): Promise<{ role: VaultRole } | null> {
-  const [owned] = await db
-    .select({ id: vaults.id })
+  const [row] = await db
+    .select({ vaultUserId: vaults.userId, shareRole: vaultShares.role })
     .from(vaults)
-    .where(and(eq(vaults.id, vaultId), eq(vaults.userId, userId)))
+    .leftJoin(
+      vaultShares,
+      and(eq(vaultShares.vaultId, vaultId), eq(vaultShares.receiverUserId, userId)),
+    )
+    .where(eq(vaults.id, vaultId))
     .limit(1);
 
-  if (owned) return { role: 'owner' };
-
-  const [share] = await db
-    .select({ role: vaultShares.role })
-    .from(vaultShares)
-    .where(and(eq(vaultShares.vaultId, vaultId), eq(vaultShares.receiverUserId, userId)))
-    .limit(1);
-
-  if (share) return { role: share.role as VaultRole };
-
+  if (!row) return null;
+  if (row.vaultUserId === userId) return { role: 'owner' };
+  if (row.shareRole) return { role: row.shareRole as VaultRole };
   return null;
 }
 

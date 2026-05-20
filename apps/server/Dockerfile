@@ -10,7 +10,6 @@ COPY apps/web/package.json apps/web/
 COPY packages/crypto/package.json packages/crypto/
 COPY packages/vault/package.json packages/vault/
 COPY packages/api-schema/package.json packages/api-schema/
-COPY packages/types/package.json packages/types/
 
 RUN pnpm install --frozen-lockfile
 

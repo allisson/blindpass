@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { VaultIdParamSchema } from '@blindpass/api-schema';
 import { emptyVaultTrash } from '../../../vaults/trash/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerEmptyTrashRoute(app: FastifyInstance): void {
   app
@@ -16,10 +17,7 @@ export function registerEmptyTrashRoute(app: FastifyInstance): void {
           emptyVaultTrash(asTx(tx), request.userId, vaultId),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
-          return reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok) return sendVaultFailure(reply, result.reason);
 
         return reply.status(204).send();
       },

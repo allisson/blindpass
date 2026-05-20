@@ -5,6 +5,7 @@ import { b64 } from '../../../utils/base64.js';
 import { updateItem } from '../../../vaults/items/service.js';
 import { toEncryptedVaultItem } from '../../../vaults/items/mapper.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerUpdateItemRoute(app: FastifyInstance): void {
   app
@@ -25,12 +26,10 @@ export function registerUpdateItemRoute(app: FastifyInstance): void {
           }),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
-          if (result.reason === 'item_not_found')
-            return reply.status(404).send({ error: 'Item not found' });
-          return reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            item_not_found: [404, 'Item not found'],
+          });
 
         return reply.status(200).send({ item: toEncryptedVaultItem(result.item) });
       },

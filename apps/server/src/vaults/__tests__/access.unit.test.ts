@@ -10,18 +10,20 @@ import {
 function makeChain(result: unknown) {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
   chain['from'] = vi.fn().mockReturnValue(chain);
+  chain['leftJoin'] = vi.fn().mockReturnValue(chain);
   chain['where'] = vi.fn().mockReturnValue(chain);
   chain['limit'] = vi.fn().mockResolvedValue(result);
   return chain;
 }
 
 function dbWithRole(role: VaultRole | null) {
-  const ownedRows = role === 'owner' ? [{ id: 'v1' }] : [];
-  const shareRows = role && role !== 'owner' ? [{ role }] : role === 'owner' ? undefined : [];
-  const select = vi
-    .fn()
-    .mockReturnValueOnce(makeChain(ownedRows))
-    .mockReturnValueOnce(makeChain(shareRows ?? []));
+  const rows =
+    role === 'owner'
+      ? [{ vaultUserId: 'u1', shareRole: null }]
+      : role !== null
+        ? [{ vaultUserId: 'other', shareRole: role }]
+        : [];
+  const select = vi.fn().mockReturnValue(makeChain(rows));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { select } as any;
 }

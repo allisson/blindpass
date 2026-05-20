@@ -4,6 +4,7 @@ import { BatchCreateItemsRequestSchema, VaultIdParamSchema } from '@blindpass/ap
 import { b64 } from '../../../utils/base64.js';
 import { batchCreateItems } from '../../../vaults/items/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerBatchCreateItemsRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -31,10 +32,7 @@ export function registerBatchCreateItemsRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
-        return reply.status(404).send({ error: 'Vault not found' });
-      }
+      if (!result.ok) return sendVaultFailure(reply, result.reason);
 
       return reply.status(201).send({
         items: result.items.map((r) => ({

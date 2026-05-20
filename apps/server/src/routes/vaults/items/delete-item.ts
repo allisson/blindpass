@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { VaultItemParamSchema } from '@blindpass/api-schema';
 import { deleteItem } from '../../../vaults/items/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerDeleteItemRoute(app: FastifyInstance): void {
   app
@@ -16,12 +17,10 @@ export function registerDeleteItemRoute(app: FastifyInstance): void {
           deleteItem(asTx(tx), request.userId, vaultId, id),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
-          if (result.reason === 'item_not_found')
-            return reply.status(404).send({ error: 'Item not found' });
-          return reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            item_not_found: [404, 'Item not found'],
+          });
 
         return reply.status(204).send();
       },
