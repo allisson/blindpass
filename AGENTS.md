@@ -26,7 +26,6 @@ apps/
 packages/
   api-schema/  Zod schemas shared between server and clients
   crypto/      libsodium-wrappers-sumo primitives + Argon2id key derivation
-  types/       shared TypeScript types
   vault/       domain logic — vault/item operations, keychain management
 ```
 

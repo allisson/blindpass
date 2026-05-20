@@ -1,4 +1,4 @@
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, lt } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema.js';
 import { pendingTotpEnrollments } from '../../db/schema.js';
@@ -6,6 +6,10 @@ import { pendingTotpEnrollments } from '../../db/schema.js';
 type Db = NodePgDatabase<typeof schema>;
 
 export type PendingEnrollmentRow = typeof pendingTotpEnrollments.$inferSelect;
+
+export async function purgeExpired(db: Db, before: Date): Promise<void> {
+  await db.delete(pendingTotpEnrollments).where(lt(pendingTotpEnrollments.expiresAt, before));
+}
 
 export async function findPending(
   db: Db,
