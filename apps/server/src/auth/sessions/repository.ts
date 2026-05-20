@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, lt, ne } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema.js';
 import { sessions } from '../../db/schema.js';
@@ -11,6 +11,10 @@ export type SessionListRow = {
   lastUsedAt: Date;
   userAgent: string | null;
 };
+
+export async function purgeExpired(db: Db, before: Date): Promise<void> {
+  await db.delete(sessions).where(lt(sessions.expiresAt, before));
+}
 
 export async function deleteById(db: Db, sessionId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.id, sessionId));

@@ -11,7 +11,7 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
-import { lt, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
@@ -24,7 +24,9 @@ import { registerAuthRoutes } from './routes/auth/index.js';
 import { registerUserRoutes } from './routes/user/index.js';
 import { registerVaultRoutes } from './routes/vaults/index.js';
 import { errorHandler } from './error-handler.js';
-import { pendingTotpEnrollments, recoveryTokens, sessions } from './db/schema.js';
+import * as sessionsRepo from './auth/sessions/repository.js';
+import * as enrollmentsRepo from './auth/enrollments/repository.js';
+import * as recoveryTokensRepo from './auth/recovery-tokens/repository.js';
 
 const mode = process.argv[2] ?? 'server';
 
@@ -132,19 +134,10 @@ if (mode === 'migrate') {
 
   const cleanupInterval = setInterval(
     () => {
-      const now = new Date(app.clock.now());
-      void app.db
-        .delete(sessions)
-        .where(lt(sessions.expiresAt, now))
-        .catch(() => {});
-      void app.db
-        .delete(pendingTotpEnrollments)
-        .where(lt(pendingTotpEnrollments.expiresAt, now))
-        .catch(() => {});
-      void app.db
-        .delete(recoveryTokens)
-        .where(lt(recoveryTokens.expiresAt, now))
-        .catch(() => {});
+      const before = new Date(app.clock.now());
+      void sessionsRepo.purgeExpired(app.db, before).catch(() => {});
+      void enrollmentsRepo.purgeExpired(app.db, before).catch(() => {});
+      void recoveryTokensRepo.purgeExpired(app.db, before).catch(() => {});
     },
     5 * 60 * 1000,
   );

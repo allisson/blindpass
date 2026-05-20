@@ -1,4 +1,4 @@
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, lt } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema.js';
 import { recoveryTokens } from '../../db/schema.js';
@@ -6,6 +6,10 @@ import { recoveryTokens } from '../../db/schema.js';
 type Db = NodePgDatabase<typeof schema>;
 
 export type RecoveryTokenRow = typeof recoveryTokens.$inferSelect;
+
+export async function purgeExpired(db: Db, before: Date): Promise<void> {
+  await db.delete(recoveryTokens).where(lt(recoveryTokens.expiresAt, before));
+}
 
 export async function deleteAllForUser(db: Db, userId: string): Promise<void> {
   await db.delete(recoveryTokens).where(eq(recoveryTokens.userId, userId));

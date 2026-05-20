@@ -426,12 +426,11 @@ BlindPass is a pnpm monorepo with separate web, server, and shared package bound
 
 ### Packages
 
-| Package               | Role                                                                                                                                                                   |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/crypto`     | Pure libsodium primitives — Argon2id, XSalsa20-Poly1305, X25519, BIP39. No I/O, no state, no side effects.                                                             |
-| `packages/vault`      | Domain logic — encrypts/decrypts items, manages the keychain lifecycle (unlock/lock), handles vault sharing. Imports only from `packages/crypto` and `packages/types`. |
-| `packages/api-schema` | Zod schemas for every API endpoint, shared between server and clients so validation stays in sync.                                                                     |
-| `packages/types`      | TypeScript interfaces only (`EncryptedValue`, `KeyPair`, `Keychain`). No runtime code.                                                                                 |
+| Package               | Role                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/crypto`     | Pure libsodium primitives — Argon2id, XSalsa20-Poly1305, X25519, BIP39. No I/O, no state, no side effects.                                        |
+| `packages/vault`      | Domain logic — encrypts/decrypts items, manages the keychain lifecycle (unlock/lock), handles vault sharing. Imports only from `packages/crypto`. |
+| `packages/api-schema` | Zod schemas for every API endpoint, shared between server and clients so validation stays in sync.                                                |
 
 ### Tech Stack
 
