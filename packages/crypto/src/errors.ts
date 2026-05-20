@@ -4,3 +4,10 @@ export class CryptoError extends Error {
     this.name = 'CryptoError';
   }
 }
+
+export class DecryptionError extends CryptoError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DecryptionError';
+  }
+}

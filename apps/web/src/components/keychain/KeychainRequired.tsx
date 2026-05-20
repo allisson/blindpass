@@ -1,9 +1,14 @@
 import { Navigate } from '@tanstack/react-router';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { decryptVaultItem, encryptVaultItem, type VaultItem } from '@blindpass/vault';
-import { decryptSymmetric, encryptSymmetric, generateKey } from '@blindpass/crypto';
+import {
+  decryptSymmetric,
+  encryptSymmetric,
+  generateKey,
+  type Keychain,
+  type KeyPair,
+} from '@blindpass/crypto';
 import type { EncryptedVaultItem, VersionDetail } from '@blindpass/api-schema';
-import type { Keychain, KeyPair } from '@blindpass/types';
 import { fromBase64EncryptedValue, toBase64EncryptedValue } from '@/lib/b64';
 import { session, type Session, type VaultEntry } from '@/lib/session';
 

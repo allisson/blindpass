@@ -1,7 +1,7 @@
-import type { EncryptedValue } from '@blindpass/types';
+import type { EncryptedValue } from '../types.js';
 import { getSodium } from './sodium.js';
 import { generateNonce } from './random.js';
-import { CryptoError } from '../errors.js';
+import { DecryptionError } from '../errors.js';
 
 /**
  * Encrypts plaintext with XSalsa20-Poly1305. Generates a random 24-byte nonce per call.
@@ -18,7 +18,7 @@ export async function encryptSymmetric(
 }
 
 /**
- * Decrypts an XSalsa20-Poly1305 ciphertext. Throws `CryptoError` if authentication fails
+ * Decrypts an XSalsa20-Poly1305 ciphertext. Throws `DecryptionError` if authentication fails
  * (wrong key or tampered data). Ciphertext and nonce must match what `encryptSymmetric` produced.
  */
 export async function decryptSymmetric(
@@ -30,7 +30,7 @@ export async function decryptSymmetric(
   try {
     return sodium.crypto_secretbox_open_easy(encrypted.ciphertext, encrypted.nonce, key);
   } catch {
-    throw new CryptoError('Decryption failed: invalid key or corrupted data');
+    throw new DecryptionError('Decryption failed: invalid key or corrupted data');
   }
   /* c8 ignore stop */
 }

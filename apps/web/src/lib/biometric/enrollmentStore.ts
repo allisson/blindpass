@@ -1,4 +1,4 @@
-import type { EncryptedValue } from '@blindpass/types';
+import type { EncryptedValue } from '@blindpass/crypto';
 
 export const ENROLLMENT_VERSION = 1;
 

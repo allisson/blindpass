@@ -186,9 +186,9 @@ test.describe('Sharing Roles', () => {
         timeout: 10_000,
       });
       await viewerPage.getByTestId('vault-picker-trigger').click();
-      await expect(viewerPage.locator('div').filter({ hasText: 'Shared Team Vault' })).toHaveCount(
-        0,
-      );
+      await expect(viewerPage.getByRole('button', { name: /Shared Team Vault/ })).toHaveCount(0, {
+        timeout: 10_000,
+      });
       await viewerPage.keyboard.press('Escape');
 
       // 12. Owner's share list no longer contains the viewer

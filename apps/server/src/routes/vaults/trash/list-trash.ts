@@ -2,8 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { PaginationQuerySchema, VaultIdParamSchema } from '@blindpass/api-schema';
 import { toB64 } from '../../../utils/base64.js';
-import { requireReader } from '../../../vaults/access.js';
-import * as trash from '../../../vaults/trash/repository.js';
+import { listTrash } from '../../../vaults/trash/service.js';
 
 export function registerListTrashRoute(app: FastifyInstance): void {
   app
@@ -15,12 +14,11 @@ export function registerListTrashRoute(app: FastifyInstance): void {
         const { vaultId } = request.params;
         const { cursor, limit } = request.query;
 
-        const fail = await requireReader(app.db, vaultId, request.userId);
-        if (fail) return reply.status(404).send({ error: 'Vault not found' });
+        const result = await listTrash(app.db, request.userId, vaultId, cursor, limit);
+        if (!result.ok) return reply.status(404).send({ error: 'Vault not found' });
 
-        const rows = await trash.listForVault(app.db, vaultId, cursor, limit);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
+        const hasMore = result.items.length > limit;
+        const page = hasMore ? result.items.slice(0, limit) : result.items;
         const nextCursor = hasMore ? page[page.length - 1].id : null;
 
         return reply.status(200).send({

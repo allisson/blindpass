@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { authFlow } from './authFlow';
-import type { Keychain } from '@blindpass/types';
+import type { Keychain } from '@blindpass/crypto';
 
 function makeKeychain(): Keychain {
   return { masterKey: new Uint8Array(32), vaultKey: new Uint8Array(32) };

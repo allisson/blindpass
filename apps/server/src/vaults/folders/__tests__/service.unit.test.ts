@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../access.js', () => ({
+  requireReader: vi.fn(),
   requireWriter: vi.fn(),
 }));
 vi.mock('../repository.js', () => ({
+  listForVault: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   deleteById: vi.fn(),
 }));
 
-import { requireWriter } from '../../access.js';
+import { requireReader, requireWriter } from '../../access.js';
 import * as folders from '../repository.js';
-import { createFolder, deleteFolder, updateFolder } from '../service.js';
+import { createFolder, deleteFolder, listFolders, updateFolder } from '../service.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = {} as any;
@@ -29,6 +31,27 @@ const folderRow = {
   createdAt: new Date(0),
   updatedAt: new Date(0),
 };
+
+describe('listFolders', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns folders when caller has reader access', async () => {
+    vi.mocked(requireReader).mockResolvedValue(null);
+    vi.mocked(folders.listForVault).mockResolvedValue([folderRow]);
+
+    const result = await listFolders(db, 'u1', 'v1');
+
+    expect(result).toEqual({ ok: true, folders: [folderRow] });
+    expect(folders.listForVault).toHaveBeenCalledWith(db, 'v1');
+  });
+
+  it('propagates vault_not_found without touching the repo', async () => {
+    vi.mocked(requireReader).mockResolvedValue('vault_not_found');
+
+    expect(await listFolders(db, 'u1', 'v1')).toEqual({ ok: false, reason: 'vault_not_found' });
+    expect(folders.listForVault).not.toHaveBeenCalled();
+  });
+});
 
 describe('createFolder', () => {
   beforeEach(() => vi.clearAllMocks());

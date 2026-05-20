@@ -1,5 +1,4 @@
-import { decryptSymmetric } from '@blindpass/crypto';
-import type { KeyPair } from '@blindpass/types';
+import { decryptSymmetric, type KeyPair } from '@blindpass/crypto';
 import type { KeysResponse } from '@blindpass/api-schema';
 import { deriveKEK } from '@/lib/kdfWorker';
 import { fromBase64, fromBase64EncryptedValue } from '@/lib/b64';

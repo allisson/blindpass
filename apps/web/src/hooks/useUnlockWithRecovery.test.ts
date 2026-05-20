@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DecryptionError } from '@blindpass/crypto';
 import { renderHook, act } from '@testing-library/react';
 
 const { sessionMock, authFlowMock } = vi.hoisted(() => ({
@@ -102,7 +103,7 @@ describe('useUnlockWithRecovery', () => {
   it('returns wrong_password on bad recovery phrase', async () => {
     const { deps } = makeDeps();
     deps.primitives.unlockWithRecovery = vi.fn(async () => {
-      throw new Error('bad mac');
+      throw new DecryptionError('bad mac');
     });
     const { result } = renderHook(() => useUnlockWithRecovery(deps));
     let res!: Awaited<ReturnType<typeof result.current.completeRecovery>>;

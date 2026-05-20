@@ -15,7 +15,6 @@
   "dependencies": {
     "@blindpass/api-schema": "workspace:*",
     "@blindpass/crypto": "workspace:*",
-    "@blindpass/types": "workspace:*",
     "@blindpass/vault": "workspace:*",
     "@fastify/compress": "^8.3.1",
     "@fastify/cookie": "^11.0.2",

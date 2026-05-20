@@ -1,9 +1,31 @@
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { TxDb } from '../../db/tx.js';
+import type * as schema from '../../db/schema.js';
+import { requireOwner, type AccessFailure } from '../access.js';
 import * as users from '../../auth/users/repository.js';
 import * as vaults from '../repository.js';
 import * as shares from './repository.js';
+import type { ShareListRow } from './repository.js';
 
 type Db = TxDb;
+type ReadDb = NodePgDatabase<typeof schema>;
+
+export type ListSharesResult =
+  | { ok: true; shares: ShareListRow[] }
+  | { ok: false; reason: AccessFailure };
+
+export async function listShares(
+  db: ReadDb,
+  userId: string,
+  vaultId: string,
+  cursor: string | undefined,
+  limit: number,
+): Promise<ListSharesResult> {
+  const accessFail = await requireOwner(db, vaultId, userId);
+  if (accessFail) return { ok: false, reason: accessFail };
+  const rows = await shares.listForVault(db, vaultId, cursor, limit);
+  return { ok: true, shares: rows };
+}
 
 export type CreateShareInput = {
   receiverUserId: string;

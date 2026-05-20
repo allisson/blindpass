@@ -1,8 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { PaginationQuerySchema, VaultItemParamSchema } from '@blindpass/api-schema';
-import { getVaultAccess } from '../../../vaults/access.js';
-import * as versions from '../../../vaults/versions/repository.js';
+import { listVersions } from '../../../vaults/versions/service.js';
 
 export function registerListVersionsRoute(app: FastifyInstance): void {
   app
@@ -14,15 +13,15 @@ export function registerListVersionsRoute(app: FastifyInstance): void {
         const { vaultId, id } = request.params;
         const { cursor, limit } = request.query;
 
-        const access = await getVaultAccess(app.db, vaultId, request.userId);
-        if (!access) return reply.status(404).send({ error: 'Vault not found' });
+        const result = await listVersions(app.db, request.userId, vaultId, id, cursor, limit);
+        if (!result.ok) {
+          return result.reason === 'item_not_found'
+            ? reply.status(404).send({ error: 'Item not found' })
+            : reply.status(404).send({ error: 'Vault not found' });
+        }
 
-        const item = await versions.findItemInVault(app.db, id, vaultId);
-        if (!item) return reply.status(404).send({ error: 'Item not found' });
-
-        const rows = await versions.listForItem(app.db, id, cursor, limit);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
+        const hasMore = result.versions.length > limit;
+        const page = hasMore ? result.versions.slice(0, limit) : result.versions;
         const nextCursor = hasMore ? page[page.length - 1].id : null;
 
         return reply.status(200).send({

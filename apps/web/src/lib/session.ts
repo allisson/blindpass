@@ -1,5 +1,5 @@
 import { lock as zeroKeys } from '@blindpass/vault';
-import type { Keychain, KeyPair } from '@blindpass/types';
+import type { Keychain, KeyPair } from '@blindpass/crypto';
 import { vaultCache } from './vaultCache';
 import { enrollmentStore } from './biometric';
 

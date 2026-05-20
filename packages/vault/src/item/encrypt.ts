@@ -1,5 +1,4 @@
-import type { EncryptedValue } from '@blindpass/types';
-import { encryptSymmetric } from '@blindpass/crypto';
+import { encryptSymmetric, type EncryptedValue } from '@blindpass/crypto';
 import type { VaultItem } from './schema.js';
 
 export async function encryptVaultItem(

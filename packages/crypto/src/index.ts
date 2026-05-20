@@ -1,4 +1,5 @@
-export { CryptoError } from './errors.js';
+export { CryptoError, DecryptionError } from './errors.js';
+export type { EncryptedValue, KeyPair, Keychain } from './types.js';
 export { getSodium } from './lib/sodium.js';
 export { deriveKeyEncryptionKey } from './lib/kdf.js';
 export { encryptSymmetric, decryptSymmetric } from './lib/symmetric.js';

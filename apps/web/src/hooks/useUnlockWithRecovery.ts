@@ -12,6 +12,7 @@ import {
   type CeremonyPhase,
   type CeremonyResult,
 } from '@/lib/keychain/ceremony';
+import { finalizeUnlockSession } from '@/lib/keychain/finalizeSession';
 import { session } from '@/lib/session';
 import { buildVaultsMap as defaultBuildVaultsMap } from '@/lib/vaultUtils';
 
@@ -91,37 +92,31 @@ export function useUnlockWithRecovery(
           const vaults = await fetchAllPages((cursor) =>
             apiImpl.getVault(cursor).then((r) => ({ data: r.vaults, nextCursor: r.nextCursor })),
           );
-          const ownedVault = vaults.find((v) => !v.isShared);
-          if (!ownedVault) throw new Error('No vault found.');
-
-          const vaultsMap = await buildMapImpl(vaults, masterKey, keyPair);
-          for (const v of vaultsMap.values()) ctx.trackForZero(v.vaultKey);
-
-          const activeVaultId = ownedVault.id;
-          const activeVault = vaultsMap.get(activeVaultId);
-          if (!activeVault) throw new Error('Recovered vault missing from session');
-
-          authFlow.clearRecovery();
-          authFlow.setRecoveryKey(re.newRecoveryKey);
-          authFlow.setPendingSession({
-            username: recovery.username,
-            activeVaultId,
-            vaults: vaultsMap,
-            keychain: { masterKey, vaultKey: activeVault.vaultKey },
+          return finalizeUnlockSession(ctx, {
+            masterKey,
             keyPair,
+            vaults,
+            buildVaultsMap: buildMapImpl,
+            commitSession: (activeVaultId, vaultsMap, activeVault) => {
+              authFlow.clearRecovery();
+              authFlow.setRecoveryKey(re.newRecoveryKey);
+              authFlow.setPendingSession({
+                username: recovery.username,
+                activeVaultId,
+                vaults: vaultsMap,
+                keychain: { masterKey, vaultKey: activeVault.vaultKey },
+                keyPair,
+              });
+              // keychain withheld from session — gated by /recovery-key reveal
+              session.set({
+                username: recovery.username,
+                activeVaultId,
+                vaults: vaultsMap,
+                keychain: null,
+                keyPair,
+              });
+            },
           });
-          // Set session without keychain — keychain is gated by /recovery-key reveal
-          session.set({
-            username: recovery.username,
-            activeVaultId,
-            vaults: vaultsMap,
-            keychain: null,
-            keyPair,
-          });
-          // Pending session owns key references now
-          ctx.releaseTrackedKeys();
-
-          return { activeVaultId };
         },
         { setPhase, setError },
       ),
