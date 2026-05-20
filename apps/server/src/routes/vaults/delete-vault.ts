@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { VaultIdParamSchema } from '@blindpass/api-schema';
 import { deleteVault } from '../../vaults/service.js';
 import { asTx } from '../../db/tx.js';
+import { sendVaultFailure } from './result.js';
 
 export function registerDeleteVaultRoute(app: FastifyInstance): void {
   app
@@ -16,13 +17,10 @@ export function registerDeleteVaultRoute(app: FastifyInstance): void {
           deleteVault(asTx(tx), request.userId, vaultId),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'vault_not_found')
-            return reply.status(404).send({ error: 'Vault not found' });
-          if (result.reason === 'last_vault')
-            return reply.status(422).send({ error: 'Cannot delete your only vault' });
-          return reply.status(403).send({ error: 'Forbidden' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            last_vault: [422, 'Cannot delete your only vault'],
+          });
 
         request.log.info({ event: 'vault_deleted', vaultId }, 'Vault deleted');
         return reply.status(204).send();

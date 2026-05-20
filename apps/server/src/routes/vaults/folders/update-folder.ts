@@ -4,6 +4,7 @@ import { FolderParamSchema, UpdateFolderRequestSchema } from '@blindpass/api-sch
 import { b64, toB64 } from '../../../utils/base64.js';
 import { updateFolder } from '../../../vaults/folders/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerUpdateFolderRoute(app: FastifyInstance): void {
   app
@@ -22,12 +23,10 @@ export function registerUpdateFolderRoute(app: FastifyInstance): void {
           }),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
-          if (result.reason === 'folder_not_found')
-            return reply.status(404).send({ error: 'Folder not found' });
-          return reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            folder_not_found: [404, 'Folder not found'],
+          });
 
         return reply.status(200).send({
           folder: {

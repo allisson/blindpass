@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { FolderParamSchema } from '@blindpass/api-schema';
 import { deleteFolder } from '../../../vaults/folders/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerDeleteFolderRoute(app: FastifyInstance): void {
   app
@@ -17,12 +18,10 @@ export function registerDeleteFolderRoute(app: FastifyInstance): void {
           deleteFolder(asTx(tx), request.userId, vaultId, folderId),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'forbidden') return reply.status(403).send({ error: 'Forbidden' });
-          if (result.reason === 'folder_not_found')
-            return reply.status(404).send({ error: 'Folder not found' });
-          return reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            folder_not_found: [404, 'Folder not found'],
+          });
 
         return reply.status(204).send();
       },

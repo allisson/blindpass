@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { PaginationQuerySchema, VaultItemParamSchema } from '@blindpass/api-schema';
 import { listVersions } from '../../../vaults/versions/service.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerListVersionsRoute(app: FastifyInstance): void {
   app
@@ -14,11 +15,10 @@ export function registerListVersionsRoute(app: FastifyInstance): void {
         const { cursor, limit } = request.query;
 
         const result = await listVersions(app.db, request.userId, vaultId, id, cursor, limit);
-        if (!result.ok) {
-          return result.reason === 'item_not_found'
-            ? reply.status(404).send({ error: 'Item not found' })
-            : reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            item_not_found: [404, 'Item not found'],
+          });
 
         const hasMore = result.versions.length > limit;
         const page = hasMore ? result.versions.slice(0, limit) : result.versions;

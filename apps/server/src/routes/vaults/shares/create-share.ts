@@ -4,6 +4,7 @@ import { CreateShareRequestSchema, VaultIdParamSchema } from '@blindpass/api-sch
 import { b64 } from '../../../utils/base64.js';
 import { createShare } from '../../../vaults/shares/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerCreateShareRoute(app: FastifyInstance): void {
   app
@@ -25,13 +26,11 @@ export function registerCreateShareRoute(app: FastifyInstance): void {
           }),
         );
 
-        if (!result.ok) {
-          if (result.reason === 'cannot_share_with_self')
-            return reply.status(400).send({ error: 'cannot_share_with_self' });
-          if (result.reason === 'receiver_not_found')
-            return reply.status(404).send({ error: 'Receiver not found' });
-          return reply.status(404).send({ error: 'Vault not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            cannot_share_with_self: [400, 'cannot_share_with_self'],
+            receiver_not_found: [404, 'Receiver not found'],
+          });
 
         request.log.info(
           { event: 'vault_shared', vaultId, receiverUserId, role: result.share.role },

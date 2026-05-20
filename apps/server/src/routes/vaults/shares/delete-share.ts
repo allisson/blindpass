@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { ShareParamSchema } from '@blindpass/api-schema';
 import { deleteShare } from '../../../vaults/shares/service.js';
 import { asTx } from '../../../db/tx.js';
+import { sendVaultFailure } from '../result.js';
 
 export function registerDeleteShareRoute(app: FastifyInstance): void {
   app
@@ -16,9 +17,10 @@ export function registerDeleteShareRoute(app: FastifyInstance): void {
           deleteShare(asTx(tx), request.userId, vaultId, shareId),
         );
 
-        if (!result.ok) {
-          return reply.status(404).send({ error: 'Share not found' });
-        }
+        if (!result.ok)
+          return sendVaultFailure(reply, result.reason, {
+            share_not_found: [404, 'Share not found'],
+          });
 
         request.log.info({ event: 'share_revoked', vaultId, shareId }, 'Share revoked');
         return reply.status(204).send();
