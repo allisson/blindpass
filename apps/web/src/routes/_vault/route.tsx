@@ -538,7 +538,7 @@ function VaultListPanel({
   const deleteItem = useDeleteItem();
   const moveItem = useMoveItem();
   const switchVaultFn = useSwitchVault();
-  const qc = useQueryClient();
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedFolderId, setSelectedFolderId] = useState<FolderFilter>('all');
@@ -1000,9 +1000,7 @@ function VaultListPanel({
                         e.stopPropagation();
                         e.preventDefault();
                         switchVaultFn(gItem.vaultId);
-                        qc.removeQueries({ queryKey: ['items'] });
-                        qc.removeQueries({ queryKey: ['folders'] });
-                        window.dispatchEvent(new CustomEvent('bp:vault-switch'));
+                        void router.navigate({ to: '/$itemId', params: { itemId: item.id } });
                       }
                     : undefined
                 }
