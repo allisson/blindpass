@@ -1,5 +1,4 @@
-import type { EncryptedValue } from '@blindpass/types';
-import { encryptSymmetric, decryptSymmetric } from '@blindpass/crypto';
+import { encryptSymmetric, decryptSymmetric, type EncryptedValue } from '@blindpass/crypto';
 
 export type VaultMetadata = { name: string };
 

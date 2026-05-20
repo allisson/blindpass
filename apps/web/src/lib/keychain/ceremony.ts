@@ -1,3 +1,4 @@
+import { DecryptionError } from '@blindpass/crypto';
 import { ApiError } from '@/lib/api';
 
 export type CeremonyPhase =
@@ -104,13 +105,13 @@ export function mapCeremonyError(err: unknown): CeremonyError {
         message: 'Biometric no longer recognised on this device.',
         cause: err,
       };
-    const m = err.message.toLowerCase();
-    if (m.includes('mac') || m.includes('ciphertext') || m.includes('wrong password'))
+    if (err instanceof DecryptionError)
       return {
         code: 'wrong_password',
         message: 'Incorrect password or recovery phrase.',
         cause: err,
       };
+    const m = err.message.toLowerCase();
     if (m.includes('no vault')) return { code: 'no_vault', message: 'No vault found.', cause: err };
     if (m.includes('kdf') || m.includes('argon'))
       return { code: 'kdf_failed', message: 'Key derivation failed.', cause: err };

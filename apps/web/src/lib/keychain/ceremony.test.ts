@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DecryptionError } from '@blindpass/crypto';
 import { ApiError } from '@/lib/api';
 import { mapCeremonyError, runCeremony, type CeremonyError, type CeremonyPhase } from './ceremony';
 
@@ -31,9 +32,8 @@ describe('mapCeremonyError', () => {
     expect(mapCeremonyError(err).message).toBe(err.message);
   });
 
-  it('maps mac/ciphertext errors to wrong_password', () => {
-    expect(mapCeremonyError(new Error('bad mac')).code).toBe('wrong_password');
-    expect(mapCeremonyError(new Error('invalid ciphertext')).code).toBe('wrong_password');
+  it('maps DecryptionError to wrong_password', () => {
+    expect(mapCeremonyError(new DecryptionError('bad key')).code).toBe('wrong_password');
   });
 
   it('maps "no vault" to no_vault', () => {
@@ -65,7 +65,7 @@ describe('runCeremony', () => {
     const k = new Uint8Array([1, 2, 3]);
     const result = await runCeremony(async (ctx) => {
       ctx.trackForZero(k);
-      throw new Error('bad mac');
+      throw new DecryptionError('bad key');
     }, hooks);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('wrong_password');

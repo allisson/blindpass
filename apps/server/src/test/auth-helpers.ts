@@ -1,6 +1,5 @@
 import type Fastify from 'fastify';
-import { generateKeyPair, generateTotpCode } from '@blindpass/crypto';
-import type { KeyPair } from '@blindpass/types';
+import { generateKeyPair, generateTotpCode, type KeyPair } from '@blindpass/crypto';
 
 export function makeRegisterBody(username: string, publicKey: Uint8Array) {
   return {

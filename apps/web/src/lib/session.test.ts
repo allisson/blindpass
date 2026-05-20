@@ -6,7 +6,7 @@ import {
   clearLastUsername,
   type Session,
 } from './session';
-import type { Keychain } from '@blindpass/types';
+import type { Keychain } from '@blindpass/crypto';
 
 vi.mock('@blindpass/vault', () => ({
   lock: vi.fn(),

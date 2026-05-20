@@ -8,6 +8,7 @@ import {
   type CeremonyPhase,
   type CeremonyResult,
 } from '@/lib/keychain/ceremony';
+import { finalizeUnlockSession } from '@/lib/keychain/finalizeSession';
 import { getLastUsername, session } from '@/lib/session';
 import { buildVaultsMap as defaultBuildVaultsMap } from '@/lib/vaultUtils';
 import { enrollmentStore } from '@/lib/biometric';
@@ -84,8 +85,7 @@ export function useBiometricUnlock(deps: UseBiometricUnlockDeps = {}): UseBiomet
             throw revoked;
           }
 
-          const ownedVault = vaults.find((v) => !v.isShared);
-          if (!ownedVault) throw new Error('No vault found.');
+          if (!vaults.some((v) => !v.isShared)) throw new Error('No vault found.');
 
           ctx.setPhase('decrypting');
           const unlocked = await unlockImpl(enrollment, keysData);
@@ -93,23 +93,21 @@ export function useBiometricUnlock(deps: UseBiometricUnlockDeps = {}): UseBiomet
           ctx.trackForZero(unlocked.keyPair.privateKey);
 
           ctx.setPhase('finalizing');
-          const vaultsMap = await buildMapImpl(vaults, unlocked.masterKey, unlocked.keyPair);
-          for (const v of vaultsMap.values()) ctx.trackForZero(v.vaultKey);
-
-          const activeVaultId = ownedVault.id;
-          const activeVault = vaultsMap.get(activeVaultId);
-          if (!activeVault) throw new Error('Active vault missing from session map');
-
-          session.set({
-            username,
-            activeVaultId,
-            vaults: vaultsMap,
-            keychain: { masterKey: unlocked.masterKey, vaultKey: activeVault.vaultKey },
+          return finalizeUnlockSession(ctx, {
+            masterKey: unlocked.masterKey,
             keyPair: unlocked.keyPair,
+            vaults,
+            buildVaultsMap: buildMapImpl,
+            commitSession: (activeVaultId, vaultsMap, activeVault) => {
+              session.set({
+                username,
+                activeVaultId,
+                vaults: vaultsMap,
+                keychain: { masterKey: unlocked.masterKey, vaultKey: activeVault.vaultKey },
+                keyPair: unlocked.keyPair,
+              });
+            },
           });
-          ctx.releaseTrackedKeys();
-
-          return { activeVaultId };
         },
         { setPhase, setError },
       ),

@@ -1,9 +1,10 @@
-import type { EncryptedValue, Keychain } from '@blindpass/types';
 import {
   getSodium,
   deriveKeyEncryptionKey,
   decryptSymmetric,
   decryptMasterKeyWithRecovery,
+  type EncryptedValue,
+  type Keychain,
 } from '@blindpass/crypto';
 
 export type ServerKeyData = {

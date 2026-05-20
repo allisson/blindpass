@@ -1,5 +1,9 @@
-import { encryptSymmetric, decryptSymmetric, getSodium } from '@blindpass/crypto';
-import type { EncryptedValue } from '@blindpass/types';
+import {
+  encryptSymmetric,
+  decryptSymmetric,
+  getSodium,
+  type EncryptedValue,
+} from '@blindpass/crypto';
 
 /**
  * Wraps MasterKey with the BUK (32-byte secret derived from WebAuthn PRF).

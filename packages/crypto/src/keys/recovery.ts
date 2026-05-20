@@ -1,7 +1,7 @@
 import { generateKey } from '../lib/random.js';
 import { encryptSymmetric, decryptSymmetric } from '../lib/symmetric.js';
 import { getSodium } from '../lib/sodium.js';
-import type { EncryptedValue } from '@blindpass/types';
+import type { EncryptedValue } from '../types.js';
 import { entropyToMnemonic, mnemonicToEntropy } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english.js';
 

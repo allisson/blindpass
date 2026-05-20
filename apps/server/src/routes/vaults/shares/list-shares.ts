@@ -1,8 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { PaginationQuerySchema, VaultIdParamSchema } from '@blindpass/api-schema';
-import { findOwnedById } from '../../../vaults/repository.js';
-import * as shares from '../../../vaults/shares/repository.js';
+import { listShares } from '../../../vaults/shares/service.js';
 
 export function registerListSharesRoute(app: FastifyInstance): void {
   app
@@ -14,12 +13,11 @@ export function registerListSharesRoute(app: FastifyInstance): void {
         const { vaultId } = request.params;
         const { cursor, limit } = request.query;
 
-        const vault = await findOwnedById(app.db, vaultId, request.userId);
-        if (!vault) return reply.status(404).send({ error: 'Vault not found' });
+        const result = await listShares(app.db, request.userId, vaultId, cursor, limit);
+        if (!result.ok) return reply.status(404).send({ error: 'Vault not found' });
 
-        const rows = await shares.listForVault(app.db, vaultId, cursor, limit);
-        const hasMore = rows.length > limit;
-        const page = hasMore ? rows.slice(0, limit) : rows;
+        const hasMore = result.shares.length > limit;
+        const page = hasMore ? result.shares.slice(0, limit) : result.shares;
         const nextCursor = hasMore ? page[page.length - 1].id : null;
 
         return reply.status(200).send({

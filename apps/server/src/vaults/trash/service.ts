@@ -1,8 +1,29 @@
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { TxDb } from '../../db/tx.js';
-import { requireOwner, requireWriter, type AccessFailure } from '../access.js';
+import type * as schema from '../../db/schema.js';
+import { requireOwner, requireReader, requireWriter, type AccessFailure } from '../access.js';
 import * as trash from './repository.js';
+import type { TrashedItemRow } from './repository.js';
 
 type Db = TxDb;
+type ReadDb = NodePgDatabase<typeof schema>;
+
+export type ListTrashResult =
+  | { ok: true; items: TrashedItemRow[] }
+  | { ok: false; reason: AccessFailure };
+
+export async function listTrash(
+  db: ReadDb,
+  userId: string,
+  vaultId: string,
+  cursor: string | undefined,
+  limit: number,
+): Promise<ListTrashResult> {
+  const accessFail = await requireReader(db, vaultId, userId);
+  if (accessFail) return { ok: false, reason: accessFail };
+  const rows = await trash.listForVault(db, vaultId, cursor, limit);
+  return { ok: true, items: rows };
+}
 
 export type RestoreItemResult =
   | { ok: true }

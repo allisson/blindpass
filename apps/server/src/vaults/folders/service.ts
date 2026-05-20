@@ -1,9 +1,27 @@
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { TxDb } from '../../db/tx.js';
-import { requireWriter, type AccessFailure } from '../access.js';
+import type * as schema from '../../db/schema.js';
+import { requireReader, requireWriter, type AccessFailure } from '../access.js';
 import * as folders from './repository.js';
 import type { EncryptedNamePayload, FolderRow } from './repository.js';
 
 type Db = TxDb;
+type ReadDb = NodePgDatabase<typeof schema>;
+
+export type ListFoldersResult =
+  | { ok: true; folders: FolderRow[] }
+  | { ok: false; reason: AccessFailure };
+
+export async function listFolders(
+  db: ReadDb,
+  userId: string,
+  vaultId: string,
+): Promise<ListFoldersResult> {
+  const accessFail = await requireReader(db, vaultId, userId);
+  if (accessFail) return { ok: false, reason: accessFail };
+  const rows = await folders.listForVault(db, vaultId);
+  return { ok: true, folders: rows };
+}
 
 export type CreateFolderResult =
   | { ok: true; folder: FolderRow }

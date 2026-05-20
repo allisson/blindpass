@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../access.js', () => ({
   requireOwner: vi.fn(),
+  requireReader: vi.fn(),
   requireWriter: vi.fn(),
 }));
 vi.mock('../repository.js', () => ({
+  listForVault: vi.fn(),
   findTrashedById: vi.fn(),
   restoreById: vi.fn(),
   purgeById: vi.fn(),
@@ -12,14 +14,41 @@ vi.mock('../repository.js', () => ({
   emptyForUser: vi.fn(),
 }));
 
-import { requireOwner, requireWriter } from '../../access.js';
+import { requireOwner, requireReader, requireWriter } from '../../access.js';
 import * as trash from '../repository.js';
-import { emptyUserTrash, emptyVaultTrash, purgeItem, restoreItem } from '../service.js';
+import { emptyUserTrash, emptyVaultTrash, listTrash, purgeItem, restoreItem } from '../service.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = {} as any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const trashedRow = { id: 'i1', vaultId: 'v1' } as any;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const trashedPage = [{ id: 'i1' }] as any[];
+
+describe('listTrash', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns items when caller has reader access', async () => {
+    vi.mocked(requireReader).mockResolvedValue(null);
+    vi.mocked(trash.listForVault).mockResolvedValue(trashedPage);
+
+    const result = await listTrash(db, 'u1', 'v1', undefined, 10);
+
+    expect(result).toEqual({ ok: true, items: trashedPage });
+    expect(trash.listForVault).toHaveBeenCalledWith(db, 'v1', undefined, 10);
+  });
+
+  it('propagates vault_not_found without touching the repo', async () => {
+    vi.mocked(requireReader).mockResolvedValue('vault_not_found');
+
+    expect(await listTrash(db, 'u1', 'v1', undefined, 10)).toEqual({
+      ok: false,
+      reason: 'vault_not_found',
+    });
+    expect(trash.listForVault).not.toHaveBeenCalled();
+  });
+});
 
 describe('restoreItem', () => {
   beforeEach(() => vi.clearAllMocks());

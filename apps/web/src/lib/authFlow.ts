@@ -1,4 +1,4 @@
-import type { Keychain } from '@blindpass/types';
+import type { Keychain } from '@blindpass/crypto';
 import type { AuthSessionBundle, TotpEnrollment } from '@blindpass/api-schema';
 import type { Session } from './session';
 

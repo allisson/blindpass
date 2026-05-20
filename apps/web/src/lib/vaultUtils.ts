@@ -1,6 +1,5 @@
 import { decryptVaultMetadata } from '@blindpass/vault';
-import { decryptSymmetric, openSealBox } from '@blindpass/crypto';
-import type { KeyPair } from '@blindpass/types';
+import { decryptSymmetric, openSealBox, type KeyPair } from '@blindpass/crypto';
 import type { Vault } from '@blindpass/api-schema';
 import type { VaultEntry } from './session';
 import { fromBase64, fromBase64EncryptedValue } from './b64';
