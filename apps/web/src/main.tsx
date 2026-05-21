@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { routeTree } from './routeTree.gen';
 import { applyDensity, loadDensity } from './lib/density';
+import './lib/session-lifecycle';
 import './index.css';
 
 applyDensity(loadDensity());

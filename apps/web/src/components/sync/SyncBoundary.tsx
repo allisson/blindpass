@@ -134,14 +134,9 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
       if (session.get()?.keychain) void trigger(false);
     }
 
-    function onVaultSwitch() {
-      if (session.get()?.keychain) void trigger(true);
-    }
-
     window.addEventListener('focus', onVisibility);
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('online', onOnline);
-    window.addEventListener('bp:vault-switch', onVaultSwitch);
 
     return () => {
       clearInterval(pollTimer);
@@ -149,9 +144,14 @@ export function SyncBoundary({ engine: engineProp, children }: SyncBoundaryProps
       window.removeEventListener('focus', onVisibility);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('online', onOnline);
-      window.removeEventListener('bp:vault-switch', onVaultSwitch);
     };
   }, [trigger, clearBackoff]);
+
+  useEffect(() => {
+    return session.subscribe(() => {
+      if (session.get()?.keychain) void trigger(true);
+    });
+  }, [trigger]);
 
   const markPending = useCallback((id: string) => {
     setPendingItemIds((prev) => {

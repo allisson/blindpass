@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { CompleteTotpRotationRequestSchema } from '@blindpass/api-schema';
 import { completeRotation } from '../../auth/totp-rotation/service.js';
 import { asTx } from '../../db/tx.js';
+import { sendAuthFailure } from '../auth/result.js';
 
 export function registerCompleteTotpRotationRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -24,12 +25,7 @@ export function registerCompleteTotpRotationRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        if (result.reason === 'user_not_found') {
-          return reply.status(404).send({ error: 'Not found' });
-        }
-        return reply.status(400).send({ error: 'Invalid or expired enrollment' });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       return reply.status(200).send({ message: 'Authenticator rotated' });
     },

@@ -25,9 +25,10 @@ export type CompleteRegistrationInput = {
   userAgent: string | undefined;
 };
 
+export type CompleteRegistrationFailure = 'invalid_enrollment' | 'not_provisioned';
 export type CompleteRegistrationResult =
   | { ok: true; proof: session.ProofOfSession; bundle: ReturnType<typeof fromUserRow> }
-  | { ok: false; reason: 'invalid_enrollment' | 'not_provisioned' };
+  | { ok: false; reason: CompleteRegistrationFailure };
 
 export async function completeRegistration(
   db: Db,
@@ -95,9 +96,10 @@ export type RegisterUserInput = {
   };
 };
 
+export type RegisterUserFailure = 'registrations_disabled' | 'username_taken';
 export type RegisterUserResult =
   | { ok: true; enrollment: TotpEnrollment }
-  | { ok: false; reason: 'registrations_disabled' | 'username_taken' };
+  | { ok: false; reason: RegisterUserFailure };
 
 export async function registerUser(
   db: Db,

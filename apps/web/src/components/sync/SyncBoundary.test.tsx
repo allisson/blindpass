@@ -6,18 +6,26 @@ import { createElement, type ReactNode } from 'react';
 const toastError = vi.fn();
 vi.mock('sonner', () => ({ toast: { error: (m: string) => toastError(m) } }));
 
-const sessionGetMock = vi.hoisted(() =>
-  vi.fn(
-    () =>
-      ({ activeVaultId: 'v1', keychain: {} }) as {
-        activeVaultId: string;
-        keychain: Record<string, unknown> | null;
-      } | null,
-  ),
-);
+const { sessionGetMock, sessionSubscribeMock, notifySessionSubscribers } = vi.hoisted(() => {
+  const _subs = new Set<() => void>();
+  return {
+    sessionGetMock: vi.fn(
+      () =>
+        ({ activeVaultId: 'v1', keychain: {} }) as {
+          activeVaultId: string;
+          keychain: Record<string, unknown> | null;
+        } | null,
+    ),
+    sessionSubscribeMock: vi.fn((fn: () => void) => {
+      _subs.add(fn);
+      return () => _subs.delete(fn);
+    }),
+    notifySessionSubscribers: () => _subs.forEach((fn) => fn()),
+  };
+});
 
 vi.mock('@/lib/session', () => ({
-  session: { get: sessionGetMock },
+  session: { get: sessionGetMock, subscribe: sessionSubscribeMock },
 }));
 
 import { SyncBoundary, useSyncBoundary } from './SyncBoundary';
@@ -207,14 +215,14 @@ describe('SyncBoundary', () => {
     await waitFor(() => expect(fake.calls.length).toBeGreaterThan(before));
   });
 
-  it('runs with force=true on bp:vault-switch event', async () => {
+  it('runs with force=true on session change', async () => {
     const fake = makeFakeEngine();
     renderHook(() => useSyncBoundary(), { wrapper: makeWrapper(fake.engine) });
     await waitFor(() => expect(fake.calls.length).toBeGreaterThan(0));
     const before = fake.calls.length;
 
     await act(async () => {
-      window.dispatchEvent(new Event('bp:vault-switch'));
+      notifySessionSubscribers();
     });
 
     await waitFor(() => expect(fake.calls.length).toBeGreaterThan(before));

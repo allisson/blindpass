@@ -8,7 +8,7 @@ import { FieldError } from '@/components/ui/field-error';
 import { OtpInput } from '@/components/ui/otp-input';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { api } from '@/lib/api';
-import { session } from '@/lib/session';
+import { session, clearLastUsername } from '@/lib/session';
 import { otpSchema, type OtpData } from './_shared';
 
 interface Props {
@@ -52,6 +52,7 @@ export function DeleteAccountDialog({ open, onOpenChange }: Props) {
     setError(null);
     try {
       await api.deleteAccount({ authenticatorCode: data.code });
+      clearLastUsername();
       session.clear();
       navigate({ to: '/login' });
     } catch (err) {

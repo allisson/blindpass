@@ -10,9 +10,10 @@ export type CompleteLoginInput = {
   userAgent: string | undefined;
 };
 
+export type CompleteLoginFailure = 'invalid_credentials';
 export type CompleteLoginResult =
   | { ok: true; proof: session.ProofOfSession }
-  | { ok: false; reason: 'invalid_credentials' };
+  | { ok: false; reason: CompleteLoginFailure };
 
 export async function completeLogin(
   db: TxDb,

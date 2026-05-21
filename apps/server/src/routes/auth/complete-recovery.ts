@@ -6,6 +6,7 @@ import * as session from '../../auth/session/index.js';
 import { completeRecovery } from '../../auth/recovery/service.js';
 import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
+import { sendAuthFailure } from './result.js';
 
 export function registerCompleteRecoveryRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -45,13 +46,7 @@ export function registerCompleteRecoveryRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        const error =
-          result.reason === 'not_provisioned'
-            ? 'Account not fully provisioned'
-            : 'Invalid recovery completion';
-        return reply.status(400).send({ error });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       session.attachCookie(reply, result.proof);
       return reply.status(200).send(result.bundle);

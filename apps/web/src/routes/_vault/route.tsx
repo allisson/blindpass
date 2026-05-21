@@ -524,15 +524,13 @@ function VaultListPanel({
     return s ? (s.vaults.get(s.activeVaultId)?.name ?? '') : '';
   });
   useEffect(() => {
-    function onSwitch() {
+    return session.subscribe(() => {
       const s = session.get();
       if (s) {
         setActiveVaultId(s.activeVaultId);
         setActiveVaultName(s.vaults.get(s.activeVaultId)?.name ?? '');
       }
-    }
-    window.addEventListener('bp:vault-switch', onSwitch);
-    return () => window.removeEventListener('bp:vault-switch', onSwitch);
+    });
   }, []);
 
   const deleteItem = useDeleteItem();
@@ -557,14 +555,12 @@ function VaultListPanel({
     !showAllVaults && (s ? s.vaults.get(s.activeVaultId)?.role === 'viewer' : false);
 
   useEffect(() => {
-    function onVaultSwitch() {
+    return session.subscribe(() => {
       setSelectedType('all');
       setSelectedFolderId('all');
       setSelection(new Set());
       setLastClickedId(null);
-    }
-    window.addEventListener('bp:vault-switch', onVaultSwitch);
-    return () => window.removeEventListener('bp:vault-switch', onVaultSwitch);
+    });
   }, []);
 
   useEffect(() => {
@@ -1229,11 +1225,7 @@ function VaultLayoutContent({
   const allVaultsItemCount = allVaultsData?.length ?? 0;
 
   useEffect(() => {
-    function onSwitch() {
-      setShowAllVaults(false);
-    }
-    window.addEventListener('bp:vault-switch', onSwitch);
-    return () => window.removeEventListener('bp:vault-switch', onSwitch);
+    return session.subscribe(() => setShowAllVaults(false));
   }, []);
 
   return (

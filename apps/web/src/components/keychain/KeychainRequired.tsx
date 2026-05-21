@@ -10,7 +10,7 @@ import {
 } from '@blindpass/crypto';
 import type { EncryptedVaultItem, VersionDetail } from '@blindpass/api-schema';
 import { fromBase64EncryptedValue, toBase64EncryptedValue } from '@/lib/b64';
-import { session, type Session, type VaultEntry } from '@/lib/session';
+import { session, getLastUsername, type Session, type VaultEntry } from '@/lib/session';
 
 export interface KeychainSnapshot {
   masterKey: Uint8Array;
@@ -83,15 +83,7 @@ export function KeychainRequired({ children }: Props) {
   const [snapshot, setSnapshot] = useState<KeychainSnapshot | null>(() => readSnapshot());
 
   useEffect(() => {
-    function refresh() {
-      setSnapshot(readSnapshot());
-    }
-    window.addEventListener('bp:vault-switch', refresh);
-    window.addEventListener('bp:keychain-change', refresh);
-    return () => {
-      window.removeEventListener('bp:vault-switch', refresh);
-      window.removeEventListener('bp:keychain-change', refresh);
-    };
+    return session.subscribe(() => setSnapshot(readSnapshot()));
   }, []);
 
   const value = useMemo<KeychainContextValue | null>(() => {
@@ -153,6 +145,6 @@ export function KeychainRequired({ children }: Props) {
     return { ...snapshot, ...helpers };
   }, [snapshot]);
 
-  if (!value) return <Navigate to="/unlock" />;
+  if (!value) return <Navigate to={getLastUsername() ? '/unlock' : '/login'} />;
   return <KeychainContext.Provider value={value}>{children}</KeychainContext.Provider>;
 }

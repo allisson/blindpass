@@ -2,12 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 
-const { sessionMock, navigateMock } = vi.hoisted(() => ({
-  sessionMock: { get: vi.fn() },
-  navigateMock: vi.fn(),
-}));
+const { sessionMock, getLastUsernameMock, navigateMock } = vi.hoisted(() => {
+  const _subs = new Set<() => void>();
+  return {
+    sessionMock: {
+      get: vi.fn(),
+      subscribe: vi.fn((fn: () => void) => {
+        _subs.add(fn);
+        return () => _subs.delete(fn);
+      }),
+      _notify: () => _subs.forEach((fn) => fn()),
+    },
+    getLastUsernameMock: vi.fn(() => null as string | null),
+    navigateMock: vi.fn(),
+  };
+});
 
-vi.mock('@/lib/session', () => ({ session: sessionMock }));
+vi.mock('@/lib/session', () => ({ session: sessionMock, getLastUsername: getLastUsernameMock }));
 vi.mock('@tanstack/react-router', () => ({
   Navigate: (props: { to: string }) => {
     navigateMock(props.to);
@@ -63,7 +74,8 @@ describe('KeychainRequired', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('redirects to /unlock when keychain null', () => {
+  it('redirects to /unlock when keychain null and last username is set', () => {
+    getLastUsernameMock.mockReturnValue('alice');
     sessionMock.get.mockReturnValue({
       activeVaultId: 'v1',
       vaults: new Map(),
@@ -74,6 +86,20 @@ describe('KeychainRequired', () => {
       wrapper: ({ children }) => wrap(children) as React.ReactElement,
     });
     expect(navigateMock).toHaveBeenCalledWith('/unlock');
+  });
+
+  it('redirects to /login when keychain null and no last username', () => {
+    getLastUsernameMock.mockReturnValue(null);
+    sessionMock.get.mockReturnValue({
+      activeVaultId: 'v1',
+      vaults: new Map(),
+      keychain: null,
+      keyPair: null,
+    });
+    renderHook(() => useKeychain(), {
+      wrapper: ({ children }) => wrap(children) as React.ReactElement,
+    });
+    expect(navigateMock).toHaveBeenCalledWith('/login');
   });
 
   it('decryptItem composes envelope through primitives', async () => {
@@ -180,7 +206,7 @@ describe('KeychainRequired', () => {
     );
   });
 
-  it('refreshes snapshot on bp:keychain-change event', async () => {
+  it('refreshes snapshot on session change', async () => {
     sessionMock.get.mockReturnValue({
       activeVaultId: 'v1',
       vaults: new Map([['v1', { vaultKey: new Uint8Array([2]), name: 'P', isShared: false }]]),
@@ -201,7 +227,7 @@ describe('KeychainRequired', () => {
       username: 'bob',
     });
     await act(async () => {
-      window.dispatchEvent(new Event('bp:keychain-change'));
+      sessionMock._notify();
     });
     await waitFor(() => expect(result.current.username).toBe('bob'));
   });
