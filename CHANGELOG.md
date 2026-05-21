@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-05-20
+
+### Added
+
+- Biometric credential registry — server now tracks enrolled passkeys per device; credentials can be revoked from the Sessions page so a lost or untrusted device loses biometric access immediately
+
+### Internal
+
+- Session lifecycle extracted to `session-lifecycle.ts`; auth error dispatch and session pub-sub replace DOM events (#55)
+- Expired-row cleanup (sessions, recovery tokens, enrollments) pushed into repositories; startup hook removed from `index.ts` (#54)
+- Vault error dispatch centralised in `vaults/access.ts`; access query deduplicated (#53)
+- `@blindpass/types` package absorbed into `packages/crypto`; vault list services added (#52)
+- Vault item navigation uses TanStack Router instead of manual cache-bust (#51)
+
 ## [0.9.0] - 2026-05-19
 
 ### Added
