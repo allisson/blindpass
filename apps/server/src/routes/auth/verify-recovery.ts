@@ -4,6 +4,7 @@ import { VerifyRecoveryRequestSchema } from '@blindpass/api-schema';
 import { verifyRecovery } from '../../auth/recovery/service.js';
 import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
+import { sendAuthFailure } from './result.js';
 
 export function registerVerifyRecoveryRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -24,9 +25,7 @@ export function registerVerifyRecoveryRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        return reply.status(400).send({ error: 'Invalid recovery credentials' });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       return reply.status(200).send({
         recoveryToken: result.recoveryToken,

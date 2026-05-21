@@ -15,9 +15,10 @@ export type StartRotationInput = {
   authenticatorCode: string;
 };
 
+export type StartRotationFailure = 'invalid_authenticator' | 'user_not_found';
 export type StartRotationResult =
   | { ok: true; enrollment: TotpEnrollment }
-  | { ok: false; reason: 'invalid_authenticator' | 'user_not_found' };
+  | { ok: false; reason: StartRotationFailure };
 
 export async function startRotation(
   db: Db,
@@ -58,9 +59,8 @@ export type CompleteRotationInput = {
   authenticatorCode: string;
 };
 
-export type CompleteRotationResult =
-  | { ok: true }
-  | { ok: false; reason: 'user_not_found' | 'invalid_enrollment' };
+export type CompleteRotationFailure = 'user_not_found' | 'invalid_enrollment';
+export type CompleteRotationResult = { ok: true } | { ok: false; reason: CompleteRotationFailure };
 
 export async function completeRotation(
   db: Db,

@@ -6,6 +6,7 @@ import { b64 } from '../../utils/base64.js';
 import { registerUser } from '../../auth/registration/service.js';
 import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
+import { sendAuthFailure } from './result.js';
 
 export function registerRegisterRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -58,12 +59,7 @@ export function registerRegisterRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        if (result.reason === 'registrations_disabled') {
-          return reply.status(403).send({ error: 'registrations_disabled' });
-        }
-        return reply.status(409).send({ error: 'Conflict' });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       return reply.status(201).send({ enrollment: result.enrollment });
     },

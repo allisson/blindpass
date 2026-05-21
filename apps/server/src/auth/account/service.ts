@@ -15,7 +15,8 @@ export type ChangePasswordInput = {
   encryptedMasterKeyNonce: Buffer;
 };
 
-export type ChangePasswordResult = { ok: true } | { ok: false; reason: 'invalid_authenticator' };
+export type ChangePasswordFailure = 'invalid_authenticator';
+export type ChangePasswordResult = { ok: true } | { ok: false; reason: ChangePasswordFailure };
 
 export async function changePassword(
   db: Db,
@@ -48,9 +49,10 @@ export type RotateRecoveryPhraseInput = {
   encryptedRecoveryKeyNonce: Buffer;
 };
 
+export type RotateRecoveryPhraseFailure = 'invalid_authenticator';
 export type RotateRecoveryPhraseResult =
   | { ok: true }
-  | { ok: false; reason: 'invalid_authenticator' };
+  | { ok: false; reason: RotateRecoveryPhraseFailure };
 
 export async function rotateRecoveryPhrase(
   db: Db,
@@ -81,9 +83,8 @@ export type DeleteAccountInput = {
   authenticatorCode: string;
 };
 
-export type DeleteAccountResult =
-  | { ok: true }
-  | { ok: false; reason: 'invalid_authenticator' | 'admin_user_protected' };
+export type DeleteAccountFailure = 'invalid_authenticator' | 'admin_user_protected';
+export type DeleteAccountResult = { ok: true } | { ok: false; reason: DeleteAccountFailure };
 
 export async function deleteAccount(
   db: Db,

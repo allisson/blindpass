@@ -21,6 +21,7 @@ export type VerifyRecoveryInput = {
   recoveryVerifier: string;
 };
 
+export type VerifyRecoveryFailure = 'invalid_credentials';
 export type VerifyRecoveryResult =
   | {
       ok: true;
@@ -28,7 +29,7 @@ export type VerifyRecoveryResult =
       enrollment: TotpEnrollment;
       bundle: ReturnType<typeof fromUserRow>;
     }
-  | { ok: false; reason: 'invalid_credentials' };
+  | { ok: false; reason: VerifyRecoveryFailure };
 
 export async function verifyRecovery(
   db: Db,
@@ -103,9 +104,10 @@ export type CompleteRecoveryInput = {
   };
 };
 
+export type CompleteRecoveryFailure = 'invalid' | 'not_provisioned';
 export type CompleteRecoveryResult =
   | { ok: true; proof: session.ProofOfSession; bundle: ReturnType<typeof fromUserRow> }
-  | { ok: false; reason: 'invalid' | 'not_provisioned' };
+  | { ok: false; reason: CompleteRecoveryFailure };
 
 export async function completeRecovery(
   db: Db,

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RecoveryKeyDisplay } from '@/components/vault/RecoveryKeyDisplay';
 import { authFlow } from '@/lib/authFlow';
-import { session } from '@/lib/session';
+import { session, setLastUsername } from '@/lib/session';
 
 export const Route = createFileRoute('/_auth/recovery-key')({
   component: RecoveryKeyPage,
@@ -66,6 +66,7 @@ function RecoveryKeyPage() {
             authFlow.clearRecoveryKey();
             const pending = authFlow.getPendingSession();
             if (pending) {
+              if (pending.username) setLastUsername(pending.username);
               session.set(pending);
               authFlow.clearPendingSession();
             }

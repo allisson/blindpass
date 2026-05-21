@@ -53,6 +53,7 @@ vi.mock('@/lib/session', () => ({
   session: {
     get: vi.fn(),
     switchVault: vi.fn(),
+    notify: vi.fn(),
   },
 }));
 

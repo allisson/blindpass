@@ -105,8 +105,8 @@ Sources: [1Password security model](https://support.1password.com/1password-secu
 ### Vault management
 
 - 🔗 **Vault sharing** — share vaults with others via asymmetric key sealing
-- 📤 **Encrypted export/import** — back up and restore your vault
-- 📥 **Import from other managers** — Bitwarden (JSON), LastPass (CSV), or Chrome passwords (CSV)
+- 📤 **Encrypted export/import** — back up and restore your vault (BlindPass `.json` / `.blindpass` format)
+- 📥 **Import from other managers** — 1Password (`.1pux`), Bitwarden (JSON), Dashlane (ZIP), LastPass (CSV), Chrome/Firefox (CSV), KeePassXC (CSV), Apple Keychain (CSV), and Proton Pass (JSON)
 
 ### Account
 

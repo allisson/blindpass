@@ -4,6 +4,7 @@ import { RotateRecoveryPhraseRequestSchema } from '@blindpass/api-schema';
 import { b64 } from '../../utils/base64.js';
 import { rotateRecoveryPhrase } from '../../auth/account/service.js';
 import { asTx } from '../../db/tx.js';
+import { sendAuthFailure } from '../auth/result.js';
 
 export function registerRotateRecoveryPhraseRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().put(
@@ -35,9 +36,7 @@ export function registerRotateRecoveryPhraseRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        return reply.status(400).send({ error: 'Invalid authenticator code' });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       return reply.status(200).send({ message: 'Recovery phrase rotated' });
     },

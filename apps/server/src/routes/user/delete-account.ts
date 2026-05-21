@@ -4,6 +4,7 @@ import { DeleteAccountRequestSchema } from '@blindpass/api-schema';
 import { deleteAccount } from '../../auth/account/service.js';
 import { asTx } from '../../db/tx.js';
 import { authRateLimit } from '../auth/rate-limit.js';
+import { sendAuthFailure } from '../auth/result.js';
 
 export function registerDeleteAccountRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().delete(
@@ -24,12 +25,7 @@ export function registerDeleteAccountRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        if (result.reason === 'admin_user_protected') {
-          return reply.status(403).send({ error: 'admin_user_protected' });
-        }
-        return reply.status(400).send({ error: 'Invalid authenticator code' });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       return reply.status(200).send({ message: 'Account deleted' });
     },

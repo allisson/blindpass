@@ -5,6 +5,7 @@ import * as session from '../../auth/session/index.js';
 import { completeRegistration } from '../../auth/registration/service.js';
 import { asTx } from '../../db/tx.js';
 import { authRateLimit } from './rate-limit.js';
+import { sendAuthFailure } from './result.js';
 
 export function registerCompleteRegistrationRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -27,14 +28,7 @@ export function registerCompleteRegistrationRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        const status = result.reason === 'not_provisioned' ? 400 : 400;
-        const error =
-          result.reason === 'not_provisioned'
-            ? 'Account not fully provisioned'
-            : 'Invalid or expired enrollment';
-        return reply.status(status).send({ error });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       session.attachCookie(reply, result.proof);
       return reply.status(200).send(result.bundle);

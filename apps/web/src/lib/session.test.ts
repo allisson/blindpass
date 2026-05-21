@@ -12,13 +12,6 @@ vi.mock('@blindpass/vault', () => ({
   lock: vi.fn(),
 }));
 
-const clearAllMock = vi.fn().mockResolvedValue(undefined);
-vi.mock('./vaultCache', () => ({
-  vaultCache: {
-    clearAll: () => clearAllMock(),
-  },
-}));
-
 function makeKeychain(): Keychain {
   return {
     masterKey: new Uint8Array([1, 2, 3]),
@@ -113,12 +106,6 @@ describe('session', () => {
     s.keychain = null;
     session.switchVault('v1');
     expect(session.get()?.activeVaultId).toBe('v1');
-  });
-
-  it('lock clears cache even when already locked', () => {
-    session.set({ ...makeSession(), keychain: null });
-    session.lock();
-    expect(clearAllMock).toHaveBeenCalledTimes(1);
   });
 
   it('idle timer expiry and reset honor configured minutes', () => {

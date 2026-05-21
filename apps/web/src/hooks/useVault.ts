@@ -226,7 +226,6 @@ export function useSwitchVault() {
     qc.removeQueries({ queryKey: TRASH_ITEMS_KEY });
     qc.removeQueries({ queryKey: FOLDERS_KEY });
     qc.removeQueries({ predicate: (q) => q.queryKey[0] === 'itemVersions' });
-    window.dispatchEvent(new CustomEvent('bp:vault-switch'));
   };
 }
 
@@ -246,8 +245,8 @@ export function useCreateVault() {
         s.vaults.set(vault.id, { vaultKey, name, isShared: false });
         s.activeVaultId = vault.id;
         if (s.keychain) s.keychain.vaultKey = vaultKey;
+        session.notify();
       }
-      window.dispatchEvent(new CustomEvent('bp:vault-switch'));
       return vault;
     },
   });
@@ -272,7 +271,7 @@ export function useDeleteVault() {
       qc.removeQueries({ queryKey: TRASH_ITEMS_KEY });
       qc.removeQueries({ queryKey: FOLDERS_KEY });
       qc.removeQueries({ predicate: (q) => q.queryKey[0] === 'itemVersions' });
-      window.dispatchEvent(new CustomEvent('bp:vault-switch'));
+      session.notify();
     },
   });
 }

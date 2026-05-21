@@ -88,8 +88,7 @@ export function VaultSheet({
         })),
       );
     }
-    window.addEventListener('bp:vault-switch', onSwitch);
-    return () => window.removeEventListener('bp:vault-switch', onSwitch);
+    return session.subscribe(onSwitch);
   }, []);
 
   function handleSwitch(id: string) {
@@ -102,7 +101,6 @@ export function VaultSheet({
     qc.removeQueries({ queryKey: ['items'] });
     qc.removeQueries({ queryKey: ['folders'] });
     onOpenChange(false);
-    window.dispatchEvent(new CustomEvent('bp:vault-switch'));
   }
 
   async function commitCreate() {
@@ -126,7 +124,6 @@ export function VaultSheet({
         );
         setLocalActiveId(vault.id);
         void router.navigate({ to: '/', search: { vaultId: vault.id } });
-        window.dispatchEvent(new CustomEvent('bp:vault-switch'));
       }
     } catch (err) {
       toast.error(extractErrorMessage(err, 'Failed to create vault'));
@@ -173,7 +170,7 @@ export function VaultSheet({
         }
       }
       setLocalVaults((prev) => prev.filter((v) => v.id !== vaultId));
-      window.dispatchEvent(new CustomEvent('bp:vault-switch'));
+      session.notify();
       setLeaveConfirm(null);
       toast.success(`Left vault "${vaultName}"`);
     } catch (err) {

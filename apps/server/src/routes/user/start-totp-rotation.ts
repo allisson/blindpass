@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { StartTotpRotationRequestSchema } from '@blindpass/api-schema';
 import { startRotation } from '../../auth/totp-rotation/service.js';
 import { asTx } from '../../db/tx.js';
+import { sendAuthFailure } from '../auth/result.js';
 
 export function registerStartTotpRotationRoute(app: FastifyInstance): void {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -23,12 +24,7 @@ export function registerStartTotpRotationRoute(app: FastifyInstance): void {
         ),
       );
 
-      if (!result.ok) {
-        if (result.reason === 'user_not_found') {
-          return reply.status(404).send({ error: 'Not found' });
-        }
-        return reply.status(400).send({ error: 'Invalid authenticator code' });
-      }
+      if (!result.ok) return sendAuthFailure(reply, result.reason);
 
       return reply.status(200).send({ enrollment: result.enrollment });
     },

@@ -1,7 +1,5 @@
 import { lock as zeroKeys } from '@blindpass/vault';
 import type { Keychain, KeyPair } from '@blindpass/crypto';
-import { vaultCache } from './vaultCache';
-import { enrollmentStore } from './biometric';
 
 const LAST_USERNAME_KEY = 'bp:last-username';
 
@@ -33,15 +31,22 @@ let _idleTimer: ReturnType<typeof setTimeout> | null = null;
 let _idleMinutes = 15;
 let _onIdleExpiry: (() => void) | null = null;
 
+const _listeners = new Set<() => void>();
+
 function scheduleIdleTimer() {
   if (_idleTimer !== null) clearTimeout(_idleTimer);
   if (_onIdleExpiry === null || _idleMinutes === 0) return;
   _idleTimer = setTimeout(_onIdleExpiry, _idleMinutes * 60_000);
 }
 
+function notifyListeners() {
+  _listeners.forEach((fn) => fn());
+}
+
 export const session = {
   set: (s: Session) => {
     _session = s;
+    notifyListeners();
   },
   get: () => _session,
   switchVault: (vaultId: string) => {
@@ -50,13 +55,21 @@ export const session = {
     if (!vault || !_session.keychain) return;
     _session.activeVaultId = vaultId;
     _session.keychain.vaultKey = vault.vaultKey;
+    notifyListeners();
+  },
+  notify: () => {
+    notifyListeners();
+  },
+  subscribe: (fn: () => void): (() => void) => {
+    _listeners.add(fn);
+    return () => _listeners.delete(fn);
   },
   lock: () => {
     if (_session?.keychain) {
       zeroKeys(_session.keychain);
       _session.keychain = null;
     }
-    void vaultCache.clearAll().catch(() => {});
+    notifyListeners();
   },
   startIdleTimer: (onExpiry: () => void, minutes: number) => {
     _onIdleExpiry = onExpiry;
@@ -88,6 +101,6 @@ export const session = {
       _session.vaults.clear();
     }
     _session = null;
-    void enrollmentStore.clearAll().catch(() => {});
+    notifyListeners();
   },
 };
