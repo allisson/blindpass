@@ -1,7 +1,7 @@
-import { generateTotpCode, getTotpTimeRemaining } from '@blindpass/crypto';
 import { Check, Copy } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { TotpItem } from '@blindpass/vault';
+import { useTotpCode, formatTotpCode } from '@/hooks/useTotpCode';
 
 interface Props {
   item: TotpItem;
@@ -10,32 +10,9 @@ interface Props {
 const RING_R = 18;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_R;
 
-function formatCode(code: string): string {
-  const mid = Math.ceil(code.length / 2);
-  return `${code.slice(0, mid)} ${code.slice(mid)}`;
-}
-
 export function TotpCode({ item }: Props) {
-  const [code, setCode] = useState('');
-  const [remaining, setRemaining] = useState(item.period);
+  const { code, remaining } = useTotpCode(item);
   const [copied, setCopied] = useState(false);
-
-  const refresh = useCallback(() => {
-    setCode(
-      generateTotpCode(item.secret, {
-        algorithm: item.algorithm,
-        digits: item.digits,
-        period: item.period,
-      }),
-    );
-    setRemaining(getTotpTimeRemaining(item.period));
-  }, [item.secret, item.algorithm, item.digits, item.period]);
-
-  useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 1000);
-    return () => clearInterval(interval);
-  }, [refresh]);
 
   useEffect(() => {
     setCopied(false);
@@ -103,7 +80,7 @@ export function TotpCode({ item }: Props) {
 
         {/* Code */}
         <span className="relative font-mono text-3xl font-bold tracking-widest text-foreground group-hover:text-primary transition-colors select-none">
-          {code ? formatCode(code) : '––––––'}
+          {code ? formatTotpCode(code) : '––––––'}
         </span>
       </button>
 

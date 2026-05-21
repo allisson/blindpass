@@ -3,9 +3,55 @@ import { Check, Copy, RefreshCw } from 'lucide-react';
 import { memo, useState } from 'react';
 import { toast } from 'sonner';
 import { generateTotpCode } from '@blindpass/crypto';
+import type { TotpItem } from '@blindpass/vault';
 import type { DecryptedItem } from '@/hooks/useVault';
 import { useSyncBoundary } from '@/components/sync/SyncBoundary';
+import { useTotpCode, formatTotpCode } from '@/hooks/useTotpCode';
 import { ItemAvatar } from './ItemAvatar';
+
+function TotpRowTail({
+  item,
+  copied,
+  onCopy,
+}: {
+  item: TotpItem;
+  copied: boolean;
+  onCopy: (e: React.MouseEvent) => void;
+}) {
+  const { code, remaining } = useTotpCode(item);
+  const urgent = remaining <= 5;
+  return (
+    <>
+      <span className="flex items-baseline gap-1.5 shrink-0" aria-hidden="true">
+        <span className="font-mono text-[13px] font-semibold tracking-wider text-foreground tabular-nums">
+          {code ? formatTotpCode(code) : '–––'}
+        </span>
+        <span
+          className={`text-[11px] font-medium tabular-nums ${
+            urgent ? 'text-destructive' : 'text-muted-foreground'
+          }`}
+        >
+          {remaining}s
+        </span>
+      </span>
+      <button
+        onClick={onCopy}
+        className={`p-2 rounded transition-all duration-150 shrink-0 flex items-center justify-center touch-manipulation ${
+          copied
+            ? 'text-primary bg-primary/10 scale-110'
+            : 'text-muted-foreground/50 hover:text-foreground hover:bg-background/60 active:bg-background/60 [@media(hover:none)]:text-muted-foreground scale-100'
+        }`}
+        aria-label={`Copy code, ${remaining} seconds remaining`}
+        title="Copy code"
+      >
+        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        <span className="sr-only" aria-live="polite">
+          {copied ? 'Code copied' : ''}
+        </span>
+      </button>
+    </>
+  );
+}
 
 interface Props {
   item: DecryptedItem;
@@ -115,7 +161,8 @@ export const ItemCard = memo(function ItemCard({ item, isWeak, isReused, vaultLa
           aria-label={`From ${vaultLabel.name}`}
         />
       )}
-      {(item.type === 'login' || item.type === 'totp') && (
+      {item.type === 'totp' && <TotpRowTail item={item} copied={copied} onCopy={handleCopy} />}
+      {item.type === 'login' && (
         <button
           onClick={handleCopy}
           className={`p-2 rounded transition-all duration-150 shrink-0 flex items-center justify-center touch-manipulation ${
@@ -123,12 +170,12 @@ export const ItemCard = memo(function ItemCard({ item, isWeak, isReused, vaultLa
               ? 'text-primary bg-primary/10 scale-110'
               : 'text-muted-foreground/50 hover:text-foreground hover:bg-background/60 active:bg-background/60 [@media(hover:none)]:text-muted-foreground scale-100'
           }`}
-          aria-label={item.type === 'totp' ? 'Copy code' : 'Copy password'}
-          title={item.type === 'totp' ? 'Copy code' : 'Copy password'}
+          aria-label="Copy password"
+          title="Copy password"
         >
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           <span className="sr-only" aria-live="polite">
-            {copied ? (item.type === 'totp' ? 'Code copied' : 'Password copied') : ''}
+            {copied ? 'Password copied' : ''}
           </span>
         </button>
       )}
