@@ -8,6 +8,7 @@ import { ItemForm } from '@/components/vault/ItemForm';
 import { ItemTypePicker } from '@/components/vault/ItemTypePicker';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -15,24 +16,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCreateItem } from '@/hooks/useVault';
+import { useCreateItem, useVaultItems, type DecryptedItem } from '@/hooks/useVault';
 import { useFolders } from '@/hooks/useFolders';
 import { session } from '@/lib/session';
 
+export function duplicateTitle(title: string): string {
+  return `${title} (copy)`;
+}
+
+const itemTypeEnum = z.enum([
+  'login',
+  'secure_note',
+  'payment_card',
+  'identity',
+  'totp',
+  'developer_credential',
+  'crypto_wallet',
+]);
+
 export const Route = createFileRoute('/_vault/items/new')({
   validateSearch: z.object({
-    type: z
-      .enum([
-        'login',
-        'secure_note',
-        'payment_card',
-        'identity',
-        'totp',
-        'developer_credential',
-        'crypto_wallet',
-      ])
-      .optional(),
+    type: itemTypeEnum.optional(),
     folderId: z.uuid().optional(),
+    duplicateFrom: z.uuid().optional(),
   }),
   beforeLoad: () => {
     const s = session.get();
@@ -44,23 +50,14 @@ export const Route = createFileRoute('/_vault/items/new')({
   component: NewItemPage,
 });
 
-function NewItemPage() {
-  const navigate = useNavigate();
-  const { type, folderId } = Route.useSearch();
-  const createItem = useCreateItem();
-  const { data: folders, isError: foldersError } = useFolders();
-  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(folderId);
+function buildDuplicateDefaults(source: DecryptedItem): Partial<VaultItem> {
+  return { ...source, title: duplicateTitle(source.title) } as Partial<VaultItem>;
+}
 
-  async function handleSubmit(data: VaultItem) {
-    let result: { id: string };
-    try {
-      result = await createItem.mutateAsync({ vaultItem: data, folderId: selectedFolderId });
-    } catch {
-      return;
-    }
-    toast.success('Item created');
-    navigate({ to: '/$itemId', params: { itemId: result.id } });
-  }
+export function NewItemPage() {
+  const navigate = useNavigate();
+  const { type, folderId, duplicateFrom } = Route.useSearch();
+  const itemsQuery = useVaultItems();
 
   const breadcrumb = (
     <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
@@ -87,6 +84,62 @@ function NewItemPage() {
         />
       </div>
     );
+  }
+
+  if (duplicateFrom && itemsQuery.isLoading) {
+    return (
+      <div className="p-4 h-full overflow-auto">
+        {breadcrumb}
+        <h1 className="text-lg font-semibold text-foreground mb-6">New item</h1>
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  const source = duplicateFrom
+    ? itemsQuery.data?.find((i) => i.id === duplicateFrom && i.type === type)
+    : undefined;
+
+  return (
+    <NewItemFormView
+      breadcrumb={breadcrumb}
+      type={type}
+      initialFolderId={source?.folderId ?? folderId ?? undefined}
+      defaultValues={source ? buildDuplicateDefaults(source) : undefined}
+    />
+  );
+}
+
+function NewItemFormView({
+  breadcrumb,
+  type,
+  initialFolderId,
+  defaultValues,
+}: {
+  breadcrumb: React.ReactNode;
+  type: z.infer<typeof itemTypeEnum>;
+  initialFolderId: string | undefined;
+  defaultValues: Partial<VaultItem> | undefined;
+}) {
+  const navigate = useNavigate();
+  const createItem = useCreateItem();
+  const { data: folders, isError: foldersError } = useFolders();
+  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(initialFolderId);
+
+  async function handleSubmit(data: VaultItem) {
+    let result: { id: string };
+    try {
+      result = await createItem.mutateAsync({ vaultItem: data, folderId: selectedFolderId });
+    } catch {
+      return;
+    }
+    toast.success('Item created');
+    navigate({ to: '/$itemId', params: { itemId: result.id } });
   }
 
   return (
@@ -120,6 +173,7 @@ function NewItemPage() {
       <div className="rounded-lg border border-border bg-card p-4">
         <ItemForm
           type={type}
+          defaultValues={defaultValues}
           onSubmit={handleSubmit}
           onCancel={() => navigate({ to: '/' })}
           submitLabel="Create item"

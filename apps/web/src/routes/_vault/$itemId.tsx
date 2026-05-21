@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  CopyPlus,
   ExternalLink,
   Eye,
   EyeOff,
@@ -514,6 +515,19 @@ function ItemDetailPage() {
                   className="w-44 p-1"
                   container={document.getElementById('app-shell')}
                 >
+                  <button
+                    data-testid="action-bar-duplicate"
+                    onClick={() =>
+                      navigate({
+                        to: '/items/new',
+                        search: { duplicateFrom: itemId, type: item.type },
+                      })
+                    }
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors"
+                  >
+                    <CopyPlus className="w-3.5 h-3.5" />
+                    Duplicate
+                  </button>
                   <button
                     data-testid="action-bar-delete"
                     onClick={() => setShowDeleteDialog(true)}

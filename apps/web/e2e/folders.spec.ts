@@ -49,7 +49,9 @@ test('folder filter All shows all items', async ({ page }) => {
     Username: 'user@example.com',
     Password: 'pass123',
   });
-  await page.getByRole('link', { name: 'Vault', exact: true }).click();
+  // The success toast lingers at bottom-center and intercepts the bottom Vault tab —
+  // use the top "Back to vault" link instead (same pattern as createVaultItem internally).
+  await page.getByRole('link', { name: 'Back to vault' }).click();
   await page.waitForURL('/', { timeout: 10_000 });
   await page.getByRole('button', { name: 'Filter by folder' }).click();
   await page.getByRole('button', { name: 'All Folders' }).click();
@@ -62,8 +64,9 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
     Username: 'mover@example.com',
     Password: 'pass123',
   });
-  // createVaultItem leaves us on the item detail page (list panel is off-screen); go back first
-  await page.getByRole('link', { name: 'Vault', exact: true }).click();
+  // createVaultItem leaves us on the item detail page (list panel is off-screen); go back first.
+  // The success toast intercepts the bottom Vault tab — use the top "Back to vault" link.
+  await page.getByRole('link', { name: 'Back to vault' }).click();
   await page.waitForURL('/', { timeout: 10_000 });
 
   // Create a folder (auto-selects it; reset to All so unfiled item is visible)
@@ -89,8 +92,9 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
     timeout: 10_000,
   });
 
-  // Navigate back so the list panel is visible, then filter by Personal folder
-  await page.getByRole('link', { name: 'Vault', exact: true }).click();
+  // Navigate back so the list panel is visible, then filter by Personal folder.
+  // The folder-move toast can intercept the bottom Vault tab — use the top "Back to vault" link.
+  await page.getByRole('link', { name: 'Back to vault' }).click();
   await page.waitForURL('/', { timeout: 10_000 });
   await page.getByRole('button', { name: 'Filter by folder' }).click();
   await page.getByRole('button', { name: 'Personal', exact: true }).click();
