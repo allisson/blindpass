@@ -51,7 +51,7 @@ test('offline mode: shows cached items and offline badge', async ({ page }) => {
     Username: 'user@example.com',
     Password: 'secret',
   });
-  await expect(page.getByTestId('vault-list').getByText('Offline Test Item')).toBeVisible({
+  await expect(page.getByTestId('vault-list').getByText('Offline Test Item').first()).toBeVisible({
     timeout: 10_000,
   });
 
@@ -74,7 +74,7 @@ test('offline mode: shows cached items and offline badge', async ({ page }) => {
   await expect(page.getByTestId('sync-status-bar')).toContainText('Offline', { timeout: 5_000 });
 
   // Items remain visible from React Query / IndexedDB cache
-  await expect(page.getByTestId('vault-list').getByText('Offline Test Item')).toBeVisible({
+  await expect(page.getByTestId('vault-list').getByText('Offline Test Item').first()).toBeVisible({
     timeout: 10_000,
   });
 });

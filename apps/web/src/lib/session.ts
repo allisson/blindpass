@@ -1,5 +1,6 @@
 import { lock as zeroKeys } from '@blindpass/vault';
 import type { Keychain, KeyPair } from '@blindpass/crypto';
+import { clearRecentlyViewed } from './recentlyViewed';
 
 const LAST_USERNAME_KEY = 'bp:last-username';
 
@@ -65,6 +66,9 @@ export const session = {
     return () => _listeners.delete(fn);
   },
   lock: () => {
+    if (_session) {
+      for (const vaultId of _session.vaults.keys()) clearRecentlyViewed(vaultId);
+    }
     if (_session?.keychain) {
       zeroKeys(_session.keychain);
       _session.keychain = null;
@@ -95,6 +99,7 @@ export const session = {
     if (_session?.keychain) zeroKeys(_session.keychain);
     if (_session?.keyPair?.privateKey) _session.keyPair.privateKey.fill(0);
     if (_session?.vaults) {
+      for (const vaultId of _session.vaults.keys()) clearRecentlyViewed(vaultId);
       for (const entry of _session.vaults.values()) {
         entry.vaultKey.fill(0);
       }

@@ -39,6 +39,7 @@ import { vaultColor } from '@/lib/vaultColor';
 import { ItemCard } from '@/components/vault/ItemCard';
 import { ItemCardSkeleton } from '@/components/vault/ItemCardSkeleton';
 import { OnboardingEmpty } from '@/components/vault/OnboardingEmpty';
+import { RecentlyViewedSection } from '@/components/vault/RecentlyViewedSection';
 import { EmptyState } from '@/components/EmptyState';
 import { passwordStrength } from '@/lib/passwordStrength';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -68,6 +69,7 @@ import {
 } from '@/hooks/useFolders';
 import { VaultSheet } from '@/components/VaultSheet';
 import { session, clearLastUsername, getLastUsername } from '@/lib/session';
+import { getRecentlyViewed, subscribeRecentlyViewed } from '@/lib/recentlyViewed';
 import { api } from '@/lib/api';
 import { vaultCache } from '@/lib/vaultCache';
 import { SyncBoundary } from '@/components/sync/SyncBoundary';
@@ -643,6 +645,30 @@ function VaultListPanel({
     });
   }, [typeFiltered, search]);
 
+  const [recentTick, setRecentTick] = useState(0);
+  useEffect(() => subscribeRecentlyViewed(() => setRecentTick((n) => n + 1)), []);
+
+  const recentItems = useMemo(() => {
+    if (showAllVaults || !items || !activeVaultId) return [];
+    const ids = getRecentlyViewed(activeVaultId);
+    const byId = new Map(items.map((i) => [i.id, i]));
+    const resolved: typeof items = [];
+    for (const id of ids) {
+      const item = byId.get(id);
+      if (item) resolved.push(item);
+      if (resolved.length === 5) break;
+    }
+    return resolved;
+    // recentTick triggers re-evaluation when the storage is pushed/cleared.
+  }, [items, activeVaultId, showAllVaults, recentTick]);
+
+  const showRecent =
+    !showAllVaults &&
+    search.trim() === '' &&
+    selectedType === 'all' &&
+    selectedFolderId === 'all' &&
+    recentItems.length > 0;
+
   const { weakIds, reusedIds } = useMemo(() => {
     const weak = new Set<string>();
     const reused = new Set<string>();
@@ -971,6 +997,7 @@ function VaultListPanel({
             size="sm"
           />
         )}
+        {!isLoading && !isError && showRecent && <RecentlyViewedSection items={recentItems} />}
         {!isLoading &&
           !isError &&
           filtered.map((item) => {

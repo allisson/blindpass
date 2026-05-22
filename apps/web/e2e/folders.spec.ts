@@ -75,7 +75,7 @@ test('moves item to a folder and folder filter shows it', async ({ page }) => {
   await page.getByRole('button', { name: 'All Folders' }).click();
 
   // Click the item to open detail view
-  await page.getByTestId('vault-list').getByText('Movable Item', { exact: true }).click();
+  await page.getByTestId('vault-list').getByText('Movable Item', { exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Movable Item' })).toBeVisible({
     timeout: 10_000,
   });
