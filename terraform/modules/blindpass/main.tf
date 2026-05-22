@@ -139,9 +139,11 @@ resource "google_cloud_run_v2_service" "server" {
 
       resources {
         limits = {
-          cpu    = "1"
+          cpu    = "0.5"
           memory = "512Mi"
         }
+
+        cpu_idle = true
       }
 
       env {
@@ -244,9 +246,11 @@ resource "google_cloud_run_v2_service" "webapp" {
 
       resources {
         limits = {
-          cpu    = "1"
+          cpu    = "0.5"
           memory = "512Mi"
         }
+
+        cpu_idle = true
       }
 
       env {
