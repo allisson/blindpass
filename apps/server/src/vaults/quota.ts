@@ -11,6 +11,17 @@ import type { TxDb } from '../db/tx.js';
 // type error.
 type Db = NodePgDatabase<typeof schema>;
 
+// Branded opaque type minted by `reserveItemQuota` and consumed by item-
+// inserting repo methods. The brand makes "you cannot insert items without
+// having reserved quota" a compile-time obligation, mirroring `ProofOfSession`
+// and `TxDb`. `vaultId` ties the slot to its scope so a future cross-vault
+// write in one tx cannot accidentally reuse a slot from another vault.
+declare const QuotaSlotTag: unique symbol;
+export type QuotaSlot = {
+  readonly vaultId: string;
+  readonly [QuotaSlotTag]: true;
+};
+
 export type QuotaErrorCode = 'vault_limit_reached' | 'item_limit_reached';
 
 export class QuotaExceededError extends Error {
@@ -69,12 +80,8 @@ export async function getEffectiveVaultItemQuota(tx: Db, vaultId: string): Promi
   return row?.override ?? row?.defaultQuota ?? 1000;
 }
 
-export async function assertItemQuota(
-  tx: TxDb,
-  vaultId: string,
-  limit: number,
-  adding = 1,
-): Promise<void> {
+export async function reserveItemQuota(tx: TxDb, vaultId: string, adding = 1): Promise<QuotaSlot> {
+  const limit = await getEffectiveVaultItemQuota(tx, vaultId);
   await acquireLock(tx, `item_quota:${vaultId}`);
   const [row] = await tx
     .select({ value: count() })
@@ -89,4 +96,5 @@ export async function assertItemQuota(
       requested: adding,
     });
   }
+  return { vaultId } as QuotaSlot;
 }

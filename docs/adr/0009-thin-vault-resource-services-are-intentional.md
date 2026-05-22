@@ -1,0 +1,17 @@
+# Thin vault-resource services are intentional
+
+Every vault-resource write path goes through a service: `VaultItemsService`, `FoldersService`, `TrashService`, `SharesService`, `VaultsService`. Some of these are deep — `VaultItemsService` composes access check, `QuotaSlot` reservation, repo write, and the `vaultItems ↔ vaultItemVersions` atomic pairing. Others, today, are thin — `FoldersService` is `requireWriter → repo → ServiceResult.wrap` and nothing else. The thinness is deliberate. The service file is the place where the access-check-inside-tx ceremony lives for that resource — not the route, and not the repository.
+
+The deletion test confirms this when applied properly. If `FoldersService` is collapsed into the four `routes/vaults/folders/*.ts` files, each route gains the same ~5–8 lines: open the transaction, call `requireWriter` against the same `TxDb` (so a concurrent share revocation cannot land between the check and the write), map `null`/`false` repo returns into a discriminated `ServiceResult`, then format and reply. That is the ceremony the service was hiding — small per method, but multiplied by four routes and re-multiplied if a fifth folder operation lands later. Dissolving moves the pattern from one file to many; it does not eliminate it.
+
+Deepening a currently-thin service is also not a refactor. None of the rules a future `FoldersService` might enforce — folder count quota, name uniqueness within a vault, refuse-delete-when-non-empty — exist anywhere in the codebase today. The on-delete cascade for items in a deleted folder lives in the DB schema as `references(vaultFolders.id, { onDelete: 'set null' })`, not in application code, and is correct there. Adding those rules is a feature, not a lift.
+
+The uniform shape across vault-resource services has a second, AI-navigability payoff: any contributor (or agent) opening `vaults/<resource>/service.ts` finds the same template — exported `*Result` discriminated unions, `requireWriter`/`requireReader` at the top, repo call, wrapped result. The cost of holding the shape consistent is a few near-empty service methods. The benefit is a predictable surface that compounds with each new resource. Architecture reviews that surface "this thin service could be dissolved" should treat this ADR as the answer: it could, but it should not, and the reasoning is here.
+
+If a vault-resource service ever grows a _genuine_ invariant that belongs at the service layer — composable with access + tx + repo — deepen it. If a thin service has no domain reason to exist and is _not_ part of this uniform vault-resource pattern (e.g. a future `FooHelperService` orphan), dissolve it. The policy is about the pattern, not about thinness as a virtue.
+
+## Considered alternatives
+
+- **Dissolve `FoldersService` (and any other thin vault-resource service) into routes.** Rejected: scatters the access-check-inside-tx ceremony across N routes, breaks the uniform vault-resource template, and trades one small file for several slightly-larger ones with no compensating gain.
+- **Deepen `FoldersService` by inventing rules** (folder count quota, name uniqueness, non-empty deletion guard). Rejected as a refactor — these are features. Add them when product requirements call for them; the seam is ready when that day comes.
+- **Add the policy to `CONTEXT.md` only.** Rejected as insufficient: `CONTEXT.md` documents what the modules _are_, but the question "why is this one so thin?" recurs across architecture reviews. An ADR is the durable answer.

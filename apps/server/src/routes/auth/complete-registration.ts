@@ -1,37 +1,25 @@
 import type { FastifyInstance } from 'fastify';
-import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { CompleteRegistrationRequestSchema } from '@blindpass/api-schema';
-import * as session from '../../auth/session/index.js';
 import { completeRegistration } from '../../auth/registration/service.js';
-import { asTx } from '../../db/tx.js';
-import { authRateLimit } from './rate-limit.js';
-import { sendAuthFailure } from './result.js';
+import { registerCompleteAuthRoute } from './complete-route.js';
 
 export function registerCompleteRegistrationRoute(app: FastifyInstance): void {
-  app.withTypeProvider<ZodTypeProvider>().post(
-    '/auth/register/complete',
-    {
-      schema: { body: CompleteRegistrationRequestSchema },
-      config: { rateLimit: authRateLimit(10) },
-    },
-    async (request, reply) => {
-      const result = await app.db.transaction(async (tx) =>
-        completeRegistration(
-          asTx(tx),
-          {
-            username: request.body.username,
-            enrollmentId: request.body.enrollmentId,
-            authenticatorCode: request.body.authenticatorCode,
-            userAgent: request.headers['user-agent'],
-          },
-          app.clock,
-        ),
+  registerCompleteAuthRoute(app, {
+    path: '/auth/register/complete',
+    schema: CompleteRegistrationRequestSchema,
+    rateLimit: 10,
+    run: async (tx, request, clock) => {
+      const r = await completeRegistration(
+        tx,
+        {
+          username: request.body.username,
+          enrollmentId: request.body.enrollmentId,
+          authenticatorCode: request.body.authenticatorCode,
+          userAgent: request.headers['user-agent'],
+        },
+        clock,
       );
-
-      if (!result.ok) return sendAuthFailure(reply, result.reason);
-
-      session.attachCookie(reply, result.proof);
-      return reply.status(200).send(result.bundle);
+      return r.ok ? { ok: true, proof: r.proof, payload: r.bundle } : r;
     },
-  );
+  });
 }
