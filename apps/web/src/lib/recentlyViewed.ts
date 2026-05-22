@@ -5,6 +5,17 @@ function key(vaultId: string): string {
   return STORAGE_PREFIX + vaultId;
 }
 
+const listeners = new Set<() => void>();
+
+export function subscribeRecentlyViewed(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+function notify(): void {
+  listeners.forEach((fn) => fn());
+}
+
 export function pushRecentlyViewed(vaultId: string, itemId: string): void {
   if (!vaultId || !itemId) return;
   let list: string[];
@@ -15,6 +26,7 @@ export function pushRecentlyViewed(vaultId: string, itemId: string): void {
   }
   const next = [itemId, ...list.filter((id) => id !== itemId)].slice(0, MAX);
   localStorage.setItem(key(vaultId), JSON.stringify(next));
+  notify();
 }
 
 export function getRecentlyViewed(vaultId: string): string[] {
@@ -28,4 +40,5 @@ export function getRecentlyViewed(vaultId: string): string[] {
 
 export function clearRecentlyViewed(vaultId: string): void {
   localStorage.removeItem(key(vaultId));
+  notify();
 }

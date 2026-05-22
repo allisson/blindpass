@@ -64,11 +64,11 @@ test('restores, permanently deletes, searches, and empties trashed items', async
   await page.getByRole('button', { name: 'Restore' }).click();
   await expect(page.getByTestId('trash-table').getByText(restoreTitle)).toHaveCount(0);
   await page.getByRole('link', { name: 'Vault' }).click();
-  await expect(page.getByTestId('vault-list').getByText(restoreTitle)).toBeVisible({
+  await expect(page.getByTestId('vault-list').getByText(restoreTitle).first()).toBeVisible({
     timeout: 10_000,
   });
 
-  await page.getByTestId('vault-list').getByText(restoreTitle).click();
+  await page.getByTestId('vault-list').getByText(restoreTitle).first().click();
   await moveCurrentItemToTrash(page, restoreTitle);
 
   await createVaultItem(page, 'login', purgeTitle, {

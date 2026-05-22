@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { pushRecentlyViewed, getRecentlyViewed, clearRecentlyViewed } from './recentlyViewed';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  pushRecentlyViewed,
+  getRecentlyViewed,
+  clearRecentlyViewed,
+  subscribeRecentlyViewed,
+} from './recentlyViewed';
 
 beforeEach(() => {
   localStorage.clear();
@@ -68,5 +73,27 @@ describe('clearRecentlyViewed', () => {
     clearRecentlyViewed('v1');
     expect(getRecentlyViewed('v1')).toEqual([]);
     expect(localStorage.getItem('bp:recent:v1')).toBeNull();
+  });
+});
+
+describe('subscribeRecentlyViewed', () => {
+  it('notifies on push and clear, and unsubscribes cleanly', () => {
+    const fn = vi.fn();
+    const unsub = subscribeRecentlyViewed(fn);
+    pushRecentlyViewed('v1', 'a');
+    clearRecentlyViewed('v1');
+    expect(fn).toHaveBeenCalledTimes(2);
+    unsub();
+    pushRecentlyViewed('v1', 'b');
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not notify when push is a no-op (empty vaultId or itemId)', () => {
+    const fn = vi.fn();
+    const unsub = subscribeRecentlyViewed(fn);
+    pushRecentlyViewed('', 'a');
+    pushRecentlyViewed('v1', '');
+    expect(fn).not.toHaveBeenCalled();
+    unsub();
   });
 });

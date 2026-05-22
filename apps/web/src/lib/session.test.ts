@@ -84,6 +84,28 @@ describe('session', () => {
     expect(session.get()?.keychain).toBeNull();
   });
 
+  it('lock clears recently viewed history for every vault', () => {
+    const s = makeSession();
+    s.vaults.set('v2', { vaultKey: new Uint8Array([1]), name: 'Work', isShared: false });
+    localStorage.setItem('bp:recent:v1', JSON.stringify(['a', 'b']));
+    localStorage.setItem('bp:recent:v2', JSON.stringify(['c']));
+    session.set(s);
+    session.lock();
+    expect(localStorage.getItem('bp:recent:v1')).toBeNull();
+    expect(localStorage.getItem('bp:recent:v2')).toBeNull();
+  });
+
+  it('clear removes recently viewed history for every vault', () => {
+    const s = makeSession();
+    s.vaults.set('v2', { vaultKey: new Uint8Array([1]), name: 'Work', isShared: false });
+    localStorage.setItem('bp:recent:v1', JSON.stringify(['a']));
+    localStorage.setItem('bp:recent:v2', JSON.stringify(['b']));
+    session.set(s);
+    session.clear();
+    expect(localStorage.getItem('bp:recent:v1')).toBeNull();
+    expect(localStorage.getItem('bp:recent:v2')).toBeNull();
+  });
+
   it('switchVault updates activeVaultId and vaultKey', () => {
     const s = makeSession();
     const vaultKey2 = new Uint8Array([20, 21, 22]);

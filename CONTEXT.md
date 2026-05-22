@@ -132,6 +132,12 @@ The hook exposed by **KeychainRequired**. Returns the held `{vaultKey, keyPair, 
 **CachedVaultItem**:
 The IndexedDB-at-rest shape for an **EncryptedVaultItem**. Same fields as the wire envelope; distinct name signals intent (cache vs network). Lives in `lib/vaultCache.ts`. Cleared on `session.lock()` and `session.clear()` — ciphertext never outlives the keychain that can read it.
 
+### Browser navigation history
+
+**RecentlyViewed**:
+The per-vault local history of **VaultItem** IDs the user has most recently opened. Stored in `localStorage` under `bp:recent:<vaultId>` as a JSON string array, cap 10, most-recent-first. Pushed on every item-detail mount via `useRecentlyViewed`. Surfaced as the "Recently Viewed" section at the top of the vault list when no filter/search is active and the user is in single-vault mode — up to 5 IDs that still resolve to a live **EncryptedVaultItem**. Cleared on `session.lock()` and `session.clear()` — never persisted to the server, never crosses devices. Distinct from **CachedVaultItem** (which holds ciphertext); this holds only IDs.
+_Avoid_: recent items list, history, recents (in identifiers).
+
 ### Browser data portability
 
 **PlaintextExport**:

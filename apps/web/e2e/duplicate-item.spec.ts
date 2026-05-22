@@ -73,8 +73,10 @@ test('duplicates a login item, pre-fills the new-item form, and creates an indep
   await page.getByRole('link', { name: 'Back to vault' }).click();
   await page.waitForURL('/', { timeout: 10_000 });
   const list = page.getByTestId('vault-list');
-  await expect(list.getByText('My GitHub', { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(list.getByText('My GitHub (copy)', { exact: true })).toBeVisible({
+  await expect(list.getByText('My GitHub', { exact: true }).first()).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(list.getByText('My GitHub (copy)', { exact: true }).first()).toBeVisible({
     timeout: 10_000,
   });
 });
@@ -95,6 +97,6 @@ test('cancelling the duplicate form does not create an item', async ({ page }) =
 
   // Only the original is in the list; no "(copy)" entry was persisted.
   const list = page.getByTestId('vault-list');
-  await expect(list.getByText('Acme', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(list.getByText('Acme', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
   await expect(list.getByText('Acme (copy)', { exact: true })).toHaveCount(0);
 });

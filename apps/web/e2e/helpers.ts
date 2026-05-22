@@ -269,6 +269,13 @@ export async function createVaultItem(
   await page.waitForURL((url) => !url.pathname.includes('/new'), { timeout: 15_000 });
 }
 
+export async function openItemAndReturn(page: Page, title: string): Promise<void> {
+  await page.getByTestId('vault-list').getByText(title, { exact: true }).first().click();
+  await page.waitForURL(/\/[^/]+$/, { timeout: 10_000 });
+  await page.getByRole('link', { name: 'Back to vault' }).click();
+  await page.waitForURL('/', { timeout: 10_000 });
+}
+
 export async function createVault(page: Page, name: string): Promise<string> {
   // Ensure we are on a page where the vault layout is present
   if (!page.url().endsWith('/') && !page.url().includes('/unlock')) {
