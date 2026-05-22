@@ -1,6 +1,6 @@
 import type { TxDb } from '../../db/tx.js';
 import { requireWriter, type AccessFailure } from '../access.js';
-import { assertItemQuota, getEffectiveVaultItemQuota } from '../quota.js';
+import { reserveItemQuota } from '../quota.js';
 import * as items from './repository.js';
 import type { EncryptedItemPayload, VersionedItemRow, BatchCreatedRow } from './repository.js';
 
@@ -26,9 +26,8 @@ export async function createItem(
     if (!exists) return { ok: false, reason: 'folder_not_found' };
   }
 
-  const limit = await getEffectiveVaultItemQuota(db, vaultId);
-  await assertItemQuota(db, vaultId, limit, 1);
-  const created = await items.createWithVersion(db, vaultId, input);
+  const slot = await reserveItemQuota(db, vaultId, 1);
+  const created = await items.createWithVersion(db, slot, input);
   return { ok: true, item: created };
 }
 
@@ -47,9 +46,8 @@ export async function batchCreateItems(
   const accessFail = await requireWriter(db, vaultId, userId);
   if (accessFail) return { ok: false, reason: accessFail };
 
-  const limit = await getEffectiveVaultItemQuota(db, vaultId);
-  await assertItemQuota(db, vaultId, limit, input.length);
-  const created = await items.batchCreateWithVersion(db, vaultId, input);
+  const slot = await reserveItemQuota(db, vaultId, input.length);
+  const created = await items.batchCreateWithVersion(db, slot, input);
   return { ok: true, items: created };
 }
 

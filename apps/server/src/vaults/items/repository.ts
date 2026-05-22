@@ -9,6 +9,7 @@ import {
   vaults,
   vaultShares,
 } from '../../db/schema.js';
+import type { QuotaSlot } from '../quota.js';
 
 type Db = NodePgDatabase<typeof schema>;
 
@@ -186,12 +187,12 @@ export type CreateItemValues = EncryptedItemPayload & { folderId: string | null 
 
 export async function createWithVersion(
   db: Db,
-  vaultId: string,
+  slot: QuotaSlot,
   values: CreateItemValues,
 ): Promise<VersionedItemRow> {
   const [item] = await db
     .insert(vaultItems)
-    .values({ vaultId, folderId: values.folderId })
+    .values({ vaultId: slot.vaultId, folderId: values.folderId })
     .returning();
   await db.insert(vaultItemVersions).values({
     itemId: item.id,
@@ -217,14 +218,14 @@ export type BatchCreatedRow = { id: string; createdAt: Date; updatedAt: Date };
 
 export async function batchCreateWithVersion(
   db: Db,
-  vaultId: string,
+  slot: QuotaSlot,
   items: (EncryptedItemPayload & { folderId: string | null })[],
 ): Promise<BatchCreatedRow[]> {
   const ids = items.map(() => uuidv7());
 
   const inserted = await db
     .insert(vaultItems)
-    .values(ids.map((id, i) => ({ id, vaultId, folderId: items[i]!.folderId })))
+    .values(ids.map((id, i) => ({ id, vaultId: slot.vaultId, folderId: items[i]!.folderId })))
     .returning();
 
   await db.insert(vaultItemVersions).values(

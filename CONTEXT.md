@@ -191,6 +191,9 @@ Hides the **VaultItem ↔ VaultItemVersion** pairing invariant — every item wr
 **VaultItemsService** (`vaults/items/service.ts`):
 Composes access check + quota + repo for each write ceremony: `createItem`, `batchCreateItems`, `updateItem`, `deleteItem`, `moveItem`. Read paths (list) skip the service and call repo + access helper directly.
 
+**EncryptedVaultItemMapper** (`vaults/items/mapper.ts`):
+The single row→wire boundary. `toEncryptedVaultItem(row)` converts a `VersionedItemRow` (raw `Uint8Array` ciphertext columns + `Date` timestamps) into the **EncryptedVaultItem** wire shape (base64 strings, ISO timestamps, nested `EncryptedValue` pairs). `toEncryptedGlobalVaultItem` extends it with `vaultId` for **EncryptedGlobalVaultItem** read paths. Every route that returns item data to the client passes through one of these — write paths (`create`, `update`, `batchCreate`) on the successful service result, read paths (`list-user-items`) over the array. The mapper is the only place that knows the byte-encoding and date-formatting rules; row shape stays inside `vaults/items/`.
+
 **VaultsRepository** (`vaults/repository.ts`):
 Vault-table queries: `createInitial`, `createVault`, `listOwnedByUser`, `listSharedWithUser`, `findOwnedById`, `updateMetadata`, `listIdsByOwner`.
 
@@ -216,7 +219,10 @@ Composes access check + repo for each write ceremony: `createFolder`, `updateFol
 Per-request authorization. Exports `getVaultAccess` — the primitive that returns `{role}` (`owner | viewer | editor`) or `null`. On top of it, three role-gate helpers consumed by every vault write service and every vault read route: `requireOwner`, `requireWriter`, `requireReader`. Each returns `AccessFailure | null` (`'vault_not_found' | 'forbidden' | null`) — compact early-return at call sites: `const fail = await requireWriter(db, …); if (fail) return { ok: false, reason: fail };`. The helpers are the single audit point for "who can do what on a vault."
 
 **Quota** (`vaults/quota.ts`):
-Per-user vault count and per-vault item count enforcement. Acquires a `pg_advisory_xact_lock` keyed on the resource before counting, so concurrent writes can't both pass under the limit. The lock is released at statement end if no surrounding transaction exists — so the `assert*` helpers take **TxDb** to make tx-free misuse a compile error. Throws `QuotaExceededError` (handled by the global error handler → 403). The `getEffective*Quota` reads accept either handle.
+Per-user vault count and per-vault item count enforcement. Acquires a `pg_advisory_xact_lock` keyed on the resource before counting, so concurrent writes can't both pass under the limit. The lock is released at statement end if no surrounding transaction exists — so the assert/reserve helpers take **TxDb** to make tx-free misuse a compile error. Throws `QuotaExceededError` (handled by the global error handler → 403). The `getEffective*Quota` reads accept either handle. Item-count enforcement uses the **QuotaSlot** brand-as-obligation pattern — `reserveItemQuota(tx, vaultId, adding)` mints a slot; `vaultItems` insert paths in the items repository can only be called with one. Vault-count enforcement (`assertVaultQuota`) stays a throw-or-pass primitive — it has one caller and no need for a brand.
+
+**QuotaSlot**:
+Branded opaque type minted by `reserveItemQuota` and consumed by the item-inserting repository methods (`items.createWithVersion`, `items.batchCreateWithVersion`). Promotes "this write path must have reserved item quota" from a service-layer convention into a function-signature obligation — the same move as **ProofOfSession** and **TxDb**. Carries `vaultId` so a future cross-vault write within one transaction cannot accidentally reuse a slot reserved for a different vault. The slot's runtime guarantees (lock + count + limit) come from the assertion that mints it; the brand exists to make "I called the assertion before writing" non-bypassable at the type level.
 
 **TxDb** (`db/tx.ts`):
 Branded opaque type — `NodePgDatabase<typeof schema> & { readonly [txBrand]: true }`. The brand is type-only; the runtime value is the same Drizzle handle. Produced exclusively by `asTx(tx)` inside `app.db.transaction(async (tx) => …)` route handlers; consumed by every write-path service signature and by the quota `assert*` helpers. Promotes "this ceremony must be atomic" from prose convention into a function-signature obligation, the same move as **ProofOfSession**. Read-path services and repositories continue to accept the un-branded `NodePgDatabase<typeof schema>`, so the same handle flows through reads without forcing a needless transaction.
@@ -228,6 +234,10 @@ Each service method takes a `TxDb` (writes) or `Db` (reads), a typed input, and 
 
 **ServiceResult**:
 The discriminated-union return shape used by every auth service method. Routes pattern-match on `ok` and `reason` to choose status codes and error messages. Services never throw for expected validation failures; they return `{ok: false, reason}` instead.
+
+**CompleteAuthRoute** (`routes/auth/complete-route.ts`):
+The factory that registers any auth ceremony route ending in a **SessionIssuance** + cookie attach + payload reply — currently `completeLogin`, `completeRegistration`, `completeRecovery`. Exposed as `registerCompleteAuthRoute(app, {path, schema, rateLimit, run})`. Owns the transaction (`asTx(tx)`), the **ServiceResult** failure branch via `sendAuthFailure`, the **ProofOfSession** consumption via `session.attachCookie`, and the 200 reply with the route's payload. The cookie attach is non-optional — it is what defines this seam, so auth routes that don't issue a session (`register`, `verify-recovery`, `start-login`) keep their hand-rolled handler. Each `complete-*.ts` route file shrinks to the variance: path, schema, rate-limit count, and a `run(tx, request, clock)` callback that calls the relevant service and shapes the payload.
+_Avoid_: completeRouteFactory, authRouteFactory, authHelper.
 
 ## UI / Filter model
 
