@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-05-22
+
+### Added
+
+- Live TOTP code in the item list — the 6-digit code and seconds-remaining now render inline on each row that has a TOTP secret, updating every second and turning destructive-coloured at ≤5s, so you can copy without opening the detail view
+- Duplicate item from the detail view — opens the new-item form pre-populated from the source (title suffixed `" (copy)"`, folder seeded), so you can fork and edit any field before saving. Hidden for viewers of read-only shared vaults
+- Recently Viewed section at the top of the vault list — surfaces the last 5 items you opened when no filter or search is active and you're in single-vault mode. Cleared on lock and sign-out so it cannot outlive the keychain that owned it
+
+### Internal
+
+- `QuotaSlot` brand (`apps/server/src/vaults/quota.ts`) — `reserveItemQuota` mints a slot carrying `vaultId`; `items.createWithVersion` and `batchCreateWithVersion` now require one, so an item insert can no longer skip the lock-count-limit assertion at compile time. Matches the brand-as-obligation pattern of `ProofOfSession` and `TxDb`
+- `registerCompleteAuthRoute` factory (`apps/server/src/routes/auth/complete-route.ts`) — folds the `asTx → service → sendAuthFailure → session.attachCookie → 200 reply` seam shared by `completeLogin`, `completeRegistration`, and `completeRecovery` into one helper. Each `complete-*.ts` file shrinks to its variance (path, schema, rate-limit count, and a `run(tx, request, clock)` callback that calls the service and shapes the payload)
+- [ADR-0009](docs/adr/0009-thin-vault-resource-services-are-intentional.md) — records why uniformly-shaped thin vault-resource services (e.g. `FoldersService`) are kept rather than dissolved
+
 ## [0.10.0] - 2026-05-20
 
 ### Added
