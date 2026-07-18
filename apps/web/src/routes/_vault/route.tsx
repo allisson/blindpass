@@ -37,6 +37,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from 'vaul';
 import { vaultColor } from '@/lib/vaultColor';
 import { ItemCard } from '@/components/vault/ItemCard';
+import { getItemSearchText } from '@/components/vault/item-fields/descriptors';
 import { ItemCardSkeleton } from '@/components/vault/ItemCardSkeleton';
 import { OnboardingEmpty } from '@/components/vault/OnboardingEmpty';
 import { RecentlyViewedSection } from '@/components/vault/RecentlyViewedSection';
@@ -599,50 +600,10 @@ function VaultListPanel({
     const result = typeFiltered;
     if (!search.trim()) return result;
     const q = search.toLowerCase();
-    return result.filter((item) => {
-      if (item.title.toLowerCase().includes(q)) return true;
-      switch (item.type) {
-        case 'login':
-          return (
-            (item.username as string).toLowerCase().includes(q) ||
-            ((item.url as string | undefined)?.toLowerCase().includes(q) ?? false)
-          );
-        case 'secure_note':
-          return ((item.content as string) ?? '').toLowerCase().includes(q);
-        case 'payment_card':
-          return ((item.cardholderName as string) ?? '').toLowerCase().includes(q);
-        case 'identity':
-          return `${(item.firstName as string) ?? ''} ${(item.lastName as string) ?? ''}`
-            .toLowerCase()
-            .includes(q);
-        case 'totp':
-          return [item.issuer, item.accountName]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-            .includes(q);
-        case 'developer_credential':
-          return (
-            item.credentialMode === 'token'
-              ? [item.provider, item.environment, item.keyId, item.baseUrl]
-              : item.credentialMode === 'client_secret_pair'
-                ? [item.provider, item.environment, item.clientId, item.baseUrl]
-                : [item.username, item.host, item.algorithm, item.fingerprint]
-          )
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-            .includes(q);
-        case 'crypto_wallet':
-          return [item.walletName, item.network, item.addressHint]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-            .includes(q);
-        default:
-          return false;
-      }
-    });
+    return result.filter(
+      (item) =>
+        item.title.toLowerCase().includes(q) || getItemSearchText(item).toLowerCase().includes(q),
+    );
   }, [typeFiltered, search]);
 
   const [recentTick, setRecentTick] = useState(0);

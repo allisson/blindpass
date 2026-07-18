@@ -8,6 +8,10 @@ import type { DecryptedItem } from '@/hooks/useVault';
 import { useSyncBoundary } from '@/components/sync/SyncBoundary';
 import { useTotpCode, formatTotpCode } from '@/hooks/useTotpCode';
 import { ItemAvatar } from './ItemAvatar';
+import { getItemSubtitle } from './item-fields/descriptors';
+
+// Re-exported so existing importers of `@/components/vault/ItemCard` keep working.
+export { getItemSubtitle };
 
 function TotpRowTail({
   item,
@@ -58,37 +62,6 @@ interface Props {
   isWeak?: boolean;
   isReused?: boolean;
   vaultLabel?: { color: string; name: string };
-}
-
-export function getItemSubtitle(item: { type: string; [key: string]: unknown }): string {
-  switch (item.type) {
-    case 'login':
-      return String(item.username ?? '');
-    case 'secure_note': {
-      const c = String(item.content ?? '');
-      return c.slice(0, 40) + (c.length > 40 ? '…' : '');
-    }
-    case 'payment_card':
-      return String(item.cardholderName ?? '');
-    case 'identity':
-      return `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim();
-    case 'totp':
-      return [item.issuer, item.accountName].filter(Boolean).join(' · ') || 'Authenticator';
-    case 'developer_credential':
-      return item.credentialMode === 'ssh_key'
-        ? [item.username, item.host].filter(Boolean).join(' @ ')
-        : [item.provider, item.environment].filter(Boolean).join(' · ');
-    case 'crypto_wallet': {
-      if (item.walletMode !== 'bip39') return '';
-      const wordCount = String(item.mnemonic ?? '')
-        .trim()
-        .split(/\s+/).length;
-      const primary = String(item.walletName ?? item.addressHint ?? `${wordCount}-word seed`);
-      return item.network ? `${item.network} · ${primary}` : primary;
-    }
-    default:
-      return '';
-  }
 }
 
 export const ItemCard = memo(function ItemCard({ item, isWeak, isReused, vaultLabel }: Props) {

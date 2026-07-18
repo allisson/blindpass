@@ -103,7 +103,11 @@ The re-wrap ceremony. Given a held **MasterKey** and a new password, derives a n
 The per-type editor module for one **VaultItem** discriminator (login, secure_note, payment_card, identity, totp, developer_credential, crypto_wallet). Lives under `components/vault/item-fields/<Type>Fields.tsx`. Owns its type-specific fields, validation, and any local reveal/mode-switch UI. Reads RHF methods through `useFormContext()` so the outer shell doesn't prop-drill.
 
 **VaultItemFieldsRegistry**:
-The `Record<VaultItem['type'], {schema, Component}>` map exported from `components/vault/item-fields/index.ts`. The outer **ItemForm** shell looks up the active type and renders the registered component inside a `FormProvider`. Schemas are imported from `@blindpass/vault` so the wire schema stays the source of truth.
+The `Record<VaultItem['type'], {schema, Component}>` map exported from `components/vault/item-fields/index.ts`. The outer **ItemForm** shell looks up the active type and renders the registered component inside a `FormProvider`. Schemas are imported from `@blindpass/vault` so the wire schema stays the source of truth. Its read-only sibling is the **ItemDescriptor** map.
+
+**ItemDescriptor**:
+The per-type read-selection map `ITEM_DESCRIPTORS: { [K in VaultItem['type']]: { toSearchText, subtitle } }` in `components/vault/item-fields/descriptors.ts` — a pure, React-free module kept separate from the form registry so the hot list-filter path doesn't pull the field-editor component graph into its bundle. Owns "which fields matter for type X" for every non-form read: `getItemSearchText(item)` (the vault-list search haystack, `route.tsx`) and `getItemSubtitle(item)` (the **ItemCard** / trash / health subtitle, re-exported from `ItemCard.tsx` for path stability). The single audit point that replaced the four scattered copies of per-type field knowledge. _Invariant_: `toSearchText` emits no secret material (`password`, `number`, `cvv`, `secret`, `clientSecret`, `privateKey`, `passphrase`, `mnemonic`) — the search haystack is a plaintext index — and excludes `title` (generic; callers match it separately). Each entry is typed against `Extract<VaultItem, {type: K}>`, so field access needs no casts; the two dispatchers carry the one contained `as never` and return `''` for unknown types. The read-only detail renderer (`$itemId.tsx`) and the TypeFilter's `TYPE_OPTIONS` are not yet folded in — the obvious next descriptor fields.
+_Avoid_: item metadata, type config, field map.
 
 ### Browser ceremony plumbing
 
